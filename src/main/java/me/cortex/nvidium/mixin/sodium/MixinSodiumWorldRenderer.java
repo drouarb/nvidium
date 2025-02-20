@@ -1,5 +1,6 @@
 package me.cortex.nvidium.mixin.sodium;
 
+import com.llamalad7.mixinextras.sugar.ref.LocalBooleanRef;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.NvidiumWorldRenderer;
@@ -9,6 +10,7 @@ import net.caffeinemc.mods.sodium.client.render.chunk.RenderSection;
 import net.caffeinemc.mods.sodium.client.render.chunk.RenderSectionManager;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.BufferBuilderStorage;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.VertexConsumerProvider;
@@ -28,7 +30,7 @@ public abstract class MixinSodiumWorldRenderer implements INvidiumWorldRendererG
     @Shadow private RenderSectionManager renderSectionManager;
 
     @Shadow
-    protected static void renderBlockEntity(MatrixStack matrices, BufferBuilderStorage bufferBuilders, Long2ObjectMap<SortedSet<BlockBreakingInfo>> blockBreakingProgressions, float tickDelta, VertexConsumerProvider.Immediate immediate, double x, double y, double z, BlockEntityRenderDispatcher dispatcher, BlockEntity entity) {
+    protected static void renderBlockEntity(MatrixStack matrices, BufferBuilderStorage bufferBuilders, Long2ObjectMap<SortedSet<BlockBreakingInfo>> blockBreakingProgressions, float tickDelta, VertexConsumerProvider.Immediate immediate, double x, double y, double z, BlockEntityRenderDispatcher dispatcher, BlockEntity entity, ClientPlayerEntity player, LocalBooleanRef isGlowing) {
     }
 
     @Inject(method = "setupTerrain", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSectionManager;needsUpdate()Z", shift = At.Shift.BEFORE))
@@ -38,8 +40,8 @@ public abstract class MixinSodiumWorldRenderer implements INvidiumWorldRendererG
         }
     }
 
-    @Inject(method = "renderBlockEntities(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/BufferBuilderStorage;Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;FLnet/minecraft/client/render/VertexConsumerProvider$Immediate;DDDLnet/minecraft/client/render/block/entity/BlockEntityRenderDispatcher;)V", at = @At("HEAD"), cancellable = true, remap = true)
-    private void overrideEntityRenderer(MatrixStack matrices, BufferBuilderStorage bufferBuilders, Long2ObjectMap<SortedSet<BlockBreakingInfo>> blockBreakingProgressions, float tickDelta, VertexConsumerProvider.Immediate immediate, double x, double y, double z, BlockEntityRenderDispatcher blockEntityRenderer, CallbackInfo ci) {
+    @Inject(method = "renderBlockEntities(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/BufferBuilderStorage;Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;FLnet/minecraft/client/render/VertexConsumerProvider$Immediate;DDDLnet/minecraft/client/render/block/entity/BlockEntityRenderDispatcher;Lnet/minecraft/client/network/ClientPlayerEntity;Lcom/llamalad7/mixinextras/sugar/ref/LocalBooleanRef;)V", at = @At("HEAD"), cancellable = true, remap = true)
+    private void overrideEntityRenderer(MatrixStack matrices, BufferBuilderStorage bufferBuilders, Long2ObjectMap<SortedSet<BlockBreakingInfo>> blockBreakingProgressions, float tickDelta, VertexConsumerProvider.Immediate immediate, double x, double y, double z, BlockEntityRenderDispatcher blockEntityRenderer, ClientPlayerEntity player, LocalBooleanRef isGlowing, CallbackInfo ci) {
         if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs) {
             ci.cancel();
             var sectionsWithEntities = ((INvidiumWorldRendererGetter)renderSectionManager).getRenderer().getSectionsWithEntities();
@@ -47,7 +49,7 @@ public abstract class MixinSodiumWorldRenderer implements INvidiumWorldRendererG
                 if (section.isDisposed() || section.getCulledBlockEntities() == null)
                     continue;
                 for (var entity : section.getCulledBlockEntities()) {
-                    renderBlockEntity(matrices, bufferBuilders, blockBreakingProgressions, tickDelta, immediate, x, y, z, blockEntityRenderer, entity);
+                    renderBlockEntity(matrices, bufferBuilders, blockBreakingProgressions, tickDelta, immediate, x, y, z, blockEntityRenderer, entity, player, isGlowing);
                 }
             }
         }

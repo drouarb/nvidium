@@ -78,8 +78,8 @@ public class NvidiumCompactChunkVertex implements ChunkVertexType {
         return (int) ((MODEL_ORIGIN + v) * MODEL_SCALE_INV);
     }
 
-    private static int encodeDrawParameters(Material material) {
-        return ((material.bits() & 0xFF) << 0);
+    private static int encodeDrawParameters(int material) {
+        return ((material & 0xFF) << 0);
     }
 
 
