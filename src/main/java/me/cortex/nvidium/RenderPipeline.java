@@ -15,6 +15,7 @@ import me.cortex.nvidium.renderers.*;
 import me.cortex.nvidium.util.DownloadTaskStream;
 import me.cortex.nvidium.util.TickableManager;
 import me.cortex.nvidium.util.UploadingBufferStream;
+import net.caffeinemc.mods.sodium.client.SodiumClientMod;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.client.MinecraftClient;

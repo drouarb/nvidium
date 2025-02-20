@@ -57,7 +57,7 @@ public class NvidiumCompactChunkVertex implements ChunkVertexType {
 
                 MemoryUtil.memPutInt(ptr + 0, (encodePosition(vertex.x) << 0) | (encodePosition(vertex.y) << 16));
                 MemoryUtil.memPutInt(ptr + 4, (encodePosition(vertex.z) << 0) | (encodeDrawParameters(material) << 16) | ((light&0xFF)<<24));
-                MemoryUtil.memPutInt(ptr + 8, (encodeColor(vertex.color) << 0) | (((light>>8)&0xFF) << 24));
+                MemoryUtil.memPutInt(ptr + 8, (encodeColor(vertex.color, vertex.ao) << 0) | (((light>>8)&0xFF) << 24));
                 MemoryUtil.memPutInt(ptr + 12, encodeTexture(vertex.u, vertex.v));
 
                 ptr += STRIDE;
@@ -83,9 +83,7 @@ public class NvidiumCompactChunkVertex implements ChunkVertexType {
     }
 
 
-    private static int encodeColor(int color) {
-        var brightness = ColorU8.byteToNormalizedFloat(ColorABGR.unpackAlpha(color));
-
+    private static int encodeColor(int color, float brightness) {
         int r = ColorU8.normalizedFloatToByte(ColorU8.byteToNormalizedFloat(ColorABGR.unpackRed(color)) * brightness);
         int g = ColorU8.normalizedFloatToByte(ColorU8.byteToNormalizedFloat(ColorABGR.unpackGreen(color)) * brightness);
         int b = ColorU8.normalizedFloatToByte(ColorU8.byteToNormalizedFloat(ColorABGR.unpackBlue(color)) * brightness);
