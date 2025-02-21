@@ -19,6 +19,7 @@ import net.caffeinemc.mods.sodium.client.SodiumClientMod;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.Fog;
 import net.minecraft.util.math.BlockPos;
 import org.joml.*;
 import org.lwjgl.opengl.GL11C;
@@ -188,6 +189,8 @@ public class RenderPipeline {
 
         long queryAddr = 0;
         var rm = sectionManager.getRegionManager();
+        Fog fog = RenderSystem.getShaderFog();
+
         short[] regionMap;
         //Enqueue all the visible regions
         {
@@ -260,7 +263,7 @@ public class RenderPipeline {
             addr += 16;
             new Vector4f(delta,0).getToAddress(addr);//Subchunk offset (note, delta is already negated)
             addr += 16;
-            new Vector4f(RenderSystem.getShaderFogColor()).getToAddress(addr);
+            new Vector4f(fog.red(), fog.green(), fog.blue(), fog.alpha()).getToAddress(addr);
             addr += 16;
             MemoryUtil.memPutLong(addr, sceneUniform.getDeviceAddress() + SCENE_SIZE);//Put in the location of the region indexs
             addr += 8;
@@ -291,11 +294,11 @@ public class RenderPipeline {
             addr += 4;
             MemoryUtil.memPutFloat(addr, ((float)screenHeight)/2);
             addr += 4;
-            MemoryUtil.memPutFloat(addr, RenderSystem.getShaderFogStart());//FogStart
+            MemoryUtil.memPutFloat(addr, fog.start());//FogStart
             addr += 4;
-            MemoryUtil.memPutFloat(addr, RenderSystem.getShaderFogEnd());//FogEnd
+            MemoryUtil.memPutFloat(addr, fog.end());//FogEnd
             addr += 4;
-            MemoryUtil.memPutInt(addr, RenderSystem.getShaderFogShape().getId());//IsSphericalFog
+            MemoryUtil.memPutInt(addr, fog.shape().getId());//IsSphericalFog
             addr += 4;
             int flags = 0;
             flags |= SodiumClientMod.options().performance.useBlockFaceCulling?1:0;

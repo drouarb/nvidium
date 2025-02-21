@@ -13,6 +13,7 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.BufferBuilderStorage;
 import net.minecraft.client.render.Camera;
+import net.minecraft.client.render.Fog;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.block.entity.BlockEntityRenderDispatcher;
 import net.minecraft.client.util.math.MatrixStack;
@@ -34,7 +35,7 @@ public abstract class MixinSodiumWorldRenderer implements INvidiumWorldRendererG
     }
 
     @Inject(method = "setupTerrain", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSectionManager;needsUpdate()Z", shift = At.Shift.BEFORE))
-    private void injectTerrainSetup(Camera camera, Viewport viewport, boolean spectator, boolean updateChunksImmediately, CallbackInfo ci) {
+    private void injectTerrainSetup(Camera camera, Viewport viewport, Fog fogParameters, boolean spectator, boolean updateChunksImmediately, CallbackInfo ci) {
         if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs) {
             ((INvidiumWorldRendererGetter)renderSectionManager).getRenderer().update(camera, viewport, spectator);
         }
