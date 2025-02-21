@@ -34,6 +34,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 
+import static me.cortex.nvidium.Nvidium.LOGGER;
+
 @Mixin(value = RenderSectionManager.class, remap = false)
 public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
     @Shadow @Final private RenderRegionManager regions;
@@ -46,6 +48,15 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
     @Unique
     private static void updateNvidiumIsEnabled() {
         Nvidium.IS_ENABLED = (!Nvidium.FORCE_DISABLE) && Nvidium.IS_COMPATIBLE && IrisCheck.checkIrisShouldDisable();
+
+        // Disable sodium translucency sorting since nvidium is doing it
+        if (Nvidium.IS_ENABLED) {
+            LOGGER.info("Force disabling sodium translucency sorting");
+            SodiumClientMod.options().performance.sortingEnabled = false;
+        } else {
+            LOGGER.info("Enabling sodium translucency sorting");
+            SodiumClientMod.options().performance.sortingEnabled = true;
+        }
     }
 
     @Inject(method = "<init>", at = @At("TAIL"))

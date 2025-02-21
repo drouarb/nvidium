@@ -1,49 +1,45 @@
 package me.cortex.nvidium.mixin.sodium;
 
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.llamalad7.mixinextras.sugar.Local;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.NvidiumWorldRenderer;
 import me.cortex.nvidium.sodiumCompat.INvidiumWorldRendererSetter;
+import net.caffeinemc.mods.sodium.client.SodiumClientMod;
 import net.caffeinemc.mods.sodium.client.gl.device.CommandList;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.BuilderTaskOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkBuildOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.region.RenderRegion;
 import net.caffeinemc.mods.sodium.client.render.chunk.region.RenderRegionManager;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Constant;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 import java.util.Collection;
+
+import static me.cortex.nvidium.Nvidium.LOGGER;
 
 @Mixin(value = RenderRegionManager.class, remap = false)
 public abstract class MixinRenderRegionManager implements INvidiumWorldRendererSetter {
     @Unique private NvidiumWorldRenderer renderer;
 
-    // Prevent sodium from uploading chunks if nvidium is enabled
-    @WrapOperation(
-            method = "uploadResults(Lnet/caffeinemc/mods/sodium/client/gl/device/CommandList;Lnet/caffeinemc/mods/sodium/client/render/chunk/region/RenderRegion;Ljava/util/Collection;)V",
-            constant = @Constant(classValue = ChunkBuildOutput.class, ordinal = 0)
-    )
-    private boolean preventSodiumUpload(Object obj, Operation<Boolean> original) {
-        if (Nvidium.IS_ENABLED) {
-            return false;
-        }
-        return original.call(obj);
-    }
+    @Shadow
+    protected abstract void uploadResults(CommandList commandList, RenderRegion region, Collection<BuilderTaskOutput> results);
 
-    // Replace with nvidium upload
-    @Inject(method = "uploadResults(Lnet/caffeinemc/mods/sodium/client/gl/device/CommandList;Lnet/caffeinemc/mods/sodium/client/render/chunk/region/RenderRegion;Ljava/util/Collection;)V",
-            at = @At(value = "JUMP", ordinal = 1))
-    private void redirectUpload(CommandList commandList, RenderRegion region, Collection<BuilderTaskOutput> results, CallbackInfo ci, @Local() BuilderTaskOutput result) {
+    @Redirect(method = "uploadResults(Lnet/caffeinemc/mods/sodium/client/gl/device/CommandList;Ljava/util/Collection;)V",
+            at = @At(value = "INVOKE",
+                    target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/region/RenderRegionManager;uploadResults(Lnet/caffeinemc/mods/sodium/client/gl/device/CommandList;Lnet/caffeinemc/mods/sodium/client/render/chunk/region/RenderRegion;Ljava/util/Collection;)V"))
+    private void redirectUpload(RenderRegionManager instance, CommandList cmdList, RenderRegion pass, Collection<BuilderTaskOutput> results) {
         if (Nvidium.IS_ENABLED) {
-            if (result instanceof ChunkBuildOutput) {
-                renderer.uploadBuildResult((ChunkBuildOutput)result);
+            for (BuilderTaskOutput result : results) {
+                if (result instanceof ChunkBuildOutput) {
+                    renderer.uploadBuildResult((ChunkBuildOutput)result);
+                } else {
+                    LOGGER.error("Received ChunkSortOutput sodium translucency sorting should be disabled => %b", SodiumClientMod.options().performance.sortingEnabled);
+                }
             }
+        } else {
+            uploadResults(cmdList, pass, results);
         }
     }
 
