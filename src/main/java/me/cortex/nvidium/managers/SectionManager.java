@@ -73,6 +73,10 @@ public class SectionManager {
 
         RenderSection section = sortOutput.render;
         long sectionKey = ChunkSectionPos.asLong(section.getChunkX(), section.getChunkY(), section.getChunkZ());
+        var quadCountData = this.translucencyQuadCounts.get(sectionKey);
+        if (quadCountData == null) { // early exist if we don't have a section
+            return;
+        }
 
         // Create our own buffer since we need only quad indexes TODO do it as we inject it in upload buffer
         NativeBuffer quadIndexBuffer = new NativeBuffer(indexBuffer.getLength() / 6);
@@ -86,7 +90,6 @@ public class SectionManager {
         // We need to pad some indexes since it's ordered per facing TODO do it as we inject it in upload buffer
         int quadOffset = 0;
         var intBuffer = quadIndexBuffer.getDirectBuffer().asIntBuffer();
-        var quadCountData = this.translucencyQuadCounts.get(sectionKey);
         for (var facing : ModelQuadFacing.values()) {
             for (int i = 0; i < quadCountData[facing.ordinal()]; i++) {
                 intBuffer.put(i + quadOffset, intBuffer.get(i + quadOffset) + quadOffset);

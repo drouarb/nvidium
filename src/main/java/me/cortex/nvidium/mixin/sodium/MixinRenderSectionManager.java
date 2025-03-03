@@ -185,9 +185,9 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
         // and the async search sees it at the exactly wrong moment
         // This is a problem when sodium translucency sorting is enabled since translucentData.getGeometryPlanes()
         // can be null on the second ChunkBuildOutput resulting in a NPE
-        if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs && !SodiumClientMod.options().performance.sortingEnabled) {
+        if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs) {
             var queue = taskLists.get(pendingUpdate);
-            if (isSectionVisibleBfs(section) && queue.size() < pendingUpdate.getMaximumQueueSize()) {
+            if (isSectionVisibleBfs(section)  && queue.size() < pendingUpdate.getMaximumQueueSize() && !queue.contains(section)) {
                 ((IRenderSectionExtension)section).isSubmittedRebuild(true);
                 taskLists.get(pendingUpdate).add(section);
             }
