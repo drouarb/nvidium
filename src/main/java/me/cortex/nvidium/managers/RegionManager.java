@@ -358,6 +358,11 @@ public class RegionManager {
             Arrays.fill(this.id2pos, -1);
 
             MemoryUtil.memSet(sectionData, 0, 256 * SectionManager.SECTION_SIZE);
+            // Init translucencyIndex to -1
+            for (int i = 0; i < 256; i++) {
+                MemoryUtil.memSet(sectionData + (SectionManager.SECTION_SIZE * i) + 32, -1, 16);
+            }
+
             this.key = ChunkSectionPos.asLong(rx, ry, rz);
             this.id = id;
 

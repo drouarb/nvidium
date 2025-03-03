@@ -3,6 +3,7 @@ package me.cortex.nvidium.sodiumCompat;
 import it.unimi.dsi.fastutil.ints.IntArrays;
 import it.unimi.dsi.fastutil.longs.LongArrays;
 import me.cortex.nvidium.Nvidium;
+import me.cortex.nvidium.config.TranslucencySortingLevel;
 import net.caffeinemc.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkBuildOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.data.BuiltSectionMeshParts;
@@ -89,7 +90,31 @@ public class SodiumResultCompatibility {
 
         //Do translucent first
         var translucentData = result.meshes.get(DefaultTerrainRenderPasses.TRANSLUCENT);
-        if (translucentData != null) {
+
+        // If we are using sodium translucency sorting, we don't need to sort quads
+        if (translucentData != null && Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.SODIUM) {
+            var partOffset = 0;
+            MemoryUtil.memCopy(translucentData.getVertexData().getDirectBuffer(), output.getDirectBuffer());
+            for (int i = 0; i < 7; i++) { // For each Facing
+                var part = translucentData.getVertexCounts()[i];
+
+                for (int j = 0; j < part; j++) {
+                    long src = MemoryUtil.memAddress(output.getDirectBuffer()) + (long) partOffset * formatSize;
+                    long base = src + (long) j * formatSize;
+                    byte flags = (byte) 0b100;//Mipping, No alpha cut
+                    MemoryUtil.memPutByte(base + 6L, flags);//Note: the 6 here is the offset into the vertex format
+
+                    float x = decodePosition(MemoryUtil.memGetShort(base));
+                    float y = decodePosition(MemoryUtil.memGetShort(base + 2));
+                    float z = decodePosition(MemoryUtil.memGetShort(base + 4));
+                    updateSectionBounds(min, max, x, y, z);
+                }
+
+                partOffset += part;
+            }
+            offset += translucentData.getVertexData().getLength() / 64;
+
+        } else if (translucentData != null) {
             int quadCount = 0;
             for (int i = 0; i < 7; i++) {
                 var part = translucentData.getVertexCounts()[i];

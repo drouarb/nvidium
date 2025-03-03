@@ -25,6 +25,7 @@ taskNV out Task {
     #ifdef TRANSLUCENCY_SORTING_QUADS
     uint8_t jiggle;
     #endif
+    int translucencyIndex;
 };
 
 bool shouldRender(uint sectionId) {
@@ -54,6 +55,8 @@ void main() {
         gl_TaskCountNV = 0;
         return;
     }
+
+    translucencyIndex = sectionData[sectionId].translucencyDataIdx;
 
     ivec4 header = sectionData[sectionId].header;
     uint baseDataOffset = (uint)header.w;

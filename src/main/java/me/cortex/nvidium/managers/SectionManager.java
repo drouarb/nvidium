@@ -1,37 +1,46 @@
 package me.cortex.nvidium.managers;
 
-import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.longs.*;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.NvidiumWorldRenderer;
 import me.cortex.nvidium.gl.RenderDevice;
 import me.cortex.nvidium.sodiumCompat.INvidiumWorldRendererGetter;
 import me.cortex.nvidium.sodiumCompat.IRepackagedResult;
-import me.cortex.nvidium.sodiumCompat.RepackagedSectionOutput;
 import me.cortex.nvidium.util.BufferArena;
 import me.cortex.nvidium.util.SegmentedManager;
 import me.cortex.nvidium.util.UploadingBufferStream;
+import net.caffeinemc.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import net.caffeinemc.mods.sodium.client.render.SodiumWorldRenderer;
 import net.caffeinemc.mods.sodium.client.render.chunk.RenderSection;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkBuildOutput;
-import net.minecraft.client.MinecraftClient;
+import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkSortOutput;
+import net.caffeinemc.mods.sodium.client.render.chunk.terrain.DefaultTerrainRenderPasses;
+import net.caffeinemc.mods.sodium.client.util.NativeBuffer;
 import net.minecraft.util.math.ChunkSectionPos;
 import org.joml.Vector3i;
 import org.joml.Vector4i;
 import org.lwjgl.system.MemoryUtil;
 
+import java.nio.IntBuffer;
+import java.util.Arrays;
+
+import static me.cortex.nvidium.Nvidium.LOGGER;
+
 public class SectionManager {
-    public static final int SECTION_SIZE = 32;
+    public static final int SECTION_SIZE = 32 + 16;
 
     //Sections should be grouped and batched into sizes of the count of sections in a region
     private final RegionManager regionManager;
 
     private final Long2IntOpenHashMap section2id = new Long2IntOpenHashMap();
     private final Long2IntOpenHashMap section2terrain = new Long2IntOpenHashMap();
+    private final Long2IntOpenHashMap section2index = new Long2IntOpenHashMap();
 
     public final UploadingBufferStream uploadStream;
     public final BufferArena terrainAreana;
+    public final BufferArena translucencyIndexArena;
+
+    private final Long2ObjectOpenHashMap<int[]> translucencyQuadCounts = new Long2ObjectOpenHashMap<int[]>();
 
     private final RenderDevice device;
 
@@ -44,10 +53,77 @@ public class SectionManager {
         this.uploadStream = uploadStream;
 
         this.terrainAreana = new BufferArena(device, fallbackMemorySize, quadVertexSize);
+        // TODO adapt fallbackMemorySize
+        this.translucencyIndexArena = new BufferArena(device, fallbackMemorySize, 1);
         this.regionManager = new RegionManager(device, maxRegions, maxRegions * 200, uploadStream, worldRenderer::enqueueRegionSort);
 
         this.section2id.defaultReturnValue(-1);
         this.section2terrain.defaultReturnValue(-1);
+        this.section2index.defaultReturnValue(-1);
+
+        this.translucencyQuadCounts.defaultReturnValue(null);
+    }
+
+    public void uploadChunkSort(ChunkSortOutput sortOutput) {
+        NativeBuffer indexBuffer = sortOutput.getIndexBuffer();
+        // Early exit
+        if (indexBuffer == null) {
+            return;
+        }
+
+        RenderSection section = sortOutput.render;
+        long sectionKey = ChunkSectionPos.asLong(section.getChunkX(), section.getChunkY(), section.getChunkZ());
+
+        // Create our own buffer since we need only quad indexes TODO do it as we inject it in upload buffer
+        NativeBuffer quadIndexBuffer = new NativeBuffer(indexBuffer.getLength() / 6);
+        IntBuffer quadIntBuffer = quadIndexBuffer.getDirectBuffer().asIntBuffer();
+        IntBuffer sortIndexBuffer = indexBuffer.getDirectBuffer().asIntBuffer();
+        for (int i = 0; i < indexBuffer.getLength() / 24; i++) {
+            var sortIdx = sortIndexBuffer.get(i * 6);
+            quadIntBuffer.put(sortIdx / 4);
+        }
+
+        // We need to pad some indexes since it's ordered per facing TODO do it as we inject it in upload buffer
+        int quadOffset = 0;
+        var intBuffer = quadIndexBuffer.getDirectBuffer().asIntBuffer();
+        var quadCountData = this.translucencyQuadCounts.get(sectionKey);
+        for (var facing : ModelQuadFacing.values()) {
+            for (int i = 0; i < quadCountData[facing.ordinal()]; i++) {
+                intBuffer.put(i + quadOffset, intBuffer.get(i + quadOffset) + quadOffset);
+            }
+            quadOffset += quadCountData[facing.ordinal()];
+        }
+
+        int indexDataAddress;
+        {
+            indexDataAddress = this.section2index.get(sectionKey);
+            if (indexDataAddress != -1 && !this.translucencyIndexArena.canReuse(indexDataAddress, quadIndexBuffer.getLength())) {
+                this.section2index.remove(sectionKey);
+                this.translucencyIndexArena.free(indexDataAddress);
+                indexDataAddress = -1;
+            }
+
+            if (indexDataAddress == -1) {
+                indexDataAddress = this.translucencyIndexArena.allocQuads(quadIndexBuffer.getLength());
+            }
+
+            this.section2index.put(sectionKey, indexDataAddress);
+
+            long upload = translucencyIndexArena.upload(uploadStream, indexDataAddress);
+            MemoryUtil.memCopy(MemoryUtil.memAddress(quadIndexBuffer.getDirectBuffer()), upload, quadIndexBuffer.getLength());
+            quadIndexBuffer.free();
+        }
+
+        int sectionIdx = this.section2id.get(sectionKey);
+        if (sectionIdx == -1) {
+            // We shouldn't get there, section should be created by ChunkBuildOutput
+            LOGGER.error("Got translucency data but no section found for {}", sectionKey);
+            return;
+        }
+
+        long metadata = regionManager.setSectionData(sectionIdx);
+        metadata += 32; // Go to translucency data offset
+        MemoryUtil.memPutInt(metadata, indexDataAddress);
     }
 
     public void uploadChunkBuildResult(ChunkBuildOutput result) {
@@ -59,6 +135,20 @@ public class SectionManager {
         if (output == null || output.quads() == 0) {
             deleteSection(sectionKey);
             return;
+        }
+
+        // We need to store quadCount per ModelFacing to pad translucency sorting data
+        var translucentData = result.meshes.get(DefaultTerrainRenderPasses.TRANSLUCENT);
+        if (translucentData != null) {
+            int[] quadOffsets = translucencyQuadCounts.get(sectionKey);
+            if (quadOffsets == null) {
+                quadOffsets = new int[]{0, 0, 0, 0, 0, 0, 0};
+            }
+            for (var facing : ModelQuadFacing.VALUES) {
+                quadOffsets[facing.ordinal()] = translucentData.getVertexCounts()[facing.ordinal()] / 4;
+            }
+
+            translucencyQuadCounts.put(sectionKey, quadOffsets);
         }
 
         int terrainAddress;
@@ -157,6 +247,11 @@ public class SectionManager {
             if (terrainIndex != -1) {
                 this.terrainAreana.free(terrainIndex);
             }
+            int indexIdx = this.section2index.remove(sectionKey);
+            if (indexIdx != -1) {
+                this.translucencyIndexArena.free(indexIdx);
+            }
+            this.translucencyQuadCounts.remove(sectionKey);
             //Clear the segment
             this.regionManager.removeSection(sectionIdx);
         }
@@ -165,6 +260,7 @@ public class SectionManager {
     public void destroy() {
         this.regionManager.destroy();
         this.terrainAreana.delete();
+        this.translucencyIndexArena.delete();
     }
 
     public void commitChanges() {

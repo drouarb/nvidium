@@ -24,7 +24,7 @@ public class NvidiumConfig {
 
 
     public boolean render_fog = true;
-    public TranslucencySortingLevel translucency_sorting_level = TranslucencySortingLevel.QUADS;
+    public TranslucencySortingLevel translucency_sorting_level = TranslucencySortingLevel.SODIUM;
 
     public StatisticsLoggingLevel statistics_level = StatisticsLoggingLevel.NONE;
 

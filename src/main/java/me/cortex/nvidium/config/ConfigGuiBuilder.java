@@ -106,7 +106,8 @@ public class ConfigGuiBuilder {
                                         new Text[]{
                                                 Text.translatable("nvidium.options.translucency_sorting.none"),
                                                 Text.translatable("nvidium.options.translucency_sorting.sections"),
-                                                Text.translatable("nvidium.options.translucency_sorting.quads")
+                                                Text.translatable("nvidium.options.translucency_sorting.quads"),
+                                                Text.translatable("nvidium.options.translucency_sorting.sodium")
                                         }
                                 )
                         )

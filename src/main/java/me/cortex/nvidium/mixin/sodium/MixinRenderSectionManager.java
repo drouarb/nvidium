@@ -3,6 +3,7 @@ package me.cortex.nvidium.mixin.sodium;
 import it.unimi.dsi.fastutil.longs.Long2ReferenceMap;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.NvidiumWorldRenderer;
+import me.cortex.nvidium.config.TranslucencySortingLevel;
 import me.cortex.nvidium.managers.AsyncOcclusionTracker;
 import me.cortex.nvidium.sodiumCompat.*;
 import net.caffeinemc.mods.sodium.client.SodiumClientMod;
@@ -51,10 +52,8 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
         Nvidium.IS_ENABLED = (!Nvidium.FORCE_DISABLE) && Nvidium.IS_COMPATIBLE && IrisCheck.checkIrisShouldDisable();
 
         // Disable sodium translucency sorting since nvidium is doing it
-        if (Nvidium.IS_ENABLED) {
-            LOGGER.info("Disabling sodium translucency sorting");
-        } else {
-            LOGGER.info("Enabling sodium translucency sorting");
+        if (Nvidium.IS_ENABLED && Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.SODIUM) {
+            LOGGER.info("Ensuring translucency sorting is enabled");
             SodiumClientMod.options().performance.sortingEnabled = true;
         }
     }
@@ -182,7 +181,11 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
 
     @Inject(method = "scheduleRebuild", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;setPendingUpdate(Lnet/caffeinemc/mods/sodium/client/render/chunk/ChunkUpdateType;)V", shift = At.Shift.AFTER), locals = LocalCapture.CAPTURE_FAILHARD)
     private void instantReschedule(int x, int y, int z, boolean important, CallbackInfo ci, RenderSection section, ChunkUpdateType pendingUpdate) {
-        if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs) {
+        // this might result in the section being enqueued multiple times, if this gets executed,
+        // and the async search sees it at the exactly wrong moment
+        // This is a problem when sodium translucency sorting is enabled since translucentData.getGeometryPlanes()
+        // can be null on the second ChunkBuildOutput resulting in a NPE
+        if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs && !SodiumClientMod.options().performance.sortingEnabled) {
             var queue = taskLists.get(pendingUpdate);
             if (isSectionVisibleBfs(section) && queue.size() < pendingUpdate.getMaximumQueueSize()) {
                 ((IRenderSectionExtension)section).isSubmittedRebuild(true);

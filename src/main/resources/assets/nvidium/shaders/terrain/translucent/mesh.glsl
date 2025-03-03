@@ -31,6 +31,7 @@ taskNV in Task {
     #ifdef TRANSLUCENCY_SORTING_QUADS
     uint8_t jiggle;
     #endif
+    int translucencyIndex;
 };
 
 layout(location=1) out Interpolants {
@@ -157,7 +158,16 @@ void main() {
     emitQuadIndicies();
 
     //Each pair of meshlet invokations emits 4 vertices each and 2 primative each
-    uint id = (floatBitsToUint(originAndBaseData.w) + gl_GlobalInvocationID.x)<<2;
+    uint id;
+    #ifdef TRANSLUCENCY_SORTING_SODIUM
+    if (translucencyIndex == -1) { // If no translucency data, fallback to quad order
+        id = (floatBitsToUint(originAndBaseData.w) + gl_GlobalInvocationID.x)<<2;
+    } else { // If we have sorting data, process the vertex at the index translucencyIndexData
+        id = (floatBitsToUint(originAndBaseData.w) + translucencyIndexData[translucencyIndex + gl_GlobalInvocationID.x])<<2;
+    }
+    #else
+    id = (floatBitsToUint(originAndBaseData.w) + gl_GlobalInvocationID.x)<<2;
+    #endif
 
     #ifdef TRANSLUCENCY_SORTING_QUADS
     //If we are at the start, dont want to render as it contains garbled data (out of bounds)

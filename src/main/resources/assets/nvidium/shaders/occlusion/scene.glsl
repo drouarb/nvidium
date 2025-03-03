@@ -7,8 +7,8 @@ struct Section {
     //Header.y -> 0-3=offsetz 4-7=sizez 8-31=chunk z
     //Header.z -> 0-3=offsety 4-7=sizey 8-15=chunk y
     //Header.w -> quad offset
-
     ivec4 renderRanges;
+    int   translucencyDataIdx;
 };
 
 struct Region {
@@ -69,6 +69,7 @@ layout(std140, binding=0) uniform SceneData {
 
     //TODO:FIXME: only apply non readonly to translucency mesh
     restrict Vertex *terrainData;//readonly
+    restrict uint   *translucencyIndexData;
 
     //TODO: possibly make this a uniform instead of a buffer, but it might get quite large is the issue
     readonly restrict mat4 *transformationArray;

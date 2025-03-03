@@ -3,10 +3,8 @@ package me.cortex.nvidium.mixin.sodium;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.NvidiumWorldRenderer;
 import me.cortex.nvidium.sodiumCompat.INvidiumWorldRendererSetter;
-import net.caffeinemc.mods.sodium.client.SodiumClientMod;
 import net.caffeinemc.mods.sodium.client.gl.device.CommandList;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.BuilderTaskOutput;
-import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkBuildOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.region.RenderRegion;
 import net.caffeinemc.mods.sodium.client.render.chunk.region.RenderRegionManager;
 import org.spongepowered.asm.mixin.Mixin;
@@ -32,11 +30,7 @@ public abstract class MixinRenderRegionManager implements INvidiumWorldRendererS
     private void redirectUpload(RenderRegionManager instance, CommandList cmdList, RenderRegion pass, Collection<BuilderTaskOutput> results) {
         if (Nvidium.IS_ENABLED) {
             for (BuilderTaskOutput result : results) {
-                if (result instanceof ChunkBuildOutput) {
-                    renderer.uploadBuildResult((ChunkBuildOutput)result);
-                } else {
-                    LOGGER.error("Received ChunkSortOutput sodium translucency sorting should be disabled => %b", SodiumClientMod.options().performance.sortingEnabled);
-                }
+                renderer.uploadBuildResult(result);
             }
         } else {
             uploadResults(cmdList, pass, results);

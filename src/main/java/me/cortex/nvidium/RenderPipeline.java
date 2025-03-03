@@ -3,7 +3,6 @@ package me.cortex.nvidium;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.ints.*;
-import me.cortex.nvidium.api0.NvidiumAPI;
 import me.cortex.nvidium.config.StatisticsLoggingLevel;
 import me.cortex.nvidium.config.TranslucencySortingLevel;
 import me.cortex.nvidium.gl.RenderDevice;
@@ -20,7 +19,6 @@ import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Fog;
-import net.minecraft.util.math.BlockPos;
 import org.joml.*;
 import org.lwjgl.opengl.GL11C;
 import org.lwjgl.system.MemoryUtil;
@@ -37,7 +35,6 @@ import static org.lwjgl.opengl.GL30C.GL_RED_INTEGER;
 import static org.lwjgl.opengl.GL42.*;
 import static org.lwjgl.opengl.GL43C.GL_SHADER_STORAGE_BARRIER_BIT;
 import static org.lwjgl.opengl.NVRepresentativeFragmentTest.GL_REPRESENTATIVE_FRAGMENT_TEST_NV;
-import static org.lwjgl.opengl.NVShaderBufferStore.GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV;
 import static org.lwjgl.opengl.NVUniformBufferUnifiedMemory.GL_UNIFORM_BUFFER_ADDRESS_NV;
 import static org.lwjgl.opengl.NVUniformBufferUnifiedMemory.GL_UNIFORM_BUFFER_UNIFIED_NV;
 import static org.lwjgl.opengl.NVVertexBufferUnifiedMemory.*;
@@ -62,7 +59,33 @@ public class RenderPipeline {
     private SortRegionSectionPhase regionSectionSorter;
 
     private final IDeviceMappedBuffer sceneUniform;
-    private static final int SCENE_SIZE = (int) alignUp(4*4*4+4*4+4*4+4+4*4+4*4+8*8+3*4+3+4+8+8+(4*4*4)+4, 2);
+    private static final int SCENE_SIZE = (int) alignUp(
+                    4*4*4 +  // mat4     MVP
+                    4*4*4 + // mat4      MVPInv (Optional)
+                    4*4 +   // ivec4     chunkPosition
+                    4*4 +   // vec4      subchunkOffset
+                    4*4 +   // vec4      fogColour
+                    8 +     // uint16_t  *regionIndicies
+                    8 +     // Region    *regionData
+                    8 +     // Section   *sectionData
+                    8 +     // uint8_t   *regionVisibility
+                    8 +     // uint8_t   *sectionVisibility
+                    8 +     // uvec2     *terrainCommandBuffer
+                    8 +     // uvec2     *translucencyCommandBuffer
+                    8 +     // uint16_t  *sortingRegionList
+                    8 +     // Vertex    *terrainData
+                    8 +     // uint      *translucencyIndexData TODO
+                    8 +     // mat4      *transformationArray
+                    8 +     // uint64_t  *originArray
+                    8 +     // uint32_t  *statistics_buffe
+                    4*2 +   // vec2      screenSize
+                    4 +     // float     fogStart
+                    4 +     // float     fogEnd
+                    4 +     // bool      isCylindricalFog
+                    4 +     // uint      flags
+                    2 +     // uint16_t  regionCount
+                    1       // uint8_t   frameId
+            , 2);
 
     private final IDeviceMappedBuffer regionVisibility;
     private final IDeviceMappedBuffer sectionVisibility;
@@ -282,6 +305,8 @@ public class RenderPipeline {
             MemoryUtil.memPutLong(addr, regionSortingList.getDeviceAddress());
             addr += 8;
             MemoryUtil.memPutLong(addr, sectionManager.terrainAreana.buffer.getDeviceAddress());
+            addr += 8;
+            MemoryUtil.memPutLong(addr, sectionManager.translucencyIndexArena.buffer.getDeviceAddress());
             addr += 8;
             MemoryUtil.memPutLong(addr, this.transformationArray.getDeviceAddress());
             addr += 8;
