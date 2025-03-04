@@ -22,7 +22,6 @@ import org.joml.Vector4i;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.IntBuffer;
-import java.util.Arrays;
 
 import static me.cortex.nvidium.Nvidium.LOGGER;
 
@@ -64,6 +63,18 @@ public class SectionManager {
         this.translucencyQuadCounts.defaultReturnValue(null);
     }
 
+    public void uploadIndexBuffer(IntBuffer indexBuffer, int[] quadCountData, long upload) {
+        int quadOffset = 0;
+        for (var facing : ModelQuadFacing.values()) {
+            for (int i = 0; i < quadCountData[facing.ordinal()]; i++) {
+                // We only need 1 index out of 6 because we are working with quad indexes, also /4 because we have 4 vertices per quad
+                int idx = (indexBuffer.get((quadOffset + i) * 6) / 4) + quadOffset;
+                MemoryUtil.memPutInt(upload + (long)(quadOffset + i) * 4, idx);
+            }
+            quadOffset += quadCountData[facing.ordinal()];
+        }
+    }
+
     public void uploadChunkSort(ChunkSortOutput sortOutput) {
         NativeBuffer indexBuffer = sortOutput.getIndexBuffer();
         // Early exit
@@ -78,43 +89,26 @@ public class SectionManager {
             return;
         }
 
-        // Create our own buffer since we need only quad indexes TODO do it as we inject it in upload buffer
-        NativeBuffer quadIndexBuffer = new NativeBuffer(indexBuffer.getLength() / 6);
-        IntBuffer quadIntBuffer = quadIndexBuffer.getDirectBuffer().asIntBuffer();
-        IntBuffer sortIndexBuffer = indexBuffer.getDirectBuffer().asIntBuffer();
-        for (int i = 0; i < indexBuffer.getLength() / 24; i++) {
-            var sortIdx = sortIndexBuffer.get(i * 6);
-            quadIntBuffer.put(sortIdx / 4);
-        }
-
-        // We need to pad some indexes since it's ordered per facing TODO do it as we inject it in upload buffer
-        int quadOffset = 0;
-        var intBuffer = quadIndexBuffer.getDirectBuffer().asIntBuffer();
-        for (var facing : ModelQuadFacing.values()) {
-            for (int i = 0; i < quadCountData[facing.ordinal()]; i++) {
-                intBuffer.put(i + quadOffset, intBuffer.get(i + quadOffset) + quadOffset);
-            }
-            quadOffset += quadCountData[facing.ordinal()];
-        }
-
         int indexDataAddress;
         {
+            var idxBufferLength = indexBuffer.getLength() / 6;
+            IntBuffer idxBuffer = indexBuffer.getDirectBuffer().asIntBuffer();
+
             indexDataAddress = this.section2index.get(sectionKey);
-            if (indexDataAddress != -1 && !this.translucencyIndexArena.canReuse(indexDataAddress, quadIndexBuffer.getLength())) {
+            if (indexDataAddress != -1 && !this.translucencyIndexArena.canReuse(indexDataAddress, idxBufferLength)) {
                 this.section2index.remove(sectionKey);
                 this.translucencyIndexArena.free(indexDataAddress);
                 indexDataAddress = -1;
             }
 
             if (indexDataAddress == -1) {
-                indexDataAddress = this.translucencyIndexArena.allocQuads(quadIndexBuffer.getLength());
+                indexDataAddress = this.translucencyIndexArena.allocQuads(idxBufferLength);
             }
 
             this.section2index.put(sectionKey, indexDataAddress);
 
             long upload = translucencyIndexArena.upload(uploadStream, indexDataAddress);
-            MemoryUtil.memCopy(MemoryUtil.memAddress(quadIndexBuffer.getDirectBuffer()), upload, quadIndexBuffer.getLength());
-            quadIndexBuffer.free();
+            uploadIndexBuffer(idxBuffer, quadCountData, upload);
         }
 
         int sectionIdx = this.section2id.get(sectionKey);
