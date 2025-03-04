@@ -1,7 +1,7 @@
 {
   "nvidium.options.pages.nvidium" : "Nvidium",
   "nvidium.options.region_keep_distance.name" : "Region Keep Distance",
-  "nvidium.options.region_keep_distance.tooltip" : "Distance to keep loaded regions",
+  "nvidium.options.region_keep_distance.tooltip" : "Distance to keep loaded regions\n/!\\ Can cause issues, you should probably use a mod like Bobby and let this to Vanilla",
   "nvidium.options.automatic_memory_limit.name" : "Automatic memory limit",
   "nvidium.options.automatic_memory_limit.tooltip" : "Automatically determines the memory limit to set given the amount of available vram on your system (Close and reopen settings to edit the max memory)",
   "nvidium.options.max_gpu_memory.name" : "Max gpu memory",

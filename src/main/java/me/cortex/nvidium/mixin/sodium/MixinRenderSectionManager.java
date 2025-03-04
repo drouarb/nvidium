@@ -18,6 +18,7 @@ import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkVertexType;
 import net.caffeinemc.mods.sodium.client.render.texture.SpriteUtil;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.Fog;
 import net.minecraft.client.world.ClientWorld;
@@ -93,7 +94,7 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
     @Redirect(method = "onSectionRemoved", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;delete()V"))
     private void deleteSection(RenderSection section) {
         if (Nvidium.IS_ENABLED) {
-            if (Nvidium.config.region_keep_distance == 32) {
+            if (Nvidium.config.region_keep_distance <= MinecraftClient.getInstance().options.getClampedViewDistance()) {
                 renderer.deleteSection(section);
             }
         }
