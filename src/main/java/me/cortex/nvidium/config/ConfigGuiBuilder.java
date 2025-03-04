@@ -48,7 +48,7 @@ public class ConfigGuiBuilder {
                         .setTooltip(Text.translatable("nvidium.options.region_keep_distance.tooltip"))
                         .setControl(option ->
                                 new SliderControl(option, 32, 257, 1,
-                                        x->Text.literal(x<=MinecraftClient.getInstance().options.getClampedViewDistance()?"Vanilla":(x==257?"Keep All":x+" chunks"))))
+                                        x->Text.literal(x==32||x<=MinecraftClient.getInstance().options.getClampedViewDistance()?"Vanilla":(x==257?"Keep All":x+" chunks"))))
                         .setImpact(OptionImpact.VARIES)
                         .setEnabled(() -> Nvidium.IS_ENABLED)
                         .setBinding((opts, value) -> opts.region_keep_distance = value, opts -> opts.region_keep_distance)

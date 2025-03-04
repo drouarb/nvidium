@@ -94,7 +94,8 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
     @Redirect(method = "onSectionRemoved", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;delete()V"))
     private void deleteSection(RenderSection section) {
         if (Nvidium.IS_ENABLED) {
-            if (Nvidium.config.region_keep_distance <= MinecraftClient.getInstance().options.getClampedViewDistance()) {
+            if (Nvidium.config.region_keep_distance != 32 &&
+                    Nvidium.config.region_keep_distance <= MinecraftClient.getInstance().options.getClampedViewDistance()) {
                 renderer.deleteSection(section);
             }
         }
