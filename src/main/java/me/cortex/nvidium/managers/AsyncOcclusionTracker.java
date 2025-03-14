@@ -144,7 +144,7 @@ public class AsyncOcclusionTracker {
                 var type = section.getPendingUpdate();
                 if (type != null && section.getTaskCancellationToken() == null) {
                     var queue = outputRebuildQueue.get(type);
-                    if (queue.size() < type.getMaximumQueueSize() && !queue.contains(section)) {
+                    if (queue.size() < type.getMaximumQueueSize()) {
                         ((IRenderSectionExtension) section).isSubmittedRebuild(true);
                         queue.add(section);
                     }

@@ -6,6 +6,7 @@ import me.cortex.nvidium.NvidiumWorldRenderer;
 import me.cortex.nvidium.config.TranslucencySortingLevel;
 import me.cortex.nvidium.managers.AsyncOcclusionTracker;
 import me.cortex.nvidium.sodiumCompat.*;
+import net.caffeinemc.mods.sodium.api.texture.SpriteUtil;
 import net.caffeinemc.mods.sodium.client.SodiumClientMod;
 import net.caffeinemc.mods.sodium.client.gl.device.CommandList;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
@@ -15,8 +16,8 @@ import net.caffeinemc.mods.sodium.client.render.chunk.RenderSectionManager;
 import net.caffeinemc.mods.sodium.client.render.chunk.region.RenderRegionManager;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.DefaultTerrainRenderPasses;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
+import net.caffeinemc.mods.sodium.client.render.chunk.translucent_sorting.SortBehavior;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkVertexType;
-import net.caffeinemc.mods.sodium.client.render.texture.SpriteUtil;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
@@ -176,7 +177,7 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
                 return;
             }
             for (var sprite : sprites) {
-                SpriteUtil.markSpriteActive(sprite);
+                SpriteUtil.INSTANCE.markSpriteActive(sprite);
             }
         }
     }
@@ -189,10 +190,19 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
         // can be null on the second ChunkBuildOutput resulting in a NPE
         if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs) {
             var queue = taskLists.get(pendingUpdate);
-            if (isSectionVisibleBfs(section)  && queue.size() < pendingUpdate.getMaximumQueueSize() && !queue.contains(section)) {
+            if (isSectionVisibleBfs(section)  && queue.size() < pendingUpdate.getMaximumQueueSize()) {
                 ((IRenderSectionExtension)section).isSubmittedRebuild(true);
                 taskLists.get(pendingUpdate).add(section);
             }
+        }
+    }
+
+    @Inject(method = "scheduleSort(JZ)V", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;setPendingUpdate(Lnet/caffeinemc/mods/sodium/client/render/chunk/ChunkUpdateType;)V"), locals = LocalCapture.CAPTURE_FAILHARD)
+    public void promoteScheduleSort(long sectionPos, boolean isDirectTrigger, CallbackInfo ci, RenderSection section, ChunkUpdateType pendingUpdate, SortBehavior.PriorityMode priorityMode) {
+        if (Nvidium.IS_ENABLED && section.getPendingUpdate() != null && pendingUpdate != section.getPendingUpdate()) {
+            // The sorter promoted our task, we need to change the taskList
+            taskLists.get(section.getPendingUpdate()).remove(section);
+            taskLists.get(pendingUpdate).add(section);
         }
     }
 
