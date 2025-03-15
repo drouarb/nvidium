@@ -95,8 +95,8 @@ public class SodiumResultCompatibility {
         if (translucentData != null && Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.SODIUM) {
             var partOffset = 0;
             MemoryUtil.memCopy(translucentData.getVertexData().getDirectBuffer(), output.getDirectBuffer());
-            for (int i = 0; i < 7; i++) { // For each Facing
-                var part = translucentData.getVertexCounts()[i];
+            for (int i = 0; i < ModelQuadFacing.COUNT; i++) { // For each Facing
+                var part = translucentData.computeVertexCounts()[i];
 
                 for (int j = 0; j < part; j++) {
                     long src = MemoryUtil.memAddress(output.getDirectBuffer()) + (long) partOffset * formatSize;
@@ -116,16 +116,16 @@ public class SodiumResultCompatibility {
 
         } else if (translucentData != null) {
             int quadCount = 0;
-            for (int i = 0; i < 7; i++) {
-                var part = translucentData.getVertexCounts()[i];
+            for (int i = 0; i < ModelQuadFacing.COUNT; i++) {
+                var part = translucentData.computeVertexCounts()[i];
                 quadCount += part/4;
             }
             int quadId = 0;
             long[] sortingData = new long[quadCount];
             long[] srcs = new long[7];
             var partOffset = 0;
-            for (int i = 0; i < 7; i++) {
-                var part = translucentData.getVertexCounts()[i];
+            for (int i = 0; i < ModelQuadFacing.COUNT; i++) {
+                var part = translucentData.computeVertexCounts()[i];
 
                 long src = MemoryUtil.memAddress(translucentData.getVertexData().getDirectBuffer()) + (long) partOffset * formatSize;
                 srcs[i] = src;
@@ -199,10 +199,10 @@ public class SodiumResultCompatibility {
         //Do all but translucent
         long solidPartOffset = 0;
         long cutoutPartOffset = 0;
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < ModelQuadFacing.COUNT; i++) {
             int poff = offset;
             if (solid != null) {
-                var part = solid.getVertexCounts()[i];
+                var part = solid.computeVertexCounts()[i];
                 long src = MemoryUtil.memAddress(solid.getVertexData().getDirectBuffer()) + solidPartOffset * formatSize;
                 long dst = outPtr + offset * 4L * formatSize;
                 MemoryUtil.memCopy(src, dst, (long) part * formatSize);
@@ -220,7 +220,7 @@ public class SodiumResultCompatibility {
                 solidPartOffset += part;
             }
             if (cutout != null) {
-                var part = cutout.getVertexCounts()[i];
+                var part = cutout.computeVertexCounts()[i];
                 long src = MemoryUtil.memAddress(cutout.getVertexData().getDirectBuffer()) + cutoutPartOffset * formatSize;
                 long dst = outPtr + offset * 4L * formatSize;
                 MemoryUtil.memCopy(src, dst, (long) part * formatSize);

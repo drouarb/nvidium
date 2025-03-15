@@ -76,7 +76,10 @@ public class SectionManager {
     }
 
     public void uploadChunkSort(ChunkSortOutput sortOutput) {
-        NativeBuffer indexBuffer = sortOutput.getIndexBuffer();
+        if (sortOutput.getSorter() == null) {
+            return;
+        }
+        NativeBuffer indexBuffer = sortOutput.getSorter().getIndexBuffer();
         // Early exit
         if (indexBuffer == null) {
             return;
@@ -142,7 +145,7 @@ public class SectionManager {
                 quadOffsets = new int[]{0, 0, 0, 0, 0, 0, 0};
             }
             for (var facing : ModelQuadFacing.VALUES) {
-                quadOffsets[facing.ordinal()] = translucentData.getVertexCounts()[facing.ordinal()] / 4;
+                quadOffsets[facing.ordinal()] = translucentData.computeVertexCounts()[facing.ordinal()] / 4;
             }
 
             translucencyQuadCounts.put(sectionKey, quadOffsets);
