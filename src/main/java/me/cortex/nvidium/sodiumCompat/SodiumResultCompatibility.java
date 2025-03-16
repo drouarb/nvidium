@@ -101,8 +101,6 @@ public class SodiumResultCompatibility {
                 for (int j = 0; j < part; j++) {
                     long src = MemoryUtil.memAddress(output.getDirectBuffer()) + (long) partOffset * formatSize;
                     long base = src + (long) j * formatSize;
-                    byte flags = (byte) 0b100;//Mipping, No alpha cut
-                    MemoryUtil.memPutByte(base + 6L, flags);//Note: the 6 here is the offset into the vertex format
 
                     float x = decodePosition(MemoryUtil.memGetShort(base));
                     float y = decodePosition(MemoryUtil.memGetShort(base + 2));
@@ -136,8 +134,6 @@ public class SodiumResultCompatibility {
                 //Update the meta bits of the model format
                 for (int j = 0; j < part; j++) {
                     long base = src + (long) j * formatSize;
-                    byte flags = (byte) 0b100;//Mipping, No alpha cut
-                    MemoryUtil.memPutByte(base + 6L, flags);//Note: the 6 here is the offset into the vertex format
 
                     float x = decodePosition(MemoryUtil.memGetShort(base));
                     float y = decodePosition(MemoryUtil.memGetShort(base + 2));
@@ -210,9 +206,6 @@ public class SodiumResultCompatibility {
                 //Update the meta bits of the model format
                 for (int j = 0; j < part; j++) {
                     long base = dst+ (long) j * formatSize;
-                    byte flags = (byte) 0b100;//Mipping, No alpha cut
-                    MemoryUtil.memPutByte(base + 6L, flags);//Note: the 6 here is the offset into the vertex format
-
                     updateSectionBounds(min, max, base);
                 }
 
@@ -228,15 +221,6 @@ public class SodiumResultCompatibility {
                 //Update the meta bits of the model format
                 for (int j = 0; j < part; j++) {
                     long base = dst + (long) j * formatSize;
-                    short sflags = MemoryUtil.memGetByte(base + 6L);
-                    short mipbits = (short) ((sflags&(3<<1))>>1);
-                    //mipping, remap 0.5 cut to 0.1 when iris is loaded
-                    if (mipbits == 0b10 && IrisCheck.IRIS_LOADED) {
-                        mipbits = 0b01;
-                    }
-                    byte flags = (byte) (((sflags&1)<<2) | mipbits);
-                    MemoryUtil.memPutByte(base + 6L, flags);//Note: the 6 here is the offset into the vertex format
-
                     updateSectionBounds(min, max, base);
                 }
                 offset += part/4;

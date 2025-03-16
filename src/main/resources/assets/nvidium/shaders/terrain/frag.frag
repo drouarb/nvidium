@@ -84,7 +84,7 @@ void main() {
     colour = texture(tex_diffuse, uv, 0);
     colour.rgb *= v_colour;
     #else
-    float lodBias = hasMipping(V0)?0.0f:-8.0f;
+    float lodBias = hasMipping(V0)?0.0f:-4.0f;
     uint alphaCutoff = rawVertexAlphaCutoff(V0);
 
     vec2 uv = gl_BaryCoordNV.x*decodeVertexUV(V0) + gl_BaryCoordNV.y*decodeVertexUV(Vp) + gl_BaryCoordNV.z*decodeVertexUV(V2);

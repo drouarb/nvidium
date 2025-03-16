@@ -23,7 +23,7 @@ vec2 decodeVertexUV(Vertex v) {
 }
 
 bool hasMipping(Vertex v) {
-    return ((v.y>>16)&4)!=0;
+    return ((v.y>>16)&1)!=0;
 }
 
 float decodeVertexAlphaCutoff(Vertex v) {
@@ -31,11 +31,11 @@ float decodeVertexAlphaCutoff(Vertex v) {
 }
 
 uint rawVertexAlphaCutoff(Vertex v) {
-    return uint((v.y>>16)&int16_t(3));
+    return uint((v.y>>17)&int16_t(3));
 }
 
 float getVertexAlphaCutoff(uint v) {
-    return (float[](0.0f, 0.1f,0.5f))[v];
+    return (float[](0.0f, 0.1f,0.1f,1.0f))[v];
 }
 
 vec2 decodeLightUV(Vertex v) {
