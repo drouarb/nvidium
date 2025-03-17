@@ -40,7 +40,7 @@ import java.util.Map;
 
 import static me.cortex.nvidium.Nvidium.LOGGER;
 
-@Mixin(value = RenderSectionManager.class, remap = false)
+@Mixin(value = RenderSectionManager.class, remap = false, priority = 1500) // Ensure priority over Iris so it doesn't hijack our ChunkVertexFormat
 public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
     @Shadow @Final private RenderRegionManager regions;
     @Shadow @Final private Long2ReferenceMap<RenderSection> sectionByPosition;

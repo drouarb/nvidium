@@ -230,7 +230,8 @@ public class SodiumResultCompatibility {
         }
 
         if (offset*4*formatSize != output.getLength()) {
-            throw new IllegalStateException();
+            throw new IllegalStateException("Nvidium bad build result got " + offset*4*formatSize + " instead of " + output.getLength() + " at " +
+                    result.render.getChunkX() + " " + result.render.getChunkY() + " " + result.render.getChunkZ());
         }
     }
 
