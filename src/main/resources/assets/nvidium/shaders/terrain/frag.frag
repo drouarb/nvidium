@@ -8,7 +8,8 @@
 
 //#extension GL_NV_conservative_raster_underestimation : enable
 
-#extension GL_NV_fragment_shader_barycentric : require
+//#extension GL_NV_fragment_shader_barycentric : require
+#extension AMD_shader_explicit_vertex_parameter : require
 
 
 #import <nvidium:occlusion/scene.glsl>
@@ -50,7 +51,8 @@ Vertex V0;
 Vertex Vp;
 Vertex V2;
 void computeOutputColour(inout vec3 colour) {
-    vec3 multiplier = gl_BaryCoordNV.x*computeMultiplier(V0) + gl_BaryCoordNV.y*computeMultiplier(Vp) + gl_BaryCoordNV.z*computeMultiplier(V2);
+    //vec3 multiplier = gl_BaryCoordNV.x*computeMultiplier(V0) + gl_BaryCoordNV.y*computeMultiplier(Vp) + gl_BaryCoordNV.z*computeMultiplier(V2);
+    vec3 multiplier = gl_BaryCoordSmoothAMD.x*computeMultiplier(V0) + gl_BaryCoordSmoothAMD.y*computeMultiplier(Vp) + gl_BaryCoordSmoothAMD.z*computeMultiplier(V2);
     colour *= multiplier;
 }
 
@@ -87,7 +89,8 @@ void main() {
     float lodBias = hasMipping(V0)?0.0f:-4.0f;
     uint alphaCutoff = rawVertexAlphaCutoff(V0);
 
-    vec2 uv = gl_BaryCoordNV.x*decodeVertexUV(V0) + gl_BaryCoordNV.y*decodeVertexUV(Vp) + gl_BaryCoordNV.z*decodeVertexUV(V2);
+    //vec2 uv = gl_BaryCoordNV.x*decodeVertexUV(V0) + gl_BaryCoordNV.y*decodeVertexUV(Vp) + gl_BaryCoordNV.z*decodeVertexUV(V2);
+    vec2 uv = gl_BaryCoordSmoothAMD.x*decodeVertexUV(V0) + gl_BaryCoordSmoothAMD.y*decodeVertexUV(Vp) + gl_BaryCoordSmoothAMD.z*decodeVertexUV(V2);
     colour = texture(tex_diffuse, uv, lodBias);
     if (colour.a < getVertexAlphaCutoff(alphaCutoff)) discard;
     colour.a = 1;

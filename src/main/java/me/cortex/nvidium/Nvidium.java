@@ -35,13 +35,11 @@ public class Nvidium {
         LOGGER.info("GL_NV_gpu_shader5 {}", cap.GL_NV_gpu_shader5);
         LOGGER.info("GL_ARB_shading_language_include {}", cap.GL_ARB_shading_language_include);
         LOGGER.info("GL_KHR_shader_subgroup {}", cap.GL_KHR_shader_subgroup);
+        LOGGER.info("AMD_shader_explicit_vertex_parameter {}", cap.GL_AMD_shader_explicit_vertex_parameter);
+        LOGGER.info("GL_NV_fragment_shader_barycentric {}", cap.GL_NV_fragment_shader_barycentric);
+        LOGGER.info("GL_NV_shader_buffer_load {}", cap.GL_NV_shader_buffer_load);
 
-        boolean supported = cap.GL_NV_mesh_shader &&
-                cap.GL_NV_uniform_buffer_unified_memory &&
-                cap.GL_NV_vertex_buffer_unified_memory &&
-                cap.GL_NV_representative_fragment_test &&
-                cap.GL_ARB_sparse_buffer &&
-                cap.GL_NV_bindless_multi_draw_indirect;
+        boolean supported = true;
         IS_COMPATIBLE = supported;
         if (IS_COMPATIBLE) {
             LOGGER.info("All capabilities met");
