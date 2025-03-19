@@ -29,6 +29,13 @@ public class Nvidium {
 
     public static void checkSystemIsCapable() {
         var cap = GL.getCapabilities();
+
+        LOGGER.info("Nvidium Capabilities: ");
+        LOGGER.info("GL_NV_mesh_shader {}", cap.GL_NV_mesh_shader);
+        LOGGER.info("GL_NV_gpu_shader5 {}", cap.GL_NV_gpu_shader5);
+        LOGGER.info("GL_ARB_shading_language_include {}", cap.GL_ARB_shading_language_include);
+        LOGGER.info("GL_KHR_shader_subgroup {}", cap.GL_KHR_shader_subgroup);
+
         boolean supported = cap.GL_NV_mesh_shader &&
                 cap.GL_NV_uniform_buffer_unified_memory &&
                 cap.GL_NV_vertex_buffer_unified_memory &&
