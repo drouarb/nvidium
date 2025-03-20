@@ -52,6 +52,6 @@ void main() {
     populateTasks(chunk, uvec4(sectionData[sectionId].renderRanges));
 
     #ifdef STATISTICS_QUADS
-    atomicAdd(statistics_buffer+2, quadCount);
+    atomicAdd(statistics_buffer[2], quadCount);
     #endif
 }

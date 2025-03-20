@@ -30,6 +30,7 @@ public class Nvidium {
     public static void checkSystemIsCapable() {
         var cap = GL.getCapabilities();
 
+        // TODO Clean that
         LOGGER.info("Nvidium Capabilities: ");
         LOGGER.info("GL_NV_mesh_shader {}", cap.GL_NV_mesh_shader);
         LOGGER.info("GL_NV_gpu_shader5 {}", cap.GL_NV_gpu_shader5);

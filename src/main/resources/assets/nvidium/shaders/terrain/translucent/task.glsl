@@ -81,10 +81,10 @@ void main() {
     gl_TaskCountNV = (quadCount+MESH_WORKLOAD_PER_INVOCATION-1)/MESH_WORKLOAD_PER_INVOCATION;
 
     #ifdef STATISTICS_QUADS
-    atomicAdd(statistics_buffer+2, quadCount);
+    atomicAdd(statistics_buffer[2], quadCount);
     #endif
 
     #ifdef STATISTICS_SECTIONS
-    atomicAdd(statistics_buffer+1, 1);
+    atomicAdd(statistics_buffer[1], 1);
     #endif
 }

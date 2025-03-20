@@ -43,7 +43,7 @@ void main() {
     }
 
     #ifdef STATISTICS_REGIONS
-    atomicAdd(statistics_buffer, 1);
+    atomicAdd(statistics_buffer[0], 1);
     #endif
 
     //FIXME: It might actually be more efficent to just upload the region data straight into the ubo

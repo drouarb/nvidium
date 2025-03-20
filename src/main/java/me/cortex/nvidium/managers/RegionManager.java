@@ -4,6 +4,7 @@ package me.cortex.nvidium.managers;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.gl.RenderDevice;
+import me.cortex.nvidium.gl.buffers.DeviceOnlyMappedBuffer;
 import me.cortex.nvidium.gl.buffers.IDeviceMappedBuffer;
 import me.cortex.nvidium.util.IdProvider;
 import me.cortex.nvidium.util.UploadingBufferStream;
@@ -14,6 +15,8 @@ import org.lwjgl.system.MemoryUtil;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.function.Consumer;
+
+import static org.lwjgl.opengl.GL43C.GL_SHADER_STORAGE_BUFFER;
 
 //8x4x8
 public class RegionManager {
@@ -42,8 +45,8 @@ public class RegionManager {
     public RegionManager(RenderDevice device, int maxRegions, int maxSections, UploadingBufferStream uploadStream, Consumer<Integer> regionUploaded) {
         this.regionMap.defaultReturnValue(-1);
         this.device = device;
-        this.regionBuffer = device.createDeviceOnlyMappedBuffer((long) maxRegions * META_SIZE);
-        this.sectionBuffer = device.createDeviceOnlyMappedBuffer((long) maxSections * SectionManager.SECTION_SIZE);
+        this.regionBuffer = new DeviceOnlyMappedBuffer((long) maxRegions * META_SIZE, GL_SHADER_STORAGE_BUFFER);
+        this.sectionBuffer = new DeviceOnlyMappedBuffer((long) maxSections * SectionManager.SECTION_SIZE, GL_SHADER_STORAGE_BUFFER);
         this.uploadStream = uploadStream;
         this.regions = new Region[maxRegions];
         this.regionUploadCallback = regionUploaded;
@@ -299,12 +302,12 @@ public class RegionManager {
                 ;
     }
 
-    public long getRegionBufferAddress() {
-        return this.regionBuffer.getDeviceAddress();
+    public IDeviceMappedBuffer getRegionBuffer() {
+        return this.regionBuffer;
     }
 
-    public long getSectionBufferAddress() {
-        return this.sectionBuffer.getDeviceAddress();
+    public IDeviceMappedBuffer getSectionBuffer() {
+        return this.sectionBuffer;
     }
 
     public long regionIdToKey(int regionId) {

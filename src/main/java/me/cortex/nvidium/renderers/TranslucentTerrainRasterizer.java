@@ -1,6 +1,7 @@
 package me.cortex.nvidium.renderers;
 
 import com.mojang.blaze3d.platform.GlStateManager;
+import me.cortex.nvidium.gl.buffers.IDeviceMappedBuffer;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import me.cortex.nvidium.mixin.minecraft.LightMapAccessor;
@@ -15,7 +16,9 @@ import static me.cortex.nvidium.RenderPipeline.GL_DRAW_INDIRECT_ADDRESS_NV;
 import static me.cortex.nvidium.gl.shader.ShaderType.*;
 import static org.lwjgl.opengl.GL11C.*;
 import static org.lwjgl.opengl.GL11C.GL_TEXTURE_WRAP_S;
+import static org.lwjgl.opengl.GL15.glBindBuffer;
 import static org.lwjgl.opengl.GL33.glGenSamplers;
+import static org.lwjgl.opengl.GL40.GL_DRAW_INDIRECT_BUFFER;
 import static org.lwjgl.opengl.NVMeshShader.glMultiDrawMeshTasksIndirectNV;
 import static org.lwjgl.opengl.NVVertexBufferUnifiedMemory.glBufferAddressRangeNV;
 
@@ -48,7 +51,7 @@ public class TranslucentTerrainRasterizer extends Phase {
 
     //Translucency is rendered in a very cursed and incorrect way
     // it hijacks the unassigned indirect command dispatch and uses that to dispatch the translucent chunks as well
-    public void raster(int regionCount, long commandAddr) {
+    public void raster(int regionCount, IDeviceMappedBuffer commandBuffer) {
         shader.bind();
 
         int blockId = MinecraftClient.getInstance().getTextureManager().getTexture(Identifier.of("minecraft", "textures/atlas/blocks.png")).getGlId();
@@ -60,7 +63,9 @@ public class TranslucentTerrainRasterizer extends Phase {
         setTexture(lightId, 1);
 
         //the +8*6 is to offset to the unassigned dispatch
-        glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandAddr, regionCount*8L);//Bind the command buffer
+        // TODO Make it auto if we can't use nvidia
+        //glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandBuffer.getDeviceAddress(), regionCount*8L);//Bind the command buffer
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, commandBuffer.getId());
         glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
         GL45C.glBindSampler(0, 0);
         GL45C.glBindSampler(1, 0);

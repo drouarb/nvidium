@@ -12,6 +12,8 @@ import static org.lwjgl.opengl.ARBDirectStateAccess.glNamedBufferStorage;
 import static org.lwjgl.opengl.ARBSparseBuffer.GL_SPARSE_STORAGE_BIT_ARB;
 import static org.lwjgl.opengl.GL15C.GL_READ_WRITE;
 import static org.lwjgl.opengl.GL15C.glDeleteBuffers;
+import static org.lwjgl.opengl.GL30.glBindBufferBase;
+import static org.lwjgl.opengl.GL43C.GL_SHADER_STORAGE_BUFFER;
 import static org.lwjgl.opengl.NVShaderBufferLoad.*;
 
 public class PersistentSparseAddressableBuffer extends GlObject implements IDeviceMappedBuffer {
@@ -22,31 +24,45 @@ public class PersistentSparseAddressableBuffer extends GlObject implements IDevi
 
     public final long addr;
     public final long size;
+    public final int type;
 
     //The reason the page size is now 1mb is cause the nv driver doesnt defrag the sparse allocations easily
     // meaning smaller pages result in more fragmented memory and not happy for the driver
     // 1mb seems to work well
     public static final long PAGE_SIZE = 1<<20;//16
 
-    public PersistentSparseAddressableBuffer(long size) {
+    public PersistentSparseAddressableBuffer(long size, int type) {
         super(glCreateBuffers());
         if (!Nvidium.SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER) {
             throw new IllegalStateException();
         }
+        this.type = type;
         this.size = alignUp(size, PAGE_SIZE);
+
         glNamedBufferStorage(id, size, GL_SPARSE_STORAGE_BIT_ARB);
-        long[] holder = new long[1];
-        glMakeNamedBufferResidentNV(id, GL_READ_WRITE);
-        glGetNamedBufferParameterui64vNV(id, GL_BUFFER_GPU_ADDRESS_NV, holder);
-        addr = holder[0];
-        if (addr == 0) {
-            throw new IllegalStateException();
+        if (type == GL_BUFFER_GPU_ADDRESS_NV) {
+            long[] holder = new long[1];
+            glMakeNamedBufferResidentNV(id, GL_READ_WRITE);
+            glGetNamedBufferParameterui64vNV(id, GL_BUFFER_GPU_ADDRESS_NV, holder);
+            addr = holder[0];
+            if (addr == 0) {
+                throw new IllegalStateException();
+            }
+        } else {
+            addr = 0;
+        }
+    }
+
+    @Override
+    public void bind(int target) {
+        if (type != GL_BUFFER_GPU_ADDRESS_NV) {
+            glBindBufferBase(type, target, id);
         }
     }
 
     private static void doCommit(int buffer, long offset, long size, boolean commit) {
-        GL21.glBindBuffer(GL15.GL_ARRAY_BUFFER, buffer);
-        ARBSparseBuffer.glBufferPageCommitmentARB(GL15.GL_ARRAY_BUFFER, offset, size, commit);
+        GL21.glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer);
+        ARBSparseBuffer.glBufferPageCommitmentARB(GL_SHADER_STORAGE_BUFFER, offset, size, commit);
     }
 
     private final Int2IntOpenHashMap allocationCount = new Int2IntOpenHashMap();
@@ -93,7 +109,9 @@ public class PersistentSparseAddressableBuffer extends GlObject implements IDevi
 
     public void delete() {
         super.free0();
-        glMakeNamedBufferNonResidentNV(id);
+        if (type == GL_BUFFER_GPU_ADDRESS_NV) {
+            glMakeNamedBufferNonResidentNV(id);
+        }
         glDeleteBuffers(id);
     }
 
