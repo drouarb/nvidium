@@ -8,12 +8,17 @@ import org.lwjgl.opengl.GL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.lwjgl.opengl.GL11C.GL_EXTENSIONS;
+import static org.lwjgl.opengl.GL11C.glGetInteger;
+import static org.lwjgl.opengl.GL30C.GL_NUM_EXTENSIONS;
+import static org.lwjgl.opengl.GL30C.glGetStringi;
+
 public class Nvidium {
     public static final String MOD_VERSION;
     public static final Logger LOGGER = LoggerFactory.getLogger("Nvidium");
     public static boolean IS_COMPATIBLE = false;
     public static boolean IS_ENABLED = false;
-    public static boolean IS_DEBUG = System.getProperty("nvidium.isDebug", "false").equals("TRUE");
+    public static boolean IS_DEBUG = false;// System.getProperty("nvidium.isDebug", "false").equals("TRUE");
     public static boolean SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER = true;
     public static boolean FORCE_DISABLE = false;
 
@@ -34,6 +39,16 @@ public class Nvidium {
                 cap.GL_NV_representative_fragment_test &&
                 cap.GL_ARB_sparse_buffer &&
                 cap.GL_NV_bindless_multi_draw_indirect;
+
+        // TODO Clean that
+        LOGGER.info("Nvidium Capabilities: ");
+        int numExt = glGetInteger(GL_NUM_EXTENSIONS);
+        for (int i = 0; i < numExt; i++) {
+            String ext = glGetStringi(GL_EXTENSIONS, i);
+            LOGGER.info(ext);
+        }
+
+        supported = true;
         IS_COMPATIBLE = supported;
         if (IS_COMPATIBLE) {
             LOGGER.info("All capabilities met");
@@ -44,6 +59,7 @@ public class Nvidium {
             LOGGER.warn("Linux currently uses fallback terrain buffer due to driver inconsistencies, expect increase vram usage");
             SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER = false;
         }
+        SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER = false;
 
         if (IS_COMPATIBLE) {
             LOGGER.info("Enabling Nvidium");

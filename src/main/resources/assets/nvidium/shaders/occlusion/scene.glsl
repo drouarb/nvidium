@@ -33,11 +33,11 @@ struct Region {
 };
 
 ivec3 unpackRegionSize(Region region) {
-    return ivec3((region.a>>59)&7, region.a>>62, (region.a>>56)&7);
+    return ivec3(uint(region.a>>59) & 7u, region.a >> 62, uint(region.a>>56) & 7u);
 }
 
 uint unpackRegionTransformId(Region region) {
-    return uint((region.b>>(64-24-10))&((1<<10)-1));
+    return uint(region.b>>(64-24-10)) & uint((1<<10)-1);
 }
 
 ivec3 unpackRegionPosition(Region region) {
@@ -49,7 +49,7 @@ ivec3 unpackRegionPosition(Region region) {
 }
 
 int unpackRegionCount(Region region) {
-    return int((region.a>>48)&255);
+    return int(region.a>>48) & 255;
 }
 
 bool sectionEmpty(ivec4 header) {
@@ -70,30 +70,45 @@ layout(std140, binding=0) uniform SceneData {
 
     //vec4  subChunkPosition;//The subChunkTranslation is already done inside the MVP
     //align(8)
-    readonly restrict uint16_t *regionIndicies;//Pointer to block of memory at the end of the SceneData struct, also mapped to be a uniform
-    readonly restrict Region *regionData;
-    restrict Section *sectionData;
+    /*
+    readonly restrict uint16_t *regionIndicies_OLD;//Pointer to block of memory at the end of the SceneData struct, also mapped to be a uniform
+    readonly restrict Region *regionData_OLD;
+    restrict Section *sectionData_OLD;
     //NOTE: for the following, can make it so that region visibility actually uses section visibility array
-    restrict uint8_t *regionVisibility;
-    restrict uint8_t *sectionVisibility;
+    restrict uint8_t *regionVisibility_OLD;
+    restrict uint8_t *sectionVisibility_OLD;
     //Terrain command buffer, the first 4 bytes are actually the count
-    writeonly restrict uvec2 *terrainCommandBuffer;
-    writeonly restrict uvec2 *translucencyCommandBuffer;
+    writeonly restrict uvec2 *terrainCommandBuffer_OLD;
+    writeonly restrict uvec2 *translucencyCommandBuffer_OLD;
 
-    readonly restrict uint16_t *sortingRegionList;
+    readonly restrict uint16_t *sortingRegionList_OLD;
 
     //TODO:FIXME: only apply non readonly to translucency mesh
-    restrict Vertex *terrainData;//readonly
-    restrict uint   *translucencyIndexData;
+    restrict Vertex *terrainData_OLD;//readonly
+    restrict uint   *translucencyIndexData_OLD;
 
     //TODO: possibly make this a uniform instead of a buffer, but it might get quite large is the issue
-    readonly restrict mat4 *transformationArray;
-    readonly restrict uint64_t *originArray;
+    readonly restrict mat4 *transformationArray_OLD;
+    readonly restrict uint64_t *originArray_OLD;
 
     //readonly restrict u64vec4 *terrainData;
     //uvec4 *terrainData;
 
-    uint32_t *statistics_buffer;
+    uint32_t *statistics_buffer_OLD;
+    //*/
+    uint64_t dummy1;
+    uint64_t dummy2;
+    uint64_t dummy3;
+    uint64_t dummy4;
+    uint64_t dummy5;
+    uint64_t dummy6;
+    uint64_t dummy7;
+    uint64_t dummy8;
+    uint64_t dummy9;
+    uint64_t dummy10;
+    uint64_t dummy11;
+    uint64_t dummy12;
+    uint64_t dummy13;
 
     vec2 screenSize;
 
@@ -106,9 +121,26 @@ layout(std140, binding=0) uniform SceneData {
     uint flags;
 
     //align(2)
-    uint16_t regionCount;//Number of regions in regionIndicies
+    uint regionCount;
+    //uint16_t regionCount;//Number of regions in regionIndicies
     //align(1)
-    uint8_t frameId;
+    uint frameId;
+};
+
+/*
+
+layout(std430, binding=8) buffer sortingRegionListBuffer {
+    uint sortingRegionList[];
+};
+
+//*/
+
+layout(std140, binding=11) uniform transformationArrayUniform {
+    mat4 transformationArray[1024]; // TODO AUTO
+};
+
+layout(std140, binding=12) uniform originArrayUniform {
+    uint64_t originArray[1024]; // TODO AUTO
 };
 
 mat4 getRegionTransformation(Region region) {
@@ -117,12 +149,12 @@ mat4 getRegionTransformation(Region region) {
 
 ivec3 unpackOriginOffsetId(uint id) {
     uint64_t val = originArray[id];
-    int x = (int(uint(val&0x1ffffff))<<7)>>7;
-    int y = (int(uint((val>>50)&0x3fff))<<18)>>18;
-    int z = (int(uint((val>>25)&0x1ffffff))<<7)>>7;
+    int x = (int(uint(val)&0x1ffffffu)<<7)>>7;
+    int y = (int(uint(val>>50u)&0x3fffu)<<18)>>18;
+    int z = (int(uint(val>>25u)&0x1ffffffu)<<7)>>7;
     return ivec3(x,y,z);
 }
 
 bool useBlockFaceCulling() {
-    return (flags&1)!=0;
+    return (flags&1u) != 0u;
 }

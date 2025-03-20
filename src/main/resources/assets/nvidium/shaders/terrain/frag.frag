@@ -1,12 +1,10 @@
 #version 460
 #extension GL_ARB_shading_language_include : enable
+#extension GL_ARB_gpu_shader_int64 : require
 #pragma optionNV(unroll all)
 #define UNROLL_LOOP
-#extension GL_NV_gpu_shader5 : require
-#extension GL_NV_bindless_texture : require
-#extension GL_NV_shader_buffer_load : require
-
-//#extension GL_NV_conservative_raster_underestimation : enable
+// We need it for perprimitiveEXT
+#import <nvidium:utils/mesh_wrapper.glsl>
 
 #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
 #extension GL_NV_fragment_shader_barycentric : require
@@ -22,6 +20,9 @@ layout(binding = 1) uniform sampler2D tex_light;
 #import <sodium:include/fog.glsl>
 #endif
 
+layout(std430, binding=9) readonly buffer terrainDataBuffer {
+    Vertex terrainData[];
+};
 
 layout(location = 0) out vec4 colour;
 #ifndef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
@@ -32,8 +33,10 @@ layout(location = 1) in Interpolants {
 
     vec2 uv;
     vec3 v_colour;
-};
+} IN;
 #endif
+
+layout(location = 3) perprimitiveEXT in int PRIMITRASH;
 
 Vertex V0;
 Vertex Vp;
@@ -56,15 +59,15 @@ void applyFog(inout vec4 colour) {
     vec3 pos = clip.xyz/clip.w;
     vec2 v_FragDistance = getFragDistance(pos);
 #endif
-    colour = _linearFog(colour, v_FragDistance, fogColour, environmentFog, renderFog);
+    colour = _linearFog(colour, IN.v_FragDistance, fogColour, environmentFog, renderFog);
 }
 #endif
 
 
 layout(binding = 0) uniform sampler2D tex_diffuse;
 void main() {
-    uint quadId = uint(gl_PrimitiveID)>>1;
-    bool triangle0 = uint((gl_PrimitiveID)&1)==0;
+    uint quadId = uint(PRIMITRASH)>>1;
+    bool triangle0 = uint((PRIMITRASH)&1)==0;
     uvec3 TRI_INDICIES = triangle0?uvec3(0,1,2):uvec3(2,3,0);
     V0 = terrainData[(quadId<<2)+TRI_INDICIES.x];
     Vp = terrainData[(quadId<<2)+TRI_INDICIES.y];
@@ -87,7 +90,7 @@ void main() {
         }
     #else
         float lodBias = hasMipping(V0)?0.0f:-4.0f;
-        colour = texture(tex_diffuse, uv, lodBias);
+        colour = texture(tex_diffuse, IN.uv, lodBias);
     #endif
 
     #ifndef TRANSLUCENT_PASS
@@ -99,7 +102,7 @@ void main() {
     #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
         computeOutputColour(colour.rgb);
     #else
-        colour.rgb *= v_colour;
+        colour.rgb *= IN.v_colour;
     #endif
 
     #ifdef RENDER_FOG

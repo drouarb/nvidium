@@ -2,6 +2,7 @@ package me.cortex.nvidium.renderers;
 
 import com.mojang.blaze3d.opengl.GlTexture;
 import com.mojang.blaze3d.textures.GpuTextureView;
+import me.cortex.nvidium.gl.buffers.IDeviceMappedBuffer;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
@@ -12,10 +13,13 @@ import org.lwjgl.opengl.GL45;
 import org.lwjgl.opengl.GL45C;
 
 import static me.cortex.nvidium.RenderPipeline.GL_DRAW_INDIRECT_ADDRESS_NV;
+import static me.cortex.nvidium.gl.EXTMeshShader.glMultiDrawMeshTasksIndirectEXT;
 import static me.cortex.nvidium.gl.shader.ShaderType.*;
 import static org.lwjgl.opengl.GL11C.*;
 import static org.lwjgl.opengl.GL11C.GL_TEXTURE_WRAP_S;
+import static org.lwjgl.opengl.GL15.glBindBuffer;
 import static org.lwjgl.opengl.GL33.glGenSamplers;
+import static org.lwjgl.opengl.GL40.GL_DRAW_INDIRECT_BUFFER;
 import static org.lwjgl.opengl.NVMeshShader.glMultiDrawMeshTasksIndirectNV;
 import static org.lwjgl.opengl.NVVertexBufferUnifiedMemory.glBufferAddressRangeNV;
 
@@ -38,7 +42,7 @@ public class TemporalTerrainRasterizer extends Phase {
         GL45C.glSamplerParameteri(lightSampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
 
-    public void raster(TerrainRenderPass pass, int regionCount, long commandAddr) {
+    public void raster(TerrainRenderPass pass, int regionCount, IDeviceMappedBuffer commandBuffer) {
         shader.bind();
 
         GpuTextureView blockTexture = pass.getAtlas();
@@ -50,8 +54,11 @@ public class TemporalTerrainRasterizer extends Phase {
         GL45C.glBindTextureUnit(1, ((GlTexture)lightTexture.texture()).glId());
         GL45C.glBindSampler(1, lightSampler);
 
-        glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandAddr, regionCount*8L);//Bind the command buffer
-        glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
+        // TODO Make it auto if we can't use nvidia
+        //glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandBuffer.getDeviceAddress(), regionCount*8L);//Bind the command buffer
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, commandBuffer.getId());
+        glMultiDrawMeshTasksIndirectEXT(0, regionCount, 16);
+        //glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
 
 
         GL45C.glBindSampler(0, 0);

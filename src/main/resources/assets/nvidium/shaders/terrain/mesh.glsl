@@ -3,9 +3,9 @@
 #extension GL_ARB_shading_language_include : enable
 #pragma optionNV(unroll all)
 #define UNROLL_LOOP
-#extension GL_NV_mesh_shader : require
-#extension GL_NV_gpu_shader5 : require
-#extension GL_NV_bindless_texture : require
+#import <nvidium:utils/mesh_wrapper.glsl>
+//#extension GL_NV_gpu_shader5 : require
+//#extension GL_NV_bindless_texture : require
 
 #extension GL_KHR_shader_subgroup_arithmetic: require
 #extension GL_KHR_shader_subgroup_basic : require
@@ -35,7 +35,19 @@ layout(location=1) out Interpolants {
 } OUT[];
 #endif
 
-taskNV in Task {
+layout(location = 3) perprimitiveEXT out int PRIMITRASH[]; // Emulate gl_PrimitiveID since it seems broken on zink
+
+layout(std430, binding=9) readonly buffer terrainDataBuffer {
+    Vertex terrainData[];
+};
+
+#ifdef STATISTICS_CULL
+layout(std430, binding=13) buffer statBuffer {
+    uint statistics_buffer[];
+};
+#endif
+
+struct Task {
     uvec4 binStarts;
     uvec4 binOffsets;
 
@@ -44,12 +56,14 @@ taskNV in Task {
     uint transformationId;
 };
 
+taskPayloadSharedEXT Task task;
+
 
 //Do a binary search via global invocation index to determine the base offset
 // Note, all threads in the work group are probably going to take the same path
 uint getOffset() {
     uint gii = gl_GlobalInvocationID.x>>1;
-    bvec4 le = lessThan(uvec4(gii), binStarts);
+    bvec4 le = lessThan(uvec4(gii), task.binStarts);
     /*
     //This is so jank and funny
     return dot(binOffsets,notEqual(bvec4(ge.yzw,true), not(ge.xyzw)));
@@ -59,21 +73,20 @@ uint getOffset() {
     // this allows us to use a single uvec4 to transmit an entire section
     // since max size is 16 bit, we need 2/3 extra bits to store worst case, which we can
     // it does mean we need to readd the baseOffset to the task, but that contains inbuilt start offset of binOffsets.x
-    uint retval = binOffsets.w;
+    uint retval = task.binOffsets.w;
     if (le.y) {//x is always true
-        retval = binOffsets.x;
+        retval = task.binOffsets.x;
     } else if (le.z) {
-        retval = binOffsets.y;
+        retval = task.binOffsets.y;
     } else if (le.w) {
-        retval = binOffsets.z;
+        retval = task.binOffsets.z;
     }
     return retval+gii;
 }
 
-mat4 transformMat;
-
 vec4 transformVertex(Vertex V) {
-    vec3 pos = decodeVertexPosition(V)+origin;
+    mat4 transformMat = transformationArray[task.transformationId];
+    vec3 pos = decodeVertexPosition(V)+task.origin;
     return MVP*(transformMat * vec4(pos,1.0));
 }
 
@@ -85,7 +98,7 @@ vec4 pV;
 void putVertex(uint id, Vertex V) {
 #ifndef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
     #ifdef RENDER_FOG
-    vec3 pos = decodeVertexPosition(V)+origin;
+    vec3 pos = decodeVertexPosition(V)+task.origin;
     vec3 exactPos = pos+subchunkOffset.xyz;
     OUT[id].v_FragDistance = getFragDistance(exactPos);
     #endif
@@ -96,11 +109,10 @@ void putVertex(uint id, Vertex V) {
 }
 
 void main() {
-    if (gl_LocalInvocationIndex == 0) {
-        gl_PrimitiveCountNV = 0;//Set the prim count to 0
-    }
-
-    if (quadCount<=(gl_GlobalInvocationID.x>>1)) {
+    if (task.quadCount<=(gl_GlobalInvocationID.x>>1)) {
+        if (gl_LocalInvocationIndex == 0) {
+            SetMeshOutputsEXT(0u, 0u);
+        }
         return;
     }
 
@@ -108,9 +120,11 @@ void main() {
 
     //If its over, dont render
     if (quadId == uint(-1)) {
+        if (gl_LocalInvocationIndex == 0) {
+            SetMeshOutputsEXT(0u, 0u);
+        }
         return;
     }
-    transformMat = transformationArray[transformationId];
 
     bool triangle1 = (gl_LocalInvocationIndex & uint(1)) == 1;
 
@@ -153,37 +167,38 @@ void main() {
             return;
         }
     }
-    #endif
+#endif
+    uint triId = subgroupExclusiveAdd(draw ? 1 : 0);
+    uint triCount = subgroupAdd(draw ? 1 : 0);
+    uint vtxCount = subgroupAdd(draw ? 2 : 1);
+    SetMeshOutputsEXT(vtxCount, triCount);
 
     uint qId = (gl_LocalInvocationIndex&uint(~1))*2;
     //emit the common vertex
-    gl_MeshVerticesNV[qId+uint(triangle1)].gl_Position = pVc;
+    gl_MeshVerticesEXT[qId+uint(triangle1)].gl_Position = pVc;
     putVertex(qId+uint(triangle1), Vc);
     if (draw) {
         uint uId = qId+uint(triangle1)+2;
         //emit our vertex
-        gl_MeshVerticesNV[uId].gl_Position = pV;
+        gl_MeshVerticesEXT[uId].gl_Position = pV;
         putVertex(uId, V);
 
-        //Unsure if this is needed
-        //subgroupBarrier();
-        uint triId = subgroupExclusiveAdd(1);
-
         //Note indexing is bit funky here since we inserted in inverted order vert 0 is at idx 1 and vert 2 is at 0
-        gl_PrimitiveIndicesNV[triId * 3 + 0] = qId+uint(triangle1); // Common vertex 1
-        gl_PrimitiveIndicesNV[triId * 3 + 1] = uId; //Emit unique vertex
-        gl_PrimitiveIndicesNV[triId * 3 + 2] = qId+uint(!triangle1); // Common vertex 2
+        gl_PrimitiveTriangleIndicesEXT[triId] = uvec3(qId+uint(triangle1), uId, qId+uint(!triangle1));
+        //gl_PrimitiveIndicesNV[triId * 3 + 0] = qId+uint(triangle1); // Common vertex 1
+        //gl_PrimitiveIndicesNV[triId * 3 + 1] = uId; //Emit unique vertex
+        //gl_PrimitiveIndicesNV[triId * 3 + 2] = qId+uint(!triangle1); // Common vertex 2
 
         //Emit primitive
-        gl_MeshPrimitivesNV[triId].gl_PrimitiveID = int(quadId<<1) | int(triangle1);
+        PRIMITRASH[triId] = int(quadId<<1) | int(triangle1);
+        gl_MeshPrimitivesEXT[triId].gl_PrimitiveID = int(quadId<<1) | int(triangle1);
+        //gl_MeshPrimitivesNV[triId].gl_PrimitiveID = int(quadId<<1) | int(triangle1);
 
-        uint triCount = subgroupMax(triId);
+        #ifdef STATISTICS_CULL
         if (subgroupElect()) {
-            gl_PrimitiveCountNV = triCount+1;
-            #ifdef STATISTICS_CULL
-            atomicAdd(statistics_buffer+3, (32-1)-triCount); // Count culled triangles
-            #endif
+            atomicAdd(statistics_buffer[3], (32-1)-triCount); // Count culled triangles
         }
+        #endif
     }
 
     //Common vertex depending on warp id

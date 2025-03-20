@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.*;
 import me.cortex.nvidium.config.StatisticsLoggingLevel;
 import me.cortex.nvidium.config.TranslucencySortingLevel;
 import me.cortex.nvidium.gl.RenderDevice;
+import me.cortex.nvidium.gl.buffers.DeviceOnlyMappedBuffer;
 import me.cortex.nvidium.gl.buffers.IDeviceMappedBuffer;
 import me.cortex.nvidium.managers.RegionManager;
 import me.cortex.nvidium.managers.RegionVisibilityTracker;
@@ -22,6 +23,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import org.joml.*;
 import org.lwjgl.opengl.GL11C;
+import org.lwjgl.opengl.GL45;
 import org.lwjgl.system.MemoryUtil;
 
 import java.lang.Math;
@@ -35,8 +37,8 @@ import static org.lwjgl.opengl.GL30C.GL_R8UI;
 import static org.lwjgl.opengl.GL30C.GL_RED_INTEGER;
 import static org.lwjgl.opengl.GL42.*;
 import static org.lwjgl.opengl.GL43C.GL_SHADER_STORAGE_BARRIER_BIT;
+import static org.lwjgl.opengl.GL43C.GL_SHADER_STORAGE_BUFFER;
 import static org.lwjgl.opengl.NVRepresentativeFragmentTest.GL_REPRESENTATIVE_FRAGMENT_TEST_NV;
-import static org.lwjgl.opengl.NVUniformBufferUnifiedMemory.GL_UNIFORM_BUFFER_ADDRESS_NV;
 import static org.lwjgl.opengl.NVUniformBufferUnifiedMemory.GL_UNIFORM_BUFFER_UNIFIED_NV;
 import static org.lwjgl.opengl.NVVertexBufferUnifiedMemory.*;
 
@@ -50,16 +52,18 @@ public class RenderPipeline {
 
     private final SectionManager sectionManager;
 
-    public final RegionVisibilityTracker regionVisibilityTracking;
+    //public final RegionVisibilityTracker regionVisibilityTracking;
 
     private PrimaryTerrainRasterizer terrainRasterizer;
     private RegionRasterizer regionRasterizer;
     private SectionRasterizer sectionRasterizer;
     private TemporalTerrainRasterizer temporalRasterizer;
     private TranslucentTerrainRasterizer translucencyTerrainRasterizer;
-    private SortRegionSectionPhase regionSectionSorter;
+    //private SortRegionSectionPhase regionSectionSorter;
 
     private final IDeviceMappedBuffer sceneUniform;
+    private final IDeviceMappedBuffer regionIndices;
+
     private static final int SCENE_SIZE = (int) alignUp(
                     4*4*4 +  // mat4     MVP
                     4*4*4 + // mat4      MVPInv (Optional)
@@ -84,8 +88,8 @@ public class RenderPipeline {
                     2*4 +   // vec2      renderFog
                     4*2 +   // vec2      texCoordShrink
                     4 +     // uint      flags
-                    2 +     // uint16_t  regionCount
-                    1       // uint8_t   frameId
+                    4 +     // uint  regionCount
+                    4       // uint   frameId
             , 2);
 
     private final IDeviceMappedBuffer regionVisibility;
@@ -114,6 +118,8 @@ public class RenderPipeline {
 
     private final GPUTiming primaryTiming = new GPUTiming();
     private final GPUTiming translucentTiming = new GPUTiming();
+    private final GPUTiming regionTiming = new GPUTiming();
+    private final GPUTiming sectionTiming = new GPUTiming();
 
     public RenderPipeline(RenderDevice device, UploadingBufferStream uploadStream, DownloadTaskStream downloadStream, SectionManager sectionManager) {
         this.device = device;
@@ -127,23 +133,26 @@ public class RenderPipeline {
         sectionRasterizer = new SectionRasterizer();
         temporalRasterizer = new TemporalTerrainRasterizer();
         translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
-        regionSectionSorter = new SortRegionSectionPhase();
+        //regionSectionSorter = new SortRegionSectionPhase();
 
         int maxRegions = sectionManager.getRegionManager().maxRegions();
 
-        sceneUniform = device.createDeviceOnlyMappedBuffer(SCENE_SIZE + maxRegions*2L);
-        regionVisibility = device.createDeviceOnlyMappedBuffer(maxRegions);
-        sectionVisibility = device.createDeviceOnlyMappedBuffer(maxRegions * 256L);
-        terrainCommandBuffer = device.createDeviceOnlyMappedBuffer(maxRegions*8L);
-        translucencyCommandBuffer = device.createDeviceOnlyMappedBuffer(maxRegions*8L);
-        regionSortingList = device.createDeviceOnlyMappedBuffer(maxRegions*2L);
-        this.transformationArray = device.createDeviceOnlyMappedBuffer(RegionManager.MAX_TRANSFORMATION_COUNT * (4*4*4));
-        this.originOffsetArray = device.createDeviceOnlyMappedBuffer(RegionManager.MAX_TRANSFORMATION_COUNT * 8);
+        sceneUniform = new DeviceOnlyMappedBuffer(SCENE_SIZE, GL_UNIFORM_BUFFER, "SceneUniformBuffer");
+        regionIndices = new DeviceOnlyMappedBuffer(maxRegions * 4L, GL_SHADER_STORAGE_BUFFER, "RegionIndicesBuffer");
+        regionVisibility = new DeviceOnlyMappedBuffer(maxRegions * 4L, GL_SHADER_STORAGE_BUFFER, "RegionVisibilityBuffer");
+        sectionVisibility = new DeviceOnlyMappedBuffer(maxRegions * 256L * 4L, GL_SHADER_STORAGE_BUFFER, "SectionVisibilityBuffer");
+
+        terrainCommandBuffer = new DeviceOnlyMappedBuffer(maxRegions * 16L, GL_SHADER_STORAGE_BUFFER, "TerrainCommandBuffer"); // GL_SHADER_STORAGE_BUFFER
+        translucencyCommandBuffer = new DeviceOnlyMappedBuffer(maxRegions * 16L, GL_SHADER_STORAGE_BUFFER, "TranslucencyCommandBuffer"); // GL_BUFFER_GPU_ADDRESS_NV
+
+        regionSortingList = new DeviceOnlyMappedBuffer(maxRegions * 2L, GL_SHADER_STORAGE_BUFFER, "RegionSortingListBuffer");
+        this.transformationArray = new DeviceOnlyMappedBuffer(RegionManager.MAX_TRANSFORMATION_COUNT * (4*4*4), GL_UNIFORM_BUFFER, "TransformationArrayBuffer");
+        this.originOffsetArray = new DeviceOnlyMappedBuffer(RegionManager.MAX_TRANSFORMATION_COUNT * 8, GL_UNIFORM_BUFFER, "OriginOffsetArrayBuffer");
 
         regionVisibilityTracker = new BitSet(maxRegions);
-        regionVisibilityTracking = new RegionVisibilityTracker(downloadStream, maxRegions);
+        //regionVisibilityTracking = new RegionVisibilityTracker(downloadStream, maxRegions);
 
-        statisticsBuffer = device.createDeviceOnlyMappedBuffer(4*4);
+        statisticsBuffer = new DeviceOnlyMappedBuffer(4*4, GL_SHADER_STORAGE_BUFFER, "StatisticsBuffer");
         stats = new Statistics();
 
 
@@ -229,7 +238,7 @@ public class RenderPipeline {
         long queryAddr = 0;
         var rm = sectionManager.getRegionManager();
 
-        short[] regionMap;
+        int[] regionMap;
         //Enqueue all the visible regions
         {
 
@@ -267,14 +276,14 @@ public class RenderPipeline {
 
             }
 
-            regionMap = new short[regions.size()];
+            regionMap = new int[regions.size()];
             if (visibleRegions == 0) return;
-            long addr = uploadStream.upload(sceneUniform, SCENE_SIZE, visibleRegions*2);
+            long addr = uploadStream.upload(regionIndices, 0, visibleRegions*4);
             queryAddr = addr;//This is ungodly hacky
             int j = 0;
             for (int i : regions) {
-                regionMap[j] = (short) i;
-                MemoryUtil.memPutShort(addr+((long) j <<1), (short) i);
+                regionMap[j] = i & 0xFFFF;
+                MemoryUtil.memPutInt(addr+((long) j << 2), i & 0xFFFF);
                 j++;
             }
 
@@ -303,11 +312,11 @@ public class RenderPipeline {
             addr += 16;
             new Vector4f(delta,0).getToAddress(addr);//Subchunk offset (note, delta is already negated)
             addr += 16;
-            MemoryUtil.memPutLong(addr, sceneUniform.getDeviceAddress() + SCENE_SIZE);//Put in the location of the region indexs
+            MemoryUtil.memPutLong(addr, regionIndices.getDeviceAddress());//Put in the location of the region indexs
             addr += 8;
-            MemoryUtil.memPutLong(addr, sectionManager.getRegionManager().getRegionBufferAddress());
+            MemoryUtil.memPutLong(addr, sectionManager.getRegionManager().getRegionBuffer().getDeviceAddress());
             addr += 8;
-            MemoryUtil.memPutLong(addr, sectionManager.getRegionManager().getSectionBufferAddress());
+            MemoryUtil.memPutLong(addr, sectionManager.getRegionManager().getSectionBuffer().getDeviceAddress());
             addr += 8;
             MemoryUtil.memPutLong(addr, regionVisibility.getDeviceAddress());
             addr += 8;
@@ -327,7 +336,7 @@ public class RenderPipeline {
             addr += 8;
             MemoryUtil.memPutLong(addr, this.originOffsetArray.getDeviceAddress());
             addr += 8;
-            MemoryUtil.memPutLong(addr, statisticsBuffer == null?0:statisticsBuffer.getDeviceAddress());//Logging buffer
+            MemoryUtil.memPutLong(addr, statisticsBuffer.getDeviceAddress());//Logging buffer
             addr += 8;
             //Convert it into the expected size values and floats
             MemoryUtil.memPutFloat(addr, ((float)screenWidth)/2);
@@ -348,9 +357,9 @@ public class RenderPipeline {
             flags |= SodiumClientMod.options().performance.useBlockFaceCulling?1:0;
             MemoryUtil.memPutInt(addr, flags);//Flags
             addr += 4;
-            MemoryUtil.memPutShort(addr, (short) visibleRegions);
-            addr += 2;
-            MemoryUtil.memPutByte(addr, (byte) (frameId++));
+            MemoryUtil.memPutInt(addr, (short) visibleRegions);
+            addr += 4;
+            MemoryUtil.memPutInt(addr, (byte) (frameId++));
         }
 
         if (Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.NONE) {
@@ -362,7 +371,7 @@ public class RenderPipeline {
         if (regionSortSize != 0){
             long regionSortUpload = uploadStream.upload(regionSortingList, 0, regionSortSize * 2);
             for (int region : regionsToSort) {
-                MemoryUtil.memPutShort(regionSortUpload, (short) region);
+                MemoryUtil.memPutInt(regionSortUpload, region);
                 regionSortUpload += 2;
             }
             regionsToSort.clear();
@@ -378,16 +387,41 @@ public class RenderPipeline {
         //}
 
 
-        glEnableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
-        glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
-        glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
-        glEnableClientState(GL_DRAW_INDIRECT_UNIFIED_NV);
+        // TODO Make it auto if we can't use nvidia
+        //glEnableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
+        //glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV); // TODO REMOVE
+        //glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV); // TODO REMOVE
+        //glEnableClientState(GL_DRAW_INDIRECT_UNIFIED_NV);
         //Bind the uniform, it doesnt get wiped between shader changes
-        glBufferAddressRangeNV(GL_UNIFORM_BUFFER_ADDRESS_NV, 0, sceneUniform.getDeviceAddress(), SCENE_SIZE);
+        sceneUniform.bind(0);
+        /*
+        downloadStream.download(sectionManager.getRegionManager().getRegionBuffer(), 0, 16*4, (addr)-> {
+            System.out.println("===========================");
+            for (int i = 0; i < 4; i++) {
+                System.out.println("DUMP " + MemoryUtil.memGetLong(addr + i * 16L) + " " + MemoryUtil.memGetLong(addr + i * 16L + 8));
+            }
+        });*/
+
+        regionIndices.bind(1);
+        sectionManager.getRegionManager().getRegionBuffer().bind(2);
+        sectionManager.getRegionManager().getSectionBuffer().bind(3);
+        regionVisibility.bind(4);
+        sectionVisibility.bind(5);
+        terrainCommandBuffer.bind(6);
+        translucencyCommandBuffer.bind(7);
+        regionSortingList.bind(8);
+        sectionManager.terrainAreana.buffer.bind(9);
+        sectionManager.translucencyIndexArena.buffer.bind(10);
+
+        transformationArray.bind(11);
+        originOffsetArray.bind(12);
+        statisticsBuffer.bind(13);
+
+        //glBufferAddressRangeNV(GL_UNIFORM_BUFFER_ADDRESS_NV, 0, sceneUniform.getDeviceAddress(), SCENE_SIZE);
 
         if (prevRegionCount != 0) {
             glEnable(GL_DEPTH_TEST);
-            terrainRasterizer.raster(pass, prevRegionCount, terrainCommandBuffer.getDeviceAddress(), primaryTiming);
+            terrainRasterizer.raster(pass, prevRegionCount, terrainCommandBuffer, primaryTiming);
             glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
         }
 
@@ -406,7 +440,7 @@ public class RenderPipeline {
             glEnable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
         }
 
-        regionRasterizer.raster(visibleRegions);
+        regionRasterizer.raster(visibleRegions, regionTiming);
 
         if (DEBUG_RENDER_LEVEL == 1) {
             glColorMask(false, false, false, false);
@@ -424,7 +458,7 @@ public class RenderPipeline {
             glDepthMask(true);
         }
 
-        sectionRasterizer.raster(visibleRegions);
+        sectionRasterizer.raster(visibleRegions, sectionTiming);
         glDisable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
         glDepthMask(true);
         glColorMask(true, true, true, true);
@@ -437,7 +471,7 @@ public class RenderPipeline {
         //Do temporal rasterization
         if (Nvidium.config.enable_temporal_coherence) {
             glMemoryBarrier(GL_COMMAND_BARRIER_BIT);
-            temporalRasterizer.raster(pass, visibleRegions, terrainCommandBuffer.getDeviceAddress());
+            temporalRasterizer.raster(pass, visibleRegions, terrainCommandBuffer);
         }
 
 
@@ -446,7 +480,7 @@ public class RenderPipeline {
             glColorMask(false, false, false, false);
             glEnable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
 
-            regionVisibilityTracking.computeVisibility(visibleRegions, regionVisibility, regionMap);
+            //regionVisibilityTracking.computeVisibility(visibleRegions, regionVisibility, regionMap);
 
             glDisable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
             glDepthMask(true);
@@ -457,14 +491,14 @@ public class RenderPipeline {
 
         if (regionSortSize != 0) {
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-            regionSectionSorter.dispatch(regionSortSize);
+            //regionSectionSorter.dispatch(regionSortSize);
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         }
 
-        glDisableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
-        glDisableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
-        glDisableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
-        glDisableClientState(GL_DRAW_INDIRECT_UNIFIED_NV);
+        //glDisableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
+        //glDisableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
+        //glDisableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
+        //glDisableClientState(GL_DRAW_INDIRECT_UNIFIED_NV);
         glDepthFunc(GL11C.GL_LEQUAL);
 
         //if ((err = glGetError()) != 0) {
@@ -478,11 +512,11 @@ public class RenderPipeline {
 
     private void removeRegion(int id) {
         sectionManager.removeRegionById(id);
-        regionVisibilityTracking.resetRegion(id);
+        //regionVisibilityTracking.resetRegion(id);
     }
 
     public void removeARegion() {
-        removeRegion(regionVisibilityTracking.findMostLikelyLeastSeenRegion(sectionManager.getRegionManager().maxRegionIndex()));
+        //removeRegion(regionVisibilityTracking.findMostLikelyLeastSeenRegion(sectionManager.getRegionManager().maxRegionIndex()));
     }
 
     /*
@@ -493,23 +527,31 @@ public class RenderPipeline {
     //Translucency is rendered in a very cursed and incorrect way
     // it hijacks the unassigned indirect command dispatch and uses that to dispatch the translucent chunks as well
     public void renderTranslucent(TerrainRenderPass pass) {
-        glEnableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
-        glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
-        glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
-        glEnableClientState(GL_DRAW_INDIRECT_UNIFIED_NV);
+        //glEnableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
+        //glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
+        //glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
+        //glEnableClientState(GL_DRAW_INDIRECT_UNIFIED_NV);
         //Need to rebind the uniform since it might have been wiped
-        glBufferAddressRangeNV(GL_UNIFORM_BUFFER_ADDRESS_NV, 0, sceneUniform.getDeviceAddress(), SCENE_SIZE);
+        //glBufferAddressRangeNV(GL_UNIFORM_BUFFER_ADDRESS_NV, 0, sceneUniform.getDeviceAddress(), SCENE_SIZE);
+
+        sceneUniform.bind(0);
+        sectionManager.getRegionManager().getSectionBuffer().bind(3);
+        sectionVisibility.bind(5);
+        translucencyCommandBuffer.bind(7);
+        sectionManager.terrainAreana.buffer.bind(9);
+        sectionManager.translucencyIndexArena.buffer.bind(10);
+        statisticsBuffer.bind(13);
 
         //Translucency sorting
         {
             glEnable(GL_DEPTH_TEST);
-            translucencyTerrainRasterizer.raster(pass, prevRegionCount, translucencyCommandBuffer.getDeviceAddress(), translucentTiming);
+            translucencyTerrainRasterizer.raster(pass, prevRegionCount, translucencyCommandBuffer, translucentTiming);
         }
 
-        glDisableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
-        glDisableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
-        glDisableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
-        glDisableClientState(GL_DRAW_INDIRECT_UNIFIED_NV);
+        //glDisableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
+        //glDisableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
+        //glDisableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
+        //glDisableClientState(GL_DRAW_INDIRECT_UNIFIED_NV);
 
 
 
@@ -535,9 +577,10 @@ public class RenderPipeline {
     }
 
     public void delete() {
-        regionVisibilityTracking.delete();
+        //regionVisibilityTracking.delete();
 
         sceneUniform.delete();
+        regionIndices.delete();
         regionVisibility.delete();
         sectionVisibility.delete();
         terrainCommandBuffer.delete();
@@ -548,13 +591,15 @@ public class RenderPipeline {
         regionRasterizer.delete();
         sectionRasterizer.delete();
         temporalRasterizer.delete();
-        translucencyTerrainRasterizer.delete();
-        regionSectionSorter.delete();
+        //translucencyTerrainRasterizer.delete();
+        //regionSectionSorter.delete();
         this.transformationArray.delete();
         this.originOffsetArray.delete();
 
         this.primaryTiming.free();
         this.translucentTiming.free();
+        this.regionTiming.free();
+        this.sectionTiming.free();
 
         if (statisticsBuffer != null) {
             statisticsBuffer.delete();
@@ -584,6 +629,8 @@ public class RenderPipeline {
         }
         info.add("Primary frame time: " +  String.format("%.03f", primaryTiming.getAverageMs()) + "ms");
         info.add("Translucent frame time: " +  String.format("%.03f", translucentTiming.getAverageMs()) + "ms");
+        info.add("Region time: " +  String.format("%.03f", regionTiming.getAverageMs()) + "ms");
+        info.add("Section time: " +  String.format("%.03f", sectionTiming.getAverageMs()) + "ms");
     }
 
     public void reloadShaders() {
@@ -593,13 +640,13 @@ public class RenderPipeline {
         sectionRasterizer.delete();
         temporalRasterizer.delete();
         translucencyTerrainRasterizer.delete();
-        regionSectionSorter.delete();
+        //regionSectionSorter.delete();
 
         terrainRasterizer = new PrimaryTerrainRasterizer();
         regionRasterizer = new RegionRasterizer();
         sectionRasterizer = new SectionRasterizer();
         temporalRasterizer = new TemporalTerrainRasterizer();
         translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
-        regionSectionSorter = new SortRegionSectionPhase();
+        //regionSectionSorter = new SortRegionSectionPhase();
     }
 }

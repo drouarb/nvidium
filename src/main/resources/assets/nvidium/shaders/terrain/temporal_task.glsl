@@ -3,9 +3,7 @@
 #extension GL_ARB_shading_language_include : enable
 #pragma optionNV(unroll all)
 #define UNROLL_LOOP
-#extension GL_NV_mesh_shader : require
-#extension GL_NV_gpu_shader5 : require
-#extension GL_NV_bindless_texture : require
+#import <nvidium:utils/mesh_wrapper.glsl>
 
 #extension GL_KHR_shader_subgroup_basic : require
 #extension GL_KHR_shader_subgroup_ballot : require
@@ -17,22 +15,41 @@
 //This is 1 since each task shader workgroup -> multiple meshlets. its not each globalInvocation (afaik)
 layout(local_size_x=1) in;
 
+layout (std430, binding = 2) readonly buffer regionDataBuffer {
+    Region regionData[];
+};
 
+layout (std430, binding = 3) readonly buffer sectionDataBuffer {
+    Section sectionData[];
+};
 
+layout (std430, binding = 5) readonly buffer sectionVisibilityBuffer {
+    uint sectionVisibility[];
+};
+
+layout(std430, binding=6) readonly buffer terrainCommandBufferBuffer {
+    uvec4 terrainCommandBuffer[];
+};
+
+#ifdef STATISTICS_QUADS
+layout(std430, binding=13) buffer statBuffer {
+    uint statistics_buffer[];
+};
+#endif
 
 bool shouldRenderVisible(uint sectionId) {
-    uint8_t data = sectionVisibility[sectionId];
-    return (data&uint8_t(3)) == uint8_t(1);//If the section was not visible last frame but is visible this frame, render it
+    uint data = sectionVisibility[sectionId];
+    return (data&3u) == 1u;//If the section was not visible last frame but is visible this frame, render it
 }
 
 #import <nvidium:terrain/task_common2.glsl>
 
 void main() {
-    uint sectionId = gl_WorkGroupID.x;
+    uint sectionId = terrainCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x;
 
     if (!shouldRenderVisible(sectionId)) {
         //Early exit if the section isnt visible
-        gl_TaskCountNV = 0;
+        EmitMeshTasksEXT(0, 0, 0);
         return;
     }
 
@@ -43,14 +60,14 @@ void main() {
     chunk.y >>= 32-9;
     chunk -= chunkPosition.xyz;
 
-    transformationId = unpackRegionTransformId(regionData[sectionId>>8]);
-    chunk -= unpackOriginOffsetId(transformationId);
+    task.transformationId = unpackRegionTransformId(regionData[sectionId>>8]);
+    chunk -= unpackOriginOffsetId(task.transformationId);
 
-    origin = vec3(chunk<<4);
+    task.origin = vec3(chunk<<4);
 
     populateTasks(chunk, uint(header.w), uvec4(sectionData[sectionId].renderRanges));
 
     #ifdef STATISTICS_QUADS
-    atomicAdd(statistics_buffer+2, quadCount);
+    atomicAdd(statistics_buffer[2], task.quadCount);
     #endif
 }

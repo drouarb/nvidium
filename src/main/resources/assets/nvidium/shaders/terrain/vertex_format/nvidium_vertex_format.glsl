@@ -17,19 +17,19 @@ vec4 decodeVertexColour(Vertex v) {
 }
 
 vec2 decodeVertexUV(Vertex v) {
-    return vec2(v.w&0xffff,v.w>>16)*(1.0f/(TEXTURE_MAX_SCALE));
+    return vec2(v.w&0xFFFFu,v.w>>16)*(1.0f/(TEXTURE_MAX_SCALE));
 }
 
 bool hasMipping(Vertex v) {
-    return ((v.y>>16)&1)!=0;
+    return ((v.y>>16)&1u)!=0u;
 }
 
 float decodeVertexAlphaCutoff(Vertex v) {
-    return (float[](0.0f, 0.1f,0.5f))[((v.y>>16)&int16_t(3))];
+    return (float[](0.0f, 0.1f,0.5f))[((v.y>>16)&3u)];
 }
 
 uint rawVertexAlphaCutoff(Vertex v) {
-    return uint((v.y>>17)&int16_t(3));
+    return uint((v.y>>17)&3u);
 }
 
 vec2 decodeLightUV(Vertex v) {

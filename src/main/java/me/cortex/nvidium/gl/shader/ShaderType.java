@@ -1,6 +1,8 @@
 package me.cortex.nvidium.gl.shader;
 
 
+import static me.cortex.nvidium.gl.EXTMeshShader.GL_MESH_SHADER_EXT;
+import static me.cortex.nvidium.gl.EXTMeshShader.GL_TASK_SHADER_EXT;
 import static org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER;
 import static org.lwjgl.opengl.GL20.GL_VERTEX_SHADER;
 import static org.lwjgl.opengl.GL43C.GL_COMPUTE_SHADER;
@@ -11,8 +13,10 @@ public enum ShaderType {
     VERTEX(GL_VERTEX_SHADER),
     FRAGMENT(GL_FRAGMENT_SHADER),
     COMPUTE(GL_COMPUTE_SHADER),
-    MESH(GL_MESH_SHADER_NV),
-    TASK(GL_TASK_SHADER_NV);
+    //MESH(GL_MESH_SHADER_NV),
+    MESH(GL_MESH_SHADER_EXT),
+    //TASK(GL_TASK_SHADER_NV);
+    TASK(GL_TASK_SHADER_EXT);
     public final int gl;
     ShaderType(int glEnum) {
         gl = glEnum;
