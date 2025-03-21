@@ -9,7 +9,7 @@
 //#extension GL_NV_conservative_raster_underestimation : enable
 
 //#extension GL_NV_fragment_shader_barycentric : require
-#extension AMD_shader_explicit_vertex_parameter : require
+#extension GL_AMD_shader_explicit_vertex_parameter : require
 
 
 #import <nvidium:occlusion/scene.glsl>

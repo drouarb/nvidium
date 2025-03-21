@@ -9,6 +9,11 @@ import org.lwjgl.opengl.GLCapabilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.lwjgl.opengl.GL11.GL_EXTENSIONS;
+import static org.lwjgl.opengl.GL11.glGetInteger;
+import static org.lwjgl.opengl.GL30.GL_NUM_EXTENSIONS;
+import static org.lwjgl.opengl.GL30.glGetStringi;
+
 public class Nvidium {
     public static final String MOD_VERSION;
     public static final Logger LOGGER = LoggerFactory.getLogger("Nvidium");
@@ -40,6 +45,13 @@ public class Nvidium {
         LOGGER.info("GL_NV_fragment_shader_barycentric {}", cap.GL_NV_fragment_shader_barycentric);
         LOGGER.info("GL_NV_shader_buffer_load {}", cap.GL_NV_shader_buffer_load);
 
+        LOGGER.info("==========================================================");
+        int count = glGetInteger(GL_NUM_EXTENSIONS);
+        for (int i = 0; i < count; i++) {
+            LOGGER.info("Capability dump: {}", glGetStringi(GL_EXTENSIONS, i));
+        }
+        LOGGER.info("==========================================================");
+
         boolean supported = true;
         IS_COMPATIBLE = supported;
         if (IS_COMPATIBLE) {
@@ -47,6 +59,7 @@ public class Nvidium {
         } else {
             LOGGER.warn("Not all requirements met, disabling nvidium");
         }
+        
         if (IS_COMPATIBLE && Util.getOperatingSystem() == Util.OperatingSystem.LINUX) {
             LOGGER.warn("Linux currently uses fallback terrain buffer due to driver inconsistencies, expect increase vram usage");
             SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER = false;
