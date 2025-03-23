@@ -9,7 +9,7 @@
 //#extension GL_NV_conservative_raster_underestimation : enable
 
 //#extension GL_NV_fragment_shader_barycentric : require
-#extension GL_AMD_shader_explicit_vertex_parameter : require
+//#extension GL_AMD_shader_explicit_vertex_parameter : require
 
 
 #import <nvidium:occlusion/scene.glsl>
@@ -19,7 +19,7 @@
 
 
 layout(location = 0) out vec4 colour;
-#if defined(RENDER_FOG) || defined(TRANSLUCENT_PASS)
+//#if defined(RENDER_FOG) || defined(TRANSLUCENT_PASS)
 layout(location = 1) in Interpolants {
     #ifdef RENDER_FOG
     float fogLerp;
@@ -28,8 +28,9 @@ layout(location = 1) in Interpolants {
     vec2 uv;
     vec3 v_colour;
     #endif
+    vec3 barycoord;
 };
-#endif
+//#endif
 
 
 layout(binding = 1) uniform sampler2D tex_light;
@@ -50,9 +51,9 @@ vec3 computeMultiplier(Vertex V) {
 Vertex V0;
 Vertex Vp;
 Vertex V2;
-void computeOutputColour(inout vec3 colour) {
-    //vec3 multiplier = gl_BaryCoordNV.x*computeMultiplier(V0) + gl_BaryCoordNV.y*computeMultiplier(Vp) + gl_BaryCoordNV.z*computeMultiplier(V2);
-    vec3 multiplier = gl_BaryCoordSmoothAMD.x*computeMultiplier(V0) + gl_BaryCoordSmoothAMD.y*computeMultiplier(Vp) + gl_BaryCoordSmoothAMD.z*computeMultiplier(V2);
+void computeOutputColour(inout vec3 colour, vec3 barycoordFix) {
+    vec3 multiplier = barycoordFix.x*computeMultiplier(V0) + barycoordFix.y*computeMultiplier(Vp) + barycoordFix.z*computeMultiplier(V2);
+    //vec3 multiplier = gl_BaryCoordSmoothAMD.x*computeMultiplier(V0) + gl_BaryCoordSmoothAMD.y*computeMultiplier(Vp) + gl_BaryCoordSmoothAMD.z*computeMultiplier(V2);
     colour *= multiplier;
 }
 
@@ -80,7 +81,7 @@ void main() {
     V0 = terrainData[(quadId<<2)+TRI_INDICIES.x];
     Vp = terrainData[(quadId<<2)+TRI_INDICIES.y];
     V2 = terrainData[(quadId<<2)+TRI_INDICIES.z];
-
+    vec3 barycoordFix = triangle0 ? barycoord.xyz : barycoord.zyx;
 
     #ifdef TRANSLUCENT_PASS
     colour = texture(tex_diffuse, uv, 0);
@@ -89,12 +90,12 @@ void main() {
     float lodBias = hasMipping(V0)?0.0f:-4.0f;
     uint alphaCutoff = rawVertexAlphaCutoff(V0);
 
-    //vec2 uv = gl_BaryCoordNV.x*decodeVertexUV(V0) + gl_BaryCoordNV.y*decodeVertexUV(Vp) + gl_BaryCoordNV.z*decodeVertexUV(V2);
-    vec2 uv = gl_BaryCoordSmoothAMD.x*decodeVertexUV(V0) + gl_BaryCoordSmoothAMD.y*decodeVertexUV(Vp) + gl_BaryCoordSmoothAMD.z*decodeVertexUV(V2);
+    vec2 uv = barycoordFix.x*decodeVertexUV(V0) + barycoordFix.y*decodeVertexUV(Vp) + barycoordFix.z*decodeVertexUV(V2);
+    //vec2 uv = gl_BaryCoordSmoothAMD.x*decodeVertexUV(V0) + gl_BaryCoordSmoothAMD.y*decodeVertexUV(Vp) + gl_BaryCoordSmoothAMD.z*decodeVertexUV(V2);
     colour = texture(tex_diffuse, uv, lodBias);
     if (colour.a < getVertexAlphaCutoff(alphaCutoff)) discard;
     colour.a = 1;
-    computeOutputColour(colour.rgb);
+    computeOutputColour(colour.rgb, barycoordFix);
     #endif
 
     #ifdef RENDER_FOG

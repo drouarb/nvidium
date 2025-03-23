@@ -55,6 +55,8 @@ layout(std140, binding=0) uniform SceneData {
 
     //vec4  subChunkPosition;//The subChunkTranslation is already done inside the MVP
     //align(8)
+
+/*
     readonly restrict uint16_t *regionIndicies_OLD;//Pointer to block of memory at the end of the SceneData struct, also mapped to be a uniform
     readonly restrict Region *regionData_OLD;
     restrict Section *sectionData_OLD;
@@ -78,7 +80,21 @@ layout(std140, binding=0) uniform SceneData {
     //readonly restrict u64vec4 *terrainData;
     //uvec4 *terrainData;
 
-    uint32_t *statistics_buffer_OLD;
+    uint32_t *statistics_buffer_OLD; */
+    // TODO Clean that
+    uint64_t padding1;
+    uint64_t padding2;
+    uint64_t padding3;
+    uint64_t padding4;
+    uint64_t padding5;
+    uint64_t padding6;
+    uint64_t padding7;
+    uint64_t padding8;
+    uint64_t padding9;
+    uint64_t padding10;
+    uint64_t padding11;
+    uint64_t padding12;
+    uint64_t padding13;
 
     vec2 screenSize;
 

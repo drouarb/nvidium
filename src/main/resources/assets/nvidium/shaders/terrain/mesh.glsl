@@ -21,11 +21,12 @@
 layout(local_size_x = 16) in;
 layout(triangles, max_vertices=64, max_primitives=32) out;
 
-#ifdef RENDER_FOG
 layout(location=1) out Interpolants {
+#ifdef RENDER_FOG
     float fogLerp;
-} OUT[];
 #endif
+    vec3 barycoord;
+} OUT[];
 
 taskNV in Task {
     vec3 origin;
@@ -166,12 +167,15 @@ void main() {
 
     //We have triangles to emit!
     // emit the constant vertices (0,2) that are needed for both triangles
+    OUT[vertIndex].barycoord = vec3(1, 0, 0);
     putVertex(vertIndex, V0); gl_MeshVerticesNV[vertIndex++].gl_Position = pV0;
+    OUT[vertIndex].barycoord = vec3(0, 0, 1);
     putVertex(vertIndex, V2); gl_MeshVerticesNV[vertIndex++].gl_Position = pV2;
 
     int primData = int(id<<1);
 
     if (t0draw) {
+        OUT[vertIndex].barycoord = vec3(0, 1, 0);
         putVertex(vertIndex, V1); gl_MeshVerticesNV[vertIndex].gl_Position = pV1;
         // 0 1 2
         gl_PrimitiveIndicesNV[indexIndex++] = vertBase+0;
@@ -184,6 +188,7 @@ void main() {
     }
 
     if (t1draw) {
+        OUT[vertIndex].barycoord = vec3(0, 1, 0);
         putVertex(vertIndex, V3); gl_MeshVerticesNV[vertIndex].gl_Position = pV3;
         // 2 3 0
         gl_PrimitiveIndicesNV[indexIndex++] = vertBase+1;

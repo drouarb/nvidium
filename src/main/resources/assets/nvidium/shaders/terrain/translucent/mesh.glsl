@@ -40,6 +40,7 @@ layout(location=1) out Interpolants {
 #endif
     vec2 uv;
     vec3 v_colour;
+    vec3 barycoord;
 } OUT[];
 
 layout(binding = 1) uniform sampler2D tex_light;
@@ -192,6 +193,10 @@ void main() {
     emitVertex(id, 1);
     emitVertex(id, 2);
     emitVertex(id, 3);
+    OUT[(gl_LocalInvocationID.x<<2)+0].barycoord = vec3(1, 0, 0);
+    OUT[(gl_LocalInvocationID.x<<2)+1].barycoord = vec3(0, 1, 0);
+    OUT[(gl_LocalInvocationID.x<<2)+2].barycoord = vec3(0, 0, 1);
+    OUT[(gl_LocalInvocationID.x<<2)+3].barycoord = vec3(0, 1, 0);
     #endif
 
     gl_MeshPrimitivesNV[(gl_LocalInvocationID.x<<1)].gl_PrimitiveID = int((id>>2)<<1)|0;
