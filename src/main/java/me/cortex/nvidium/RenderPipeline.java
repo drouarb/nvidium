@@ -555,6 +555,7 @@ public class RenderPipeline {
         regionVisibilityTracking.delete();
 
         sceneUniform.delete();
+        regioIndices.delete();
         regionVisibility.delete();
         sectionVisibility.delete();
         terrainCommandBuffer.delete();
