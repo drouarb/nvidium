@@ -45,7 +45,7 @@ void emitParital(int visIndex) {
 
 //TODO: Check if the section can be culled via fog
 void main() {
-    int visibilityIndex = (int)(_visOutBase|gl_WorkGroupID.x);
+    int visibilityIndex = int(_visOutBase|gl_WorkGroupID.x);
 
     uint8_t lastData = sectionVisibility[visibilityIndex];
     // this is almost 100% guarenteed not needed afaik
@@ -66,7 +66,7 @@ void main() {
     }
 
     vec3 mins = (header.xyz&0xF)-ADD_SIZE;
-    vec3 maxs = mins+((header.xyz>>4)&0xF)+1+(ADD_SIZE*2);
+    vec3 maxs = mins+((header.xyz>>4)&0xF)+1.0+(ADD_SIZE*2.0);
     ivec3 chunk = ivec3(header.xyz)>>8;
     chunk.y &= 0x1ff;
     chunk.y <<= 32-9;

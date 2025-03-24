@@ -47,7 +47,7 @@ layout(binding = 1) uniform sampler2D tex_light;
 
 vec4 sampleLight(vec2 uv) {
     //Its divided by 16 to match sodium/vanilla (it can never be 1 which is funny)
-    return vec4(texture(tex_light, uv).rgb, 1);
+    return vec4(texture(tex_light, uv).rgb, 1.0);
 }
 
 void emitQuadIndicies() {
@@ -71,7 +71,7 @@ void emitVertex(uint vertexBaseId, uint innerId) {
     vec3 exactPos = pos+subchunkOffset.xyz;
 
     #ifdef RENDER_FOG
-    float fogLerp = clamp(computeFogLerp(exactPos, isCylindricalFog, fogStart, fogEnd) * fogColour.a, 0, 1);
+    float fogLerp = clamp(computeFogLerp(exactPos, isCylindricalFog, fogStart, fogEnd) * fogColour.a, 0.0, 1.0);
     OUT[outId].fogLerp = float16_t(fogLerp);
     #endif
     OUT[outId].uv = decodeVertexUV(V);
@@ -120,12 +120,12 @@ void swapQuads(uint idxA, uint idxB) {
 void performTranslucencySort() {
     uint baseQuadPtr = floatBitsToUint(originAndBaseData.w) + (gl_WorkGroupID.x<<5);
 
-    float depth = dot(depthPos, depthPos) * ((1/4f)*(1/4f));
+    float depth = dot(depthPos, depthPos) * ((0.25f)*(0.25f));
     depthBuffers[gl_LocalInvocationID.x] = depth;
 
     if (gl_GlobalInvocationID.x < jiggle) {
         //If we are in the jiggle index dont attempt to swap else we start rendering garbage data
-        depthBuffers[gl_LocalInvocationID.x] = -9999f;
+        depthBuffers[gl_LocalInvocationID.x] = -9999.0f;
     }
 
     groupMemoryBarrier();
@@ -150,7 +150,7 @@ void performTranslucencySort() {
 //TODO: extra per quad culling
 void main() {
     #ifdef TRANSLUCENCY_SORTING_QUADS
-    depthBuffers[gl_LocalInvocationID.x] = -99999999f;
+    depthBuffers[gl_LocalInvocationID.x] = -99999999.0f;
     #endif
     if ((gl_GlobalInvocationID.x)>=quadCount) { //If its over the quad count, dont render
         return;
@@ -173,10 +173,10 @@ void main() {
     #ifdef TRANSLUCENCY_SORTING_QUADS
     //If we are at the start, dont want to render as it contains garbled data (out of bounds)
     if (gl_GlobalInvocationID.x < jiggle) {
-        gl_MeshVerticesNV[(gl_LocalInvocationID.x<<2)+0].gl_Position = vec4(1,1,1,-1);
-        gl_MeshVerticesNV[(gl_LocalInvocationID.x<<2)+1].gl_Position = vec4(1,1,1,-1);
-        gl_MeshVerticesNV[(gl_LocalInvocationID.x<<2)+2].gl_Position = vec4(1,1,1,-1);
-        gl_MeshVerticesNV[(gl_LocalInvocationID.x<<2)+3].gl_Position = vec4(1,1,1,-1);
+        gl_MeshVerticesNV[(gl_LocalInvocationID.x<<2)+0].gl_Position = vec4(1.0,1.0,1.0,-1.0);
+        gl_MeshVerticesNV[(gl_LocalInvocationID.x<<2)+1].gl_Position = vec4(1.0,1.0,1.0,-1.0);
+        gl_MeshVerticesNV[(gl_LocalInvocationID.x<<2)+2].gl_Position = vec4(1.0,1.0,1.0,-1.0);
+        gl_MeshVerticesNV[(gl_LocalInvocationID.x<<2)+3].gl_Position = vec4(1.0,1.0,1.0,-1.0);
 
     } else {
         emitVertex(id, 0);
@@ -193,10 +193,10 @@ void main() {
     emitVertex(id, 1);
     emitVertex(id, 2);
     emitVertex(id, 3);
-    OUT[(gl_LocalInvocationID.x<<2)+0].barycoord = vec3(1, 0, 0);
-    OUT[(gl_LocalInvocationID.x<<2)+1].barycoord = vec3(0, 1, 0);
-    OUT[(gl_LocalInvocationID.x<<2)+2].barycoord = vec3(0, 0, 1);
-    OUT[(gl_LocalInvocationID.x<<2)+3].barycoord = vec3(0, 1, 0);
+    OUT[(gl_LocalInvocationID.x<<2)+0].barycoord = vec3(1.0, 0.0, 0.0);
+    OUT[(gl_LocalInvocationID.x<<2)+1].barycoord = vec3(0.0, 1.0, 0.0);
+    OUT[(gl_LocalInvocationID.x<<2)+2].barycoord = vec3(0.0, 0.0, 1.0);
+    OUT[(gl_LocalInvocationID.x<<2)+3].barycoord = vec3(0.0, 1.0, 0.0);
     #endif
 
     gl_MeshPrimitivesNV[(gl_LocalInvocationID.x<<1)].gl_PrimitiveID = int((id>>2)<<1)|0;

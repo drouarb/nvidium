@@ -95,8 +95,9 @@ public class Shader extends GlObject {
 
             if (result != GL20C.GL_TRUE) {
                 GL20C.glDeleteShader(shader);
+                System.err.println(src.replace("\r","").replace("\n","_NEWLINE_"));
 
-                throw new RuntimeException("Shader compilation failed, see log for details");
+                throw new RuntimeException("Shader compilation failed, see log for details: "+type.name());
             }
 
             return shader;

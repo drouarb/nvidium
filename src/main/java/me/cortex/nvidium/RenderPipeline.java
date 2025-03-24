@@ -444,7 +444,7 @@ public class RenderPipeline {
         prevRegionCount = visibleRegions;
 
         //Do temporal rasterization
-        if (Nvidium.config.enable_temporal_coherence) {
+        if (Nvidium.config.enable_temporal_coherence && visibleRegions != 0) {
             glMemoryBarrier(GL_COMMAND_BARRIER_BIT);
             temporalRasterizer.raster(visibleRegions, terrainCommandBuffer);
         }
@@ -514,7 +514,7 @@ public class RenderPipeline {
         //glBufferAddressRangeNV(GL_UNIFORM_BUFFER_ADDRESS_NV, 0, sceneUniform.getDeviceAddress(), SCENE_SIZE);
 
         //Translucency sorting
-        {
+        if (prevRegionCount != 0) {
             glEnable(GL_DEPTH_TEST);
             RenderSystem.enableBlend();
             RenderSystem.blendFuncSeparate(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SrcFactor.ONE, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA);

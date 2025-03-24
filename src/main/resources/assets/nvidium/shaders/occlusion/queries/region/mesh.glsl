@@ -46,7 +46,7 @@ void main() {
     pos -= unpackOriginOffsetId(unpackRegionTransformId(data));
 
     vec3 start = pos - ADD_SIZE;
-    vec3 end = start + 1 + unpackRegionSize(data) + (ADD_SIZE*2);
+    vec3 end = start + 1.0 + unpackRegionSize(data) + (ADD_SIZE*2.0);
 
     //TODO: Look into only doing 4 locals, for 2 reasons, its more effective for reducing duplicate computation and bandwidth
     // it also means that each thread can emit 3 primatives, 9 indicies each
@@ -57,7 +57,7 @@ void main() {
     corner *= 16.0f;
     gl_MeshVerticesNV[gl_LocalInvocationID.x].gl_Position = MVP*(getRegionTransformation(data)*vec4(corner, 1.0));
 
-    int visibilityIndex = (int)gl_WorkGroupID.x;
+    int visibilityIndex = int(gl_WorkGroupID.x);
 
     regionVisibility[visibilityIndex] = uint8_t(0);
 

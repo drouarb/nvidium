@@ -46,7 +46,7 @@ void main() {
     chunk -= unpackOriginOffsetId(transformationId);
 
     origin = vec3(chunk<<4);
-    baseOffset = (uint)header.w;
+    baseOffset = uint(header.w);
 
     populateTasks(chunk, uvec4(sectionData[sectionId].renderRanges));
 

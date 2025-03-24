@@ -21,6 +21,7 @@ import static org.lwjgl.opengl.GL33.glGenSamplers;
 import static org.lwjgl.opengl.GL40.GL_DRAW_INDIRECT_BUFFER;
 import static org.lwjgl.opengl.NVMeshShader.glMultiDrawMeshTasksIndirectNV;
 import static org.lwjgl.opengl.NVVertexBufferUnifiedMemory.glBufferAddressRangeNV;
+import static org.lwjgl.opengl.NVMeshShader.glDrawMeshTasksIndirectNV;
 
 public class TranslucentTerrainRasterizer extends Phase {
     private final int blockSampler = glGenSamplers();
@@ -66,7 +67,7 @@ public class TranslucentTerrainRasterizer extends Phase {
         // TODO Make it auto if we can't use nvidia
         //glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandBuffer.getDeviceAddress(), regionCount*8L);//Bind the command buffer
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, commandBuffer.getId());
-        glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
+        for(int i =0; i < regionCount; i++) {glDrawMeshTasksIndirectNV(i*8L);}
         GL45C.glBindSampler(0, 0);
         GL45C.glBindSampler(1, 0);
     }

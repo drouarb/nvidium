@@ -37,7 +37,7 @@ layout(binding = 1) uniform sampler2D tex_light;
 
 vec4 sampleLight(vec2 uv) {
     //Its divided by 16 to match sodium/vanilla (it can never be 1 which is funny)
-    return vec4(texture(tex_light, uv).rgb, 1);
+    return vec4(texture(tex_light, uv).rgb, 1.0);
 }
 
 vec3 computeMultiplier(Vertex V) {
@@ -84,7 +84,7 @@ void main() {
     vec3 barycoordFix = triangle0 ? barycoord.xyz : barycoord.zyx;
 
     #ifdef TRANSLUCENT_PASS
-    colour = texture(tex_diffuse, uv, 0);
+    colour = texture(tex_diffuse, uv, 0.0);
     colour.rgb *= v_colour;
     #else
     float lodBias = hasMipping(V0)?0.0f:-4.0f;
@@ -94,7 +94,7 @@ void main() {
     //vec2 uv = gl_BaryCoordSmoothAMD.x*decodeVertexUV(V0) + gl_BaryCoordSmoothAMD.y*decodeVertexUV(Vp) + gl_BaryCoordSmoothAMD.z*decodeVertexUV(V2);
     colour = texture(tex_diffuse, uv, lodBias);
     if (colour.a < getVertexAlphaCutoff(alphaCutoff)) discard;
-    colour.a = 1;
+    colour.a = 1.0;
     computeOutputColour(colour.rgb, barycoordFix);
     #endif
 

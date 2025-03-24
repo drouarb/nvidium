@@ -15,11 +15,11 @@ vec3 decodeVertexPosition(Vertex v) {
 
 vec4 decodeVertexColour(Vertex v) {
     uvec3 packed_color = (uvec3(v.z) >> uvec3(0, 8, 16)) & uvec3(0xFFu);
-    return vec4(vec3(packed_color) * COLOR_SCALE, 1);
+    return vec4(vec3(packed_color) * COLOR_SCALE, 1.0);
 }
 
 vec2 decodeVertexUV(Vertex v) {
-    return vec2(v.w&0xffff,v.w>>16)*(1f/(TEXTURE_MAX_SCALE));
+    return vec2(v.w&0xffff,v.w>>16)*(1.0f/(TEXTURE_MAX_SCALE));
 }
 
 bool hasMipping(Vertex v) {

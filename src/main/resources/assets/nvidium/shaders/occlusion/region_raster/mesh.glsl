@@ -41,7 +41,7 @@ void main() {
     // this remove an entire level of indirection and also puts region data in the very fast path
     Region data = regionData[regionIndicies[gl_WorkGroupID.x]];//fetch the region data
 
-    int visibilityIndex = (int)gl_WorkGroupID.x;
+    int visibilityIndex = int(gl_WorkGroupID.x);
     //If the region metadata was empty, return
     if (data.a == uint64_t(-1)) {
         regionVisibility[visibilityIndex] = uint8_t(0);
@@ -55,7 +55,7 @@ void main() {
     ivec3 size = unpackRegionSize(data);
 
     vec3 start = pos - ADD_SIZE;
-    vec3 end = start + 1 + size + (ADD_SIZE*2);
+    vec3 end = start + 1.0 + size + (ADD_SIZE*2.0);
 
     //TODO: Look into only doing 4 locals, for 2 reasons, its more effective for reducing duplicate computation and bandwidth
     // it also means that each thread can emit 3 primatives, 9 indicies each

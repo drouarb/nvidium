@@ -4,6 +4,8 @@ import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.gl.RenderDevice;
 import me.cortex.nvidium.gl.buffers.IDeviceMappedBuffer;
 import me.cortex.nvidium.gl.buffers.PersistentSparseAddressableBuffer;
+import me.cortex.nvidium.gl.buffers.DeviceOnlyMappedBuffer;
+import static org.lwjgl.opengl.GL43C.GL_SHADER_STORAGE_BUFFER;
 
 //TODO: make it not remove and immediately deallocate the sparse pages, wait until the end of a frame to deallocate
 // since committing pages is not cheap
@@ -24,7 +26,7 @@ public class BufferArena {
         if (Nvidium.SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER) {
             buffer = device.createSparseBuffer(80000000000L);//Create a 80gb buffer
         } else {
-            buffer = device.createDeviceOnlyMappedBuffer(memory);
+            buffer = new DeviceOnlyMappedBuffer(memory, GL_SHADER_STORAGE_BUFFER);
             this.segments.setLimit(memory/(4L*this.vertexFormatSize));
         }
         //Reserve index 0

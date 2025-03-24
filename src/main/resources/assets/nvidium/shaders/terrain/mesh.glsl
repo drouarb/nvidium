@@ -91,7 +91,7 @@ void putVertex(uint id, Vertex V) {
     #ifdef RENDER_FOG
     vec3 pos = decodeVertexPosition(V)+origin;
     vec3 exactPos = pos+subchunkOffset.xyz;
-    OUT[id].fogLerp = clamp(computeFogLerp(exactPos, isCylindricalFog, fogStart, fogEnd) * fogColour.a, 0, 1);
+    OUT[id].fogLerp = clamp(computeFogLerp(exactPos, isCylindricalFog, fogStart, fogEnd) * fogColour.a, 0.0, 1.0);
     #endif
 }
 
@@ -129,18 +129,18 @@ void main() {
 
     //Compute the bounding pixels of the 2 triangles in the quad. note, vertex 0 and 2 are the common verticies
     {
-        vec2 ssmin = ((pV0.xy/pV0.w)+1)*screenSize;
+        vec2 ssmin = ((pV0.xy/pV0.w)+1.0)*screenSize;
         vec2 ssmax = ssmin;
 
-        vec2 point = ((pV2.xy/pV2.w)+1)*screenSize;
+        vec2 point = ((pV2.xy/pV2.w)+1.0)*screenSize;
         ssmin = min(ssmin, point);
         ssmax = max(ssmax, point);
 
-        point = ((pV1.xy/pV1.w)+1)*screenSize;
+        point = ((pV1.xy/pV1.w)+1.0)*screenSize;
         vec2 t0min = min(ssmin, point);
         vec2 t0max = max(ssmax, point);
 
-        point = ((pV3.xy/pV3.w)+1)*screenSize;
+        point = ((pV3.xy/pV3.w)+1.0)*screenSize;
         vec2 t1min = min(ssmin, point);
         vec2 t1max = max(ssmax, point);
 
@@ -167,15 +167,15 @@ void main() {
 
     //We have triangles to emit!
     // emit the constant vertices (0,2) that are needed for both triangles
-    OUT[vertIndex].barycoord = vec3(1, 0, 0);
+    OUT[vertIndex].barycoord = vec3(1.0, 0.0, 0.0);
     putVertex(vertIndex, V0); gl_MeshVerticesNV[vertIndex++].gl_Position = pV0;
-    OUT[vertIndex].barycoord = vec3(0, 0, 1);
+    OUT[vertIndex].barycoord = vec3(0.0, 0.0, 1.0);
     putVertex(vertIndex, V2); gl_MeshVerticesNV[vertIndex++].gl_Position = pV2;
 
     int primData = int(id<<1);
 
     if (t0draw) {
-        OUT[vertIndex].barycoord = vec3(0, 1, 0);
+        OUT[vertIndex].barycoord = vec3(0.0, 1.0, 0.0);
         putVertex(vertIndex, V1); gl_MeshVerticesNV[vertIndex].gl_Position = pV1;
         // 0 1 2
         gl_PrimitiveIndicesNV[indexIndex++] = vertBase+0;
@@ -188,7 +188,7 @@ void main() {
     }
 
     if (t1draw) {
-        OUT[vertIndex].barycoord = vec3(0, 1, 0);
+        OUT[vertIndex].barycoord = vec3(0.0, 1.0, 0.0);
         putVertex(vertIndex, V3); gl_MeshVerticesNV[vertIndex].gl_Position = pV3;
         // 2 3 0
         gl_PrimitiveIndicesNV[indexIndex++] = vertBase+1;
