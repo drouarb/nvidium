@@ -1,6 +1,5 @@
 package me.cortex.nvidium;
 
-import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.ints.*;
 import me.cortex.nvidium.config.StatisticsLoggingLevel;
@@ -449,8 +448,6 @@ public class RenderPipeline {
         glDisableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
         glDisableClientState(GL_DRAW_INDIRECT_UNIFIED_NV);
         glDepthFunc(GL11C.GL_LEQUAL);
-        glDisable(GL_DEPTH_TEST);
-
 
         //if ((err = glGetError()) != 0) {
         //    throw new IllegalStateException("GLERROR: "+err);
@@ -488,12 +485,7 @@ public class RenderPipeline {
         //Translucency sorting
         {
             glEnable(GL_DEPTH_TEST);
-            RenderSystem.enableBlend();
-            RenderSystem.blendFuncSeparate(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SrcFactor.ONE, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA);
             translucencyTerrainRasterizer.raster(prevRegionCount, translucencyCommandBuffer.getDeviceAddress());
-            RenderSystem.disableBlend();
-            RenderSystem.defaultBlendFunc();
-            glDisable(GL_DEPTH_TEST);
         }
 
         glDisableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);

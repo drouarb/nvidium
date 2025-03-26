@@ -3,10 +3,9 @@
   "package": "me.cortex.nvidium.mixin",
   "compatibilityLevel": "JAVA_17",
   "client": [
-    "minecraft.LightMapAccessor",
     "minecraft.MixinBackgroundRenderer",
     "minecraft.MixinGameRenderer",
-    "minecraft.MixinWindow",
+    "minecraft.MixinGlBackend",
     "minecraft.MixinWorldRenderer",
     "sodium.MixinChunkBuilder",
     "sodium.MixinChunkBuilderMeshingTask",

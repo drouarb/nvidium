@@ -17,9 +17,9 @@ public class MixinWorldRenderer {
         return Math.max(a, b);
     }
 
-    @Redirect(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/GameRenderer;getViewDistance()F"))
+    @Redirect(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/GameRenderer;getViewDistanceBlocks()F"))
     private float changeRD(GameRenderer instance) {
-        float viewDistance = instance.getViewDistance();
+        float viewDistance = instance.getViewDistanceBlocks();
         if (Nvidium.IS_ENABLED) {
             var dist = Nvidium.config.region_keep_distance * 16;
             return dist == 32 * 16 ? viewDistance : (dist == 256 * 16 ? 9999999 : dist);

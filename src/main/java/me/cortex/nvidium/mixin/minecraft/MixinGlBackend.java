@@ -1,19 +1,18 @@
 package me.cortex.nvidium.mixin.minecraft;
 
 import me.cortex.nvidium.Nvidium;
-import net.minecraft.client.WindowEventHandler;
-import net.minecraft.client.WindowSettings;
-import net.minecraft.client.util.MonitorTracker;
-import net.minecraft.client.util.Window;
+import net.minecraft.client.gl.GlBackend;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(Window.class)
-public class MixinWindow {
+import java.util.function.BiFunction;
+
+@Mixin(GlBackend.class)
+public class MixinGlBackend {
     @Inject(method = "<init>", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL;createCapabilities()Lorg/lwjgl/opengl/GLCapabilities;", shift = At.Shift.AFTER), remap = false)
-    private void init(WindowEventHandler eventHandler, MonitorTracker monitorTracker, WindowSettings settings, String videoMode, String title, CallbackInfo ci) {
+    private void init(long contextId, int debugVerbosity, boolean sync, BiFunction shaderSourceGetter, boolean renderDebugLabels, CallbackInfo ci) {
         Nvidium.checkSystemIsCapable();
     }
 }
