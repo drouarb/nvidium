@@ -63,7 +63,7 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
         // Disable sodium translucency sorting since nvidium is doing it
         if (Nvidium.IS_ENABLED && Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.SODIUM) {
             LOGGER.info("Ensuring translucency sorting is enabled");
-            SodiumClientMod.options().performance.sortingEnabled = true;
+            SodiumClientMod.options().debug.terrainSortingEnabled = true;
         }
     }
 
