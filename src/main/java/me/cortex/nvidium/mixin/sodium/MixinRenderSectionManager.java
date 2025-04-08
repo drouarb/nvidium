@@ -21,7 +21,6 @@ import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkVertexT
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.Fog;
 import net.minecraft.client.world.ClientWorld;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Final;
@@ -56,7 +55,7 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
         // Disable sodium translucency sorting since nvidium is doing it
         if (Nvidium.IS_ENABLED && Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.SODIUM) {
             LOGGER.info("Ensuring translucency sorting is enabled");
-            SodiumClientMod.options().performance.sortingEnabled = true;
+            SodiumClientMod.options().debug.terrainSortingEnabled = true;
         }
     }
 
@@ -104,7 +103,7 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
     }
 
     @Inject(method = "update", at = @At("HEAD"))
-    private void trackViewport(Camera camera, Viewport viewport, Fog fogParameters, boolean spectator, CallbackInfo ci) {
+    private void trackViewport(Camera camera, Viewport viewport, boolean spectator, CallbackInfo ci) {
         this.viewport = viewport;
     }
 
@@ -138,7 +137,7 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
     }
 
     @Inject(method = "createTerrainRenderList", at = @At("HEAD"), cancellable = true)
-    private void redirectTerrainRenderList(Camera camera, Viewport viewport, Fog fogParameters, int frame, boolean spectator, CallbackInfo ci) {
+    private void redirectTerrainRenderList(Camera camera, Viewport viewport, int frame, boolean spectator, CallbackInfo ci) {
         if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs) {
             ci.cancel();
         }

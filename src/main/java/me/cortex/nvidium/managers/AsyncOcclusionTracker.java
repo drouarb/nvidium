@@ -11,7 +11,6 @@ import net.caffeinemc.mods.sodium.client.render.chunk.occlusion.OcclusionCuller;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.Fog;
 import net.minecraft.client.texture.Sprite;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
@@ -184,7 +183,7 @@ public class AsyncOcclusionTracker {
     private boolean shouldUseOcclusionCulling(Camera camera, boolean spectator) {
         BlockPos origin = camera.getBlockPos();
         boolean useOcclusionCulling;
-        if (spectator && this.world.getBlockState(origin).isOpaqueFullCube()) {
+        if (spectator && this.world.getBlockState(origin).isOpaqueFullCube(this.world, origin)) {
             useOcclusionCulling = false;
         } else {
             useOcclusionCulling = MinecraftClient.getInstance().chunkCullingEnabled;
@@ -194,9 +193,8 @@ public class AsyncOcclusionTracker {
     }
 
     private float getEffectiveRenderDistance() {
-        Fog fog = RenderSystem.getShaderFog();
-        float[] color = new float[]{ fog.red(), fog.green(), fog.blue(), fog.alpha() };
-        float distance = RenderSystem.getShaderFog().end();
+        float[] color = RenderSystem.getShaderFogColor();
+        float distance = RenderSystem.getShaderFogEnd();
         float renderDistance = this.getRenderDistance();
         return !MathHelper.approximatelyEquals(color[3], 1.0F) ? renderDistance : Math.min(renderDistance, distance + 0.5F);
     }
