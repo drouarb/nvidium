@@ -55,7 +55,8 @@ public class TemporalTerrainRasterizer extends Phase {
         // TODO Make it auto if we can't use nvidia
         //glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandBuffer.getDeviceAddress(), regionCount*8L);//Bind the command buffer
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, commandBuffer.getId());
-        for(int i =0; i < regionCount; i++) {glDrawMeshTasksIndirectNV(i*8L);}
+        glMultiDrawMeshTasksIndirectNV(0, regionCount, 8);
+        //for(int i =0; i < regionCount; i++) {glDrawMeshTasksIndirectNV(i*8L);}
 
 
         GL45C.glBindSampler(0, 0);
