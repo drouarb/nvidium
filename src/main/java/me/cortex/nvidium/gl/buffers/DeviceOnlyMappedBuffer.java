@@ -22,6 +22,7 @@ public class DeviceOnlyMappedBuffer extends GlObject implements IDeviceMappedBuf
         this.size = size;
         this.type = type;
         glNamedBufferStorage(id, size, 0);
+        System.out.println("============" + size);
 
         if (type == GL_BUFFER_GPU_ADDRESS_NV) {
             long[] holder = new long[1];

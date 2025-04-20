@@ -116,7 +116,7 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
             if (pass == DefaultTerrainRenderPasses.SOLID) {
                 renderer.renderFrame(viewport, matrices, x, y, z);
             } else if (pass == DefaultTerrainRenderPasses.TRANSLUCENT) {
-                renderer.renderTranslucent();
+                //renderer.renderTranslucent();
             }
             pass.endDrawing();
         }

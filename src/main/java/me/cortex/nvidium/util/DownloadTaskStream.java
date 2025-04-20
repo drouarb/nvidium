@@ -51,6 +51,13 @@ public class DownloadTaskStream {
         allocations[cidx].clear();
     }
 
+    public void forceTickAll() { // Dirty hack to force tick it now
+        System.out.println("Force tick all: " + allocations.length);
+        for (int i = 0; i < allocations.length; i++) {
+            this.tick();
+        }
+    }
+
     public void delete() {
         TickableManager.remove(this);
         buffer.delete();

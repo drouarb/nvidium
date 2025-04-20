@@ -136,6 +136,7 @@ public class RenderPipeline {
         regionVisibility = new DeviceOnlyMappedBuffer(maxRegions, GL_SHADER_STORAGE_BUFFER);
         sectionVisibility = new DeviceOnlyMappedBuffer(maxRegions * 256L, GL_SHADER_STORAGE_BUFFER);
 
+        System.out.println("HERE");
         terrainCommandBuffer = new DeviceOnlyMappedBuffer(maxRegions*8L, GL_SHADER_STORAGE_BUFFER); // GL_SHADER_STORAGE_BUFFER
         translucencyCommandBuffer = new DeviceOnlyMappedBuffer(maxRegions*8L, GL_SHADER_STORAGE_BUFFER); // GL_BUFFER_GPU_ADDRESS_NV
 
@@ -394,7 +395,7 @@ public class RenderPipeline {
 
         if (prevRegionCount != 0) {
             glEnable(GL_DEPTH_TEST);
-            terrainRasterizer.raster(prevRegionCount, terrainCommandBuffer);
+            terrainRasterizer.raster(prevRegionCount, terrainCommandBuffer, downloadStream);
             glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
         }
 

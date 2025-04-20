@@ -5,11 +5,13 @@ import me.cortex.nvidium.gl.buffers.IDeviceMappedBuffer;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import me.cortex.nvidium.mixin.minecraft.LightMapAccessor;
+import me.cortex.nvidium.util.DownloadTaskStream;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.Identifier;
 import org.lwjgl.opengl.GL12C;
 import org.lwjgl.opengl.GL45;
 import org.lwjgl.opengl.GL45C;
+import org.lwjgl.system.MemoryUtil;
 
 import static me.cortex.nvidium.RenderPipeline.GL_DRAW_INDIRECT_ADDRESS_NV;
 import static me.cortex.nvidium.gl.shader.ShaderType.*;
@@ -17,9 +19,7 @@ import static org.lwjgl.opengl.GL11C.*;
 import static org.lwjgl.opengl.GL15.glBindBuffer;
 import static org.lwjgl.opengl.GL33.glGenSamplers;
 import static org.lwjgl.opengl.GL40.GL_DRAW_INDIRECT_BUFFER;
-import static org.lwjgl.opengl.NVMeshShader.glMultiDrawMeshTasksIndirectNV;
-import static org.lwjgl.opengl.NVVertexBufferUnifiedMemory.glBufferAddressRangeNV;
-import static org.lwjgl.opengl.NVMeshShader.glDrawMeshTasksIndirectNV;
+import static org.lwjgl.opengl.NVMeshShader.*;
 
 public class PrimaryTerrainRasterizer extends Phase {
     private final int blockSampler = glGenSamplers();
@@ -45,7 +45,7 @@ public class PrimaryTerrainRasterizer extends Phase {
         GlStateManager._bindTexture(textureId);
     }
 
-    public void raster(int regionCount, IDeviceMappedBuffer commandBuffer) {
+    public void raster(int regionCount, IDeviceMappedBuffer commandBuffer, DownloadTaskStream downloadTask) {
         shader.bind();
 
         int blockId = MinecraftClient.getInstance().getTextureManager().getTexture(Identifier.of("minecraft", "textures/atlas/blocks.png")).getGlId();
@@ -59,8 +59,35 @@ public class PrimaryTerrainRasterizer extends Phase {
         // TODO Make it auto if we can't use nvidia
         //glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandBuffer.getDeviceAddress(), regionCount*8L);//Bind the command buffer
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, commandBuffer.getId());
-        glMultiDrawMeshTasksIndirectNV(0, regionCount, 8);
+
+        if (regionCount == 0)
+            return;
+
+        // Pick one of the following 3
+        // 1. glMultiDrawMeshTasksIndirectNV Ideal
+        //glMultiDrawMeshTasksIndirectNV(0, regionCount, 8);
+
+        // 2. Terrible performance for debug purpose
         //for(int i =0; i < regionCount; i++) {glDrawMeshTasksIndirectNV(i*8L);}
+
+        // 3. Even more cursed
+        //*
+        downloadTask.download(commandBuffer, 0, regionCount*2*4, (addr)-> {
+            System.out.println("RegionCount: " + regionCount);
+
+            for (int i = 0; i < regionCount; i++) {
+                int count = MemoryUtil.memGetInt(addr + (i * 8L));
+                int first = MemoryUtil.memGetInt(addr + (i * 8L + 4));
+
+                System.out.println(i + ">count:" + count + " | first:" + first);
+                if (count > 0) {
+                    glDrawMeshTasksNV(first, count);
+                }
+            }
+        });
+        downloadTask.forceTickAll();
+        //*
+
         GL45C.glBindSampler(0, 0);
         GL45C.glBindSampler(1, 0);
     }
