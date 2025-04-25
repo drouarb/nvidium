@@ -197,7 +197,7 @@ public class RenderPipeline {
 
         if (sectionManager.getRegionManager().regionCount() == 0) return;//Dont render anything if there is nothing to render
 
-        final int DEBUG_RENDER_LEVEL = 0;//0: no debug, 1: region debug, 2: section debug
+        final int DEBUG_RENDER_LEVEL = 1;//0: no debug, 1: region debug, 2: section debug
         final boolean WRITE_DEPTH = false;
 
         /*
@@ -395,7 +395,7 @@ public class RenderPipeline {
 
         if (prevRegionCount != 0) {
             glEnable(GL_DEPTH_TEST);
-            terrainRasterizer.raster(prevRegionCount, terrainCommandBuffer, downloadStream);
+            //terrainRasterizer.raster(prevRegionCount, terrainCommandBuffer, downloadStream);
             glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
         }
 
@@ -433,7 +433,7 @@ public class RenderPipeline {
             glDepthMask(true);
         }
 
-        sectionRasterizer.raster(visibleRegions);
+        //sectionRasterizer.raster(visibleRegions);
         // TODO Enable if supported
         //glDisable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
         glDepthMask(true);
@@ -447,7 +447,7 @@ public class RenderPipeline {
         //Do temporal rasterization
         if (Nvidium.config.enable_temporal_coherence && visibleRegions != 0) {
             glMemoryBarrier(GL_COMMAND_BARRIER_BIT);
-            temporalRasterizer.raster(visibleRegions, terrainCommandBuffer);
+            //temporalRasterizer.raster(visibleRegions, terrainCommandBuffer);
         }
 
 
@@ -457,7 +457,7 @@ public class RenderPipeline {
             // TODO Enable if supported
             //glEnable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
 
-            regionVisibilityTracking.computeVisibility(visibleRegions, regionVisibility, regionMap);
+            //regionVisibilityTracking.computeVisibility(visibleRegions, regionVisibility, regionMap);
 
             // TODO Enable if supported
             //glDisable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
@@ -469,7 +469,7 @@ public class RenderPipeline {
 
         if (regionSortSize != 0) {
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-            regionSectionSorter.dispatch(regionSortSize);
+            //regionSectionSorter.dispatch(regionSortSize);
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         }
 

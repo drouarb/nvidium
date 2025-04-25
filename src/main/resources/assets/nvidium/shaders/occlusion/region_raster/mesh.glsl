@@ -16,6 +16,10 @@
 layout(local_size_x = 8) in;
 layout(triangles, max_vertices=8, max_primitives=12) out;
 
+layout(location = 1) out Interpolants {
+    int primitrash;
+} bs[];
+
 const uint PILUTA[] = {0, 3, 6, 0, 1, 7, 4, 5};
 const uint PILUTB[] = {1, 2, 6, 4, 0, 7, 6, 4};
 const uint PILUTC[] = {2, 0, 4, 5, 1, 3, 7, 2};
@@ -27,12 +31,14 @@ void emitIndicies(int visIndex) {
     gl_PrimitiveIndicesNV[(gl_LocalInvocationID.x<<2)|1] = PILUTB[gl_LocalInvocationID.x];
     gl_PrimitiveIndicesNV[(gl_LocalInvocationID.x<<2)|2] = PILUTC[gl_LocalInvocationID.x];
     gl_PrimitiveIndicesNV[(gl_LocalInvocationID.x<<2)|3] = PILUTD[gl_LocalInvocationID.x];
-    gl_MeshPrimitivesNV[gl_LocalInvocationID.x].gl_PrimitiveID = visIndex;
+    gl_MeshPrimitivesNV[gl_LocalInvocationID.x].gl_PrimitiveID = visIndex; // BROKEN ON AMD
+    bs[gl_LocalInvocationID.x].primitrash = visIndex;
 }
 
 void emitParital(int visIndex) {
     gl_PrimitiveIndicesNV[(8*4)+gl_LocalInvocationID.x] = PILUTE[gl_LocalInvocationID.x];
-    gl_MeshPrimitivesNV[gl_LocalInvocationID.x+8].gl_PrimitiveID = visIndex;
+    gl_MeshPrimitivesNV[gl_LocalInvocationID.x+8].gl_PrimitiveID = visIndex;  // BROKEN ON AMD
+    bs[gl_LocalInvocationID.x+8].primitrash = visIndex;
     gl_PrimitiveCountNV = 12;
 }
 

@@ -19,7 +19,7 @@ public class Nvidium {
     public static final Logger LOGGER = LoggerFactory.getLogger("Nvidium");
     public static boolean IS_COMPATIBLE = false;
     public static boolean IS_ENABLED = false;
-    public static boolean IS_DEBUG = System.getProperty("nvidium.isDebug", "false").equals("TRUE");
+    public static boolean IS_DEBUG = true; // System.getProperty("nvidium.isDebug", "false").equals("TRUE");
     public static boolean SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER = false;
     public static boolean FORCE_DISABLE = false;
 
