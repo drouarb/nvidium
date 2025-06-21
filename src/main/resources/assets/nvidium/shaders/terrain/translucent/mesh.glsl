@@ -12,9 +12,11 @@
 #extension GL_KHR_shader_subgroup_vote : require
 
 #import <nvidium:occlusion/scene.glsl>
-#import <nvidium:terrain/fog.glsl>
 #import <nvidium:terrain/vertex_format.glsl>
 
+#ifdef RENDER_FOG
+#import <sodium:include/fog.glsl>
+#endif
 
 #ifdef TRANSLUCENCY_SORTING_QUADS
 vec3 depthPos = vec3(0);
@@ -36,7 +38,7 @@ taskNV in Task {
 
 layout(location=1) out Interpolants {
 #ifdef RENDER_FOG
-    float16_t fogLerp;
+    vec2 v_FragDistance;
 #endif
     vec2 uv;
     vec3 v_colour;
@@ -70,8 +72,7 @@ void emitVertex(uint vertexBaseId, uint innerId) {
     vec3 exactPos = pos+subchunkOffset.xyz;
 
     #ifdef RENDER_FOG
-    float fogLerp = clamp(computeFogLerp(exactPos, isCylindricalFog, fogStart, fogEnd) * fogColour.a, 0, 1);
-    OUT[outId].fogLerp = float16_t(fogLerp);
+    OUT[outId].v_FragDistance = getFragDistance(exactPos);
     #endif
     OUT[outId].uv = decodeVertexUV(V);
 

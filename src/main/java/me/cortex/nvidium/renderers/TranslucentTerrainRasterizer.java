@@ -1,10 +1,11 @@
 package me.cortex.nvidium.renderers;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.textures.GpuTexture;
+import com.mojang.blaze3d.textures.GpuTextureView;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
-import net.caffeinemc.mods.sodium.client.util.TextureUtil;
+import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.texture.GlTexture;
 import net.minecraft.util.Identifier;
 import org.lwjgl.opengl.*;
@@ -38,20 +39,22 @@ public class TranslucentTerrainRasterizer extends Phase {
         GL45C.glSamplerParameteri(lightSampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
 
-    private static void setTexture(GpuTexture textureId, int bindingPoint) {
-        GlTexture tex = (GlTexture) textureId;
+    private static void setTexture(GpuTextureView texView, int bindingPoint) {
+        GlTexture tex = (GlTexture) texView.texture();
         GlStateManager._activeTexture(GL32C.GL_TEXTURE0 + bindingPoint);
         GlStateManager._bindTexture(tex.getGlId());
-        tex.checkDirty();
+        GlStateManager._texParameter(GL32C.GL_TEXTURE_2D, 33084, texView.baseMipLevel());
+        GlStateManager._texParameter(GL32C.GL_TEXTURE_2D, 33085, texView.baseMipLevel() + texView.mipLevels() - 1);
+        tex.checkDirty(GL32C.GL_TEXTURE_2D);
     }
 
     //Translucency is rendered in a very cursed and incorrect way
     // it hijacks the unassigned indirect command dispatch and uses that to dispatch the translucent chunks as well
-    public void raster(int regionCount, long commandAddr) {
+    public void raster(TerrainRenderPass pass, int regionCount, long commandAddr) {
         shader.bind();
 
-        GlTexture blockTexture = (GlTexture) TextureUtil.getBlockTextureId();
-        GlTexture lightTexture = (GlTexture) TextureUtil.getLightTextureId();
+        GpuTextureView blockTexture = pass.getAtlas();
+        GpuTextureView lightTexture = MinecraftClient.getInstance().gameRenderer.getLightmapTextureManager().getGlTextureView();
 
         GL45C.glBindSampler(0, blockSampler);
         GL45C.glBindSampler(1, lightSampler);

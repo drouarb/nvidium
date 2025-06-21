@@ -14,14 +14,17 @@
 #import <nvidium:occlusion/scene.glsl>
 #import <nvidium:terrain/vertex_format.glsl>
 
-
+#ifdef RENDER_FOG
+#define USE_FOG
+#import <sodium:include/fog.glsl>
+#endif
 
 
 layout(location = 0) out vec4 colour;
 #if defined(RENDER_FOG) || defined(TRANSLUCENT_PASS)
 layout(location = 1) in Interpolants {
     #ifdef RENDER_FOG
-    float fogLerp;
+    vec2 v_FragDistance;
     #endif
     #ifdef TRANSLUCENT_PASS
     vec2 uv;
@@ -57,7 +60,7 @@ void computeOutputColour(inout vec3 colour) {
 #ifdef RENDER_FOG
 //2 ways to do it, either use an interpolation, or screenspace reversal, screenspace reversal is better when many many vertices
 // however interpolation increases ISBE
-void applyFog(inout vec3 colour) {
+void applyFog(inout vec4 colour) {
     /*
     //Reverse the transformation and compute the original position
     vec4 clip = (MVPInv * vec4((gl_FragCoord.xy/screenSize)-1, gl_FragCoord.z*2-1, 1));
@@ -65,7 +68,8 @@ void applyFog(inout vec3 colour) {
     float fogLerp = clamp(computeFogLerp(pos, isCylindricalFog, fogStart, fogEnd) * fogColour.a, 0,1);
     colour = mix(colour, fogColour.rgb, fogLerp);
     */
-    colour = mix(colour, fogColour.rgb, fogLerp);
+    //colour = mix(colour, fogColour.rgb, fogLerp);
+    colour = _linearFog(colour, v_FragDistance, fogColour, environmentFog, renderFog);
 }
 #endif
 
@@ -95,6 +99,6 @@ void main() {
     #endif
 
     #ifdef RENDER_FOG
-    applyFog(colour.rgb);
+    applyFog(colour);
     #endif
 }

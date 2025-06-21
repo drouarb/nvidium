@@ -1,6 +1,5 @@
 package me.cortex.nvidium.managers;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.longs.Long2ReferenceMap;
 import me.cortex.nvidium.sodiumCompat.IRenderSectionExtension;
 import net.caffeinemc.mods.sodium.client.SodiumClientMod;
@@ -11,10 +10,8 @@ import net.caffeinemc.mods.sodium.client.render.chunk.occlusion.OcclusionCuller;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.Fog;
 import net.minecraft.client.texture.Sprite;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -170,17 +167,6 @@ public class AsyncOcclusionTracker {
         return renderDistance;
     }
 
-    private float getSearchDistance2() {
-        float distance;
-        if (SodiumClientMod.options().performance.useFogOcclusion) {
-            distance = this.getEffectiveRenderDistance();
-        } else {
-            distance = this.getRenderDistance();
-        }
-
-        return distance;
-    }
-
     private boolean shouldUseOcclusionCulling(Camera camera, boolean spectator) {
         BlockPos origin = camera.getBlockPos();
         boolean useOcclusionCulling;
@@ -191,18 +177,6 @@ public class AsyncOcclusionTracker {
         }
 
         return useOcclusionCulling;
-    }
-
-    private float getEffectiveRenderDistance() {
-        Fog fog = RenderSystem.getShaderFog();
-        float[] color = new float[]{ fog.red(), fog.green(), fog.blue(), fog.alpha() };
-        float distance = RenderSystem.getShaderFog().end();
-        float renderDistance = this.getRenderDistance();
-        return !MathHelper.approximatelyEquals(color[3], 1.0F) ? renderDistance : Math.min(renderDistance, distance + 0.5F);
-    }
-
-    private float getRenderDistance() {
-        return (float)this.renderDistance;
     }
 
     public int getFrame() {

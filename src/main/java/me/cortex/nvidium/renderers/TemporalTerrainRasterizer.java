@@ -1,8 +1,10 @@
 package me.cortex.nvidium.renderers;
 
+import com.mojang.blaze3d.textures.GpuTextureView;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
-import net.caffeinemc.mods.sodium.client.util.TextureUtil;
+import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.texture.GlTexture;
 import net.minecraft.util.Identifier;
 import org.lwjgl.opengl.GL12C;
@@ -36,16 +38,16 @@ public class TemporalTerrainRasterizer extends Phase {
         GL45C.glSamplerParameteri(lightSampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
 
-    public void raster(int regionCount, long commandAddr) {
+    public void raster(TerrainRenderPass pass, int regionCount, long commandAddr) {
         shader.bind();
 
-        GlTexture blockTexture = (GlTexture) TextureUtil.getBlockTextureId();
-        GlTexture lightTexture = (GlTexture) TextureUtil.getLightTextureId();
+        GpuTextureView blockTexture = pass.getAtlas();
+        GpuTextureView lightTexture = MinecraftClient.getInstance().gameRenderer.getLightmapTextureManager().getGlTextureView();
 
-        GL45C.glBindTextureUnit(0, blockTexture.getGlId());
+        GL45C.glBindTextureUnit(0, ((GlTexture)blockTexture.texture()).getGlId());
         GL45C.glBindSampler(0, blockSampler);
 
-        GL45C.glBindTextureUnit(1, lightTexture.getGlId());
+        GL45C.glBindTextureUnit(1, ((GlTexture)lightTexture.texture()).getGlId());
         GL45C.glBindSampler(1, lightSampler);
 
         glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandAddr, regionCount*8L);//Bind the command buffer

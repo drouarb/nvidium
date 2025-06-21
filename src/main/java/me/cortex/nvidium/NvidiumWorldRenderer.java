@@ -12,7 +12,9 @@ import net.caffeinemc.mods.sodium.client.render.chunk.RenderSection;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.BuilderTaskOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkBuildOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkSortOutput;
+import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
+import net.caffeinemc.mods.sodium.client.util.FogParameters;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.texture.Sprite;
 import org.jetbrains.annotations.Nullable;
@@ -76,8 +78,8 @@ public class NvidiumWorldRenderer {
         renderPipeline.reloadShaders();
     }
 
-    public void renderFrame(Viewport viewport, ChunkRenderMatrices matrices, double x, double y, double z) {
-        renderPipeline.renderFrame(viewport, matrices, x, y, z);
+    public void renderFrame(TerrainRenderPass pass, Viewport viewport, FogParameters fogParameters, ChunkRenderMatrices matrices, double x, double y, double z) {
+        renderPipeline.renderFrame(pass, viewport, fogParameters, matrices, x, y, z);
 
         while (sectionManager.terrainAreana.getUsedMB() > (max_geometry_memory - 100)) {
             renderPipeline.removeARegion();
@@ -89,8 +91,8 @@ public class NvidiumWorldRenderer {
         }
     }
 
-    public void renderTranslucent() {
-        this.renderPipeline.renderTranslucent();
+    public void renderTranslucent(TerrainRenderPass pass) {
+        this.renderPipeline.renderTranslucent(pass);
     }
 
     public void deleteSection(RenderSection section) {

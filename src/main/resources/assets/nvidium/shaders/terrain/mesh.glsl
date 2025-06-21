@@ -13,9 +13,11 @@
 #extension GL_KHR_shader_subgroup_vote : require
 
 #import <nvidium:occlusion/scene.glsl>
-#import <nvidium:terrain/fog.glsl>
 #import <nvidium:terrain/vertex_format.glsl>
 
+#ifdef RENDER_FOG
+#import <sodium:include/fog.glsl>
+#endif
 
 //It seems like for terrain at least, the sweat spot is ~16 quads per mesh invocation (even if the local size is not 32 )
 layout(local_size_x = 16) in;
@@ -23,7 +25,7 @@ layout(triangles, max_vertices=64, max_primitives=32) out;
 
 #ifdef RENDER_FOG
 layout(location=1) out Interpolants {
-    float fogLerp;
+    vec2 v_FragDistance;
 } OUT[];
 #endif
 
@@ -90,7 +92,8 @@ void putVertex(uint id, Vertex V) {
     #ifdef RENDER_FOG
     vec3 pos = decodeVertexPosition(V)+origin;
     vec3 exactPos = pos+subchunkOffset.xyz;
-    OUT[id].fogLerp = clamp(computeFogLerp(exactPos, isCylindricalFog, fogStart, fogEnd) * fogColour.a, 0, 1);
+    //OUT[id].fogLerp = clamp(computeFogLerp(exactPos, isCylindricalFog, fogStart, fogEnd) * fogColour.a, 0, 1);
+    OUT[id].v_FragDistance = getFragDistance(exactPos);
     #endif
 }
 

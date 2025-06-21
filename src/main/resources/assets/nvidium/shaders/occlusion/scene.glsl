@@ -51,7 +51,6 @@ layout(std140, binding=0) uniform SceneData {
     #endif
     ivec4 chunkPosition;
     vec4 subchunkOffset;
-    vec4 fogColour;
 
     //vec4  subChunkPosition;//The subChunkTranslation is already done inside the MVP
     //align(8)
@@ -82,9 +81,10 @@ layout(std140, binding=0) uniform SceneData {
 
     vec2 screenSize;
 
-    float fogStart;
-    float fogEnd;
-    bool isCylindricalFog;
+    vec4 fogColour;
+    vec2 environmentFog;
+    vec2 renderFog;
+
     uint flags;
 
     //align(2)
