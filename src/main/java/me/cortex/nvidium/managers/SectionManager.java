@@ -89,6 +89,16 @@ public class SectionManager {
             return;
         }
 
+        // Quick dirty integrity check to prevent race condition crash because translucencyQuadCounts can be overridden by an already reprocessed chunk
+        var totalQuads = 0;
+        for (var facing : ModelQuadFacing.values()) {
+            totalQuads += quadCountData[facing.ordinal()];
+        }
+        if (totalQuads * 6 * 4 != indexBuffer.getLength()) {
+            LOGGER.error("ChunkSortOutput integrity check failed, aborting (totalQuads={};indexBuffer={})", totalQuads, indexBuffer.getLength() / 24);
+            return;
+        }
+
         int indexDataAddress;
         {
             var idxBufferLength = indexBuffer.getLength() / 6;
