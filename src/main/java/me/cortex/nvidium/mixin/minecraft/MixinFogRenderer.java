@@ -13,7 +13,7 @@ public class MixinFogRenderer {
             ordinal = 2
     )
     private float modifyFogRD(float viewDistance) {
-        if (Nvidium.IS_ENABLED) {
+        if (Nvidium.IS_ENABLED && Nvidium.config.region_keep_distance != 32) {
             return Math.max(viewDistance, Nvidium.config.region_keep_distance * 16);
         }
         return viewDistance;
