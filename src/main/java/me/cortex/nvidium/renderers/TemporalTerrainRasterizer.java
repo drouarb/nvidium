@@ -3,8 +3,7 @@ package me.cortex.nvidium.renderers;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import net.caffeinemc.mods.sodium.client.util.TextureUtil;
-import net.minecraft.client.texture.GlTexture;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import org.lwjgl.opengl.GL12C;
 import org.lwjgl.opengl.GL45;
 import org.lwjgl.opengl.GL45C;
@@ -17,13 +16,15 @@ import static org.lwjgl.opengl.GL33.glGenSamplers;
 import static org.lwjgl.opengl.NVMeshShader.glMultiDrawMeshTasksIndirectNV;
 import static org.lwjgl.opengl.NVVertexBufferUnifiedMemory.glBufferAddressRangeNV;
 
+import com.mojang.blaze3d.opengl.GlTexture;
+
 public class TemporalTerrainRasterizer extends Phase {
     private final int blockSampler = glGenSamplers();
     private final int lightSampler = glGenSamplers();
     private final Shader shader = Shader.make()
-            .addSource(TASK, ShaderLoader.parse(Identifier.of("nvidium", "terrain/temporal_task.glsl")))
-            .addSource(MESH, ShaderLoader.parse(Identifier.of("nvidium", "terrain/mesh.glsl")))
-            .addSource(FRAGMENT, ShaderLoader.parse(Identifier.of("nvidium", "terrain/frag.frag"))).compile();
+            .addSource(TASK, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/temporal_task.glsl")))
+            .addSource(MESH, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/mesh.glsl")))
+            .addSource(FRAGMENT, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/frag.frag"))).compile();
 
     public TemporalTerrainRasterizer() {
         GL45C.glSamplerParameteri(blockSampler, GL45C.GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
@@ -42,10 +43,10 @@ public class TemporalTerrainRasterizer extends Phase {
         GlTexture blockTexture = (GlTexture) TextureUtil.getBlockTextureId();
         GlTexture lightTexture = (GlTexture) TextureUtil.getLightTextureId();
 
-        GL45C.glBindTextureUnit(0, blockTexture.getGlId());
+        GL45C.glBindTextureUnit(0, blockTexture.glId());
         GL45C.glBindSampler(0, blockSampler);
 
-        GL45C.glBindTextureUnit(1, lightTexture.getGlId());
+        GL45C.glBindTextureUnit(1, lightTexture.glId());
         GL45C.glBindSampler(1, lightSampler);
 
         glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandAddr, regionCount*8L);//Bind the command buffer

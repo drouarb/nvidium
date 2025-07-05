@@ -14,8 +14,8 @@ import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkBuildOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkSortOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkMeshFormats;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
-import net.minecraft.client.render.Camera;
-import net.minecraft.client.texture.Sprite;
+import net.minecraft.client.Camera;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4fc;
 
@@ -165,11 +165,11 @@ public class NvidiumWorldRenderer {
     }
 
     @Nullable
-    public Sprite[] getAnimatedSpriteSet() {
+    public TextureAtlasSprite[] getAnimatedSpriteSet() {
         if (asyncChunkTracker != null) {
             return asyncChunkTracker.getVisibleAnimatedSprites();
         } else {
-            return new Sprite[0];
+            return new TextureAtlasSprite[0];
         }
     }
 
