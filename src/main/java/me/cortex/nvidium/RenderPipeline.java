@@ -10,6 +10,7 @@ import me.cortex.nvidium.gl.buffers.IDeviceMappedBuffer;
 import me.cortex.nvidium.managers.RegionManager;
 import me.cortex.nvidium.managers.RegionVisibilityTracker;
 import me.cortex.nvidium.managers.SectionManager;
+import me.cortex.nvidium.mixin.minecraft.SpriteAtlasTextureAccessor;
 import me.cortex.nvidium.renderers.*;
 import me.cortex.nvidium.util.DownloadTaskStream;
 import me.cortex.nvidium.util.TickableManager;
@@ -20,7 +21,6 @@ import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.client.MinecraftClient;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.impl.CompactChunkVertex;
-import net.caffeinemc.mods.sodium.mixin.core.render.texture.TextureAtlasAccessor;
 import net.minecraft.client.texture.SpriteAtlasTexture;
 import org.joml.*;
 import org.lwjgl.opengl.GL11C;
@@ -213,7 +213,7 @@ public class RenderPipeline {
         int screenWidth = MinecraftClient.getInstance().getWindow().getFramebufferWidth();
         int screenHeight = MinecraftClient.getInstance().getWindow().getFramebufferHeight();
 
-        var textureAtlas = (TextureAtlasAccessor) MinecraftClient.getInstance()
+        var textureAtlas = (SpriteAtlasTextureAccessor) MinecraftClient.getInstance()
                 .getTextureManager()
                 .getTexture(SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE);
 
