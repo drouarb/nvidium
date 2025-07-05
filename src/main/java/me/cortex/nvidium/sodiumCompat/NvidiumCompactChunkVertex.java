@@ -1,16 +1,11 @@
 package me.cortex.nvidium.sodiumCompat;
 
-
-import net.caffeinemc.mods.sodium.client.gl.attribute.GlVertexAttributeFormat;
 import net.caffeinemc.mods.sodium.client.gl.attribute.GlVertexFormat;
-import net.caffeinemc.mods.sodium.client.render.chunk.terrain.material.Material;
-import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.impl.DefaultChunkMeshAttributes;
-import net.caffeinemc.mods.sodium.client.render.chunk.shader.ChunkShaderBindingPoints;
+import net.minecraft.util.Mth;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkVertexEncoder;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkVertexType;
 import net.caffeinemc.mods.sodium.api.util.ColorABGR;
 import net.caffeinemc.mods.sodium.api.util.ColorU8;
-import net.minecraft.util.math.MathHelper;
 import org.lwjgl.system.MemoryUtil;
 
 public class NvidiumCompactChunkVertex implements ChunkVertexType {
@@ -68,8 +63,8 @@ public class NvidiumCompactChunkVertex implements ChunkVertexType {
 
 
     private static int compactLight(int light) {
-        int sky = MathHelper.clamp((light >>> 16) & 0xFF, 8, 248);
-        int block = MathHelper.clamp((light >>>  0) & 0xFF, 8, 248);
+        int sky = Mth.clamp((light >>> 16) & 0xFF, 8, 248);
+        int block = Mth.clamp((light >>>  0) & 0xFF, 8, 248);
 
         return (block << 0) | (sky << 8);
     }

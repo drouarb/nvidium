@@ -9,12 +9,12 @@ import net.caffeinemc.mods.sodium.client.render.chunk.RenderSection;
 import net.caffeinemc.mods.sodium.client.render.chunk.RenderSectionFlags;
 import net.caffeinemc.mods.sodium.client.render.chunk.occlusion.OcclusionCuller;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.Camera;
-import net.minecraft.client.texture.Sprite;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.world.World;
+import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -26,7 +26,7 @@ import static java.lang.Thread.MAX_PRIORITY;
 public class AsyncOcclusionTracker {
     private final OcclusionCuller occlusionCuller;
     private final Thread cullThread;
-    private final World world;
+    private final Level world;
 
     private volatile boolean running = true;
     private volatile int frame = 0;
@@ -36,7 +36,7 @@ public class AsyncOcclusionTracker {
 
     private final AtomicReference<List<RenderSection>> atomicBfsResult = new AtomicReference<>();
     private final AtomicReference<List<RenderSection>> blockEntitySectionsRef = new AtomicReference<>(new ArrayList<>());
-    private final AtomicReference<Sprite[]> visibleAnimatedSpritesRef = new AtomicReference<>();
+    private final AtomicReference<TextureAtlasSprite[]> visibleAnimatedSpritesRef = new AtomicReference<>();
 
     private final Map<ChunkUpdateType, ArrayDeque<RenderSection>> outputRebuildQueue;
 
@@ -46,7 +46,7 @@ public class AsyncOcclusionTracker {
 
     private volatile int chunkVisibilityCount = 0;
 
-    public AsyncOcclusionTracker(int renderDistance, Long2ReferenceMap<RenderSection> sections, World world, Map<ChunkUpdateType, ArrayDeque<RenderSection>> outputRebuildQueue) {
+    public AsyncOcclusionTracker(int renderDistance, Long2ReferenceMap<RenderSection> sections, Level world, Map<ChunkUpdateType, ArrayDeque<RenderSection>> outputRebuildQueue) {
         this.occlusionCuller = new OcclusionCuller(sections, world);
         this.cullThread = new Thread(this::run);
         this.cullThread.setName("Cull thread");
@@ -69,7 +69,7 @@ public class AsyncOcclusionTracker {
             //The reason for batching is so that ordering is strongly defined
             List<RenderSection> chunkUpdates = new ArrayList<>();
             List<RenderSection> blockEntitySections = new ArrayList<>();
-            Set<Sprite> animatedSpriteSet = animateVisibleSpritesOnly?new HashSet<>():null;
+            Set<TextureAtlasSprite> animatedSpriteSet = animateVisibleSpritesOnly?new HashSet<>():null;
             int[] visibleGeometryCounter = new int[1];
             final OcclusionCuller.Visitor visitor = (section) -> {
                 if (section.getPendingUpdate() != null && section.getTaskCancellationToken() == null) {
@@ -85,11 +85,11 @@ public class AsyncOcclusionTracker {
                 }
 
                 if ((section.getFlags()&(1<<RenderSectionFlags.HAS_BLOCK_ENTITIES))!=0 &&
-                        section.getPosition().isWithinDistance(viewport.getChunkCoord(),33)) {//32 rd max chunk distance
+                        section.getPosition().closerThan(viewport.getChunkCoord(),33)) {//32 rd max chunk distance
                     blockEntitySections.add(section);
                 }
                 if (animateVisibleSpritesOnly && (section.getFlags()&(1<<RenderSectionFlags.HAS_ANIMATED_SPRITES)) != 0 &&
-                        section.getPosition().isWithinDistance(viewport.getChunkCoord(),33)) {//32 rd max chunk distance (i.e. only animate sprites up to 32 chunks away)
+                        section.getPosition().closerThan(viewport.getChunkCoord(),33)) {//32 rd max chunk distance (i.e. only animate sprites up to 32 chunks away)
                     var animatedSprites = section.getAnimatedSprites();
                     if (animatedSprites != null) {
                         animatedSpriteSet.addAll(List.of(animatedSprites));
@@ -121,7 +121,7 @@ public class AsyncOcclusionTracker {
             }
             this.chunkVisibilityCount = visibleGeometryCounter[0];
             blockEntitySectionsRef.set(blockEntitySections);
-            visibleAnimatedSpritesRef.set(animatedSpriteSet==null?null:animatedSpriteSet.toArray(new Sprite[0]));
+            visibleAnimatedSpritesRef.set(animatedSpriteSet==null?null:animatedSpriteSet.toArray(new TextureAtlasSprite[0]));
             iterationTimeMillis = System.currentTimeMillis() - startTime;
         }
     }
@@ -181,12 +181,12 @@ public class AsyncOcclusionTracker {
     }
 
     private boolean shouldUseOcclusionCulling(Camera camera, boolean spectator) {
-        BlockPos origin = camera.getBlockPos();
+        BlockPos origin = camera.getBlockPosition();
         boolean useOcclusionCulling;
-        if (spectator && this.world.getBlockState(origin).isOpaqueFullCube(this.world, origin)) {
+        if (spectator && this.world.getBlockState(origin).isSolidRender(this.world, origin)) {
             useOcclusionCulling = false;
         } else {
-            useOcclusionCulling = MinecraftClient.getInstance().chunkCullingEnabled;
+            useOcclusionCulling = Minecraft.getInstance().smartCull;
         }
 
         return useOcclusionCulling;
@@ -196,7 +196,7 @@ public class AsyncOcclusionTracker {
         float[] color = RenderSystem.getShaderFogColor();
         float distance = RenderSystem.getShaderFogEnd();
         float renderDistance = this.getRenderDistance();
-        return !MathHelper.approximatelyEquals(color[3], 1.0F) ? renderDistance : Math.min(renderDistance, distance + 0.5F);
+        return !Mth.equal(color[3], 1.0F) ? renderDistance : Math.min(renderDistance, distance + 0.5F);
     }
 
     private float getRenderDistance() {
@@ -212,7 +212,7 @@ public class AsyncOcclusionTracker {
     }
 
     @Nullable
-    public Sprite[] getVisibleAnimatedSprites() {
+    public TextureAtlasSprite[] getVisibleAnimatedSprites() {
         return visibleAnimatedSpritesRef.get();
     }
 

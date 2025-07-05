@@ -1,24 +1,22 @@
 package me.cortex.nvidium.managers;
 
-import me.cortex.nvidium.gl.RenderDevice;
 import me.cortex.nvidium.gl.buffers.Buffer;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import me.cortex.nvidium.util.DownloadTaskStream;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import org.lwjgl.system.MemoryUtil;
 
 import static me.cortex.nvidium.gl.shader.ShaderType.FRAGMENT;
 import static me.cortex.nvidium.gl.shader.ShaderType.MESH;
-import static org.lwjgl.opengl.GL42.GL_COMMAND_BARRIER_BIT;
 import static org.lwjgl.opengl.GL42.glMemoryBarrier;
 import static org.lwjgl.opengl.GL43C.GL_SHADER_STORAGE_BARRIER_BIT;
 import static org.lwjgl.opengl.NVMeshShader.glDrawMeshTasksNV;
 
 public class RegionVisibilityTracker {
     private final Shader shader = Shader.make()
-            .addSource(MESH, ShaderLoader.parse(Identifier.of("nvidium", "occlusion/queries/region/mesh.glsl")))
-            .addSource(FRAGMENT, ShaderLoader.parse(Identifier.of("nvidium", "occlusion/queries/region/fragment.frag")))
+            .addSource(MESH, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "occlusion/queries/region/mesh.glsl")))
+            .addSource(FRAGMENT, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "occlusion/queries/region/fragment.frag")))
             .compile();
 
     private final DownloadTaskStream downStream;
