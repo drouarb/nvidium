@@ -14,11 +14,8 @@
 #import <nvidium:occlusion/scene.glsl>
 #import <nvidium:terrain/vertex_format.glsl>
 
-#ifdef RENDER_FOG
 #define USE_FOG
 #import <sodium:include/fog.glsl>
-#endif
-
 
 layout(location = 0) out vec4 colour;
 #if defined(RENDER_FOG) || defined(TRANSLUCENT_PASS)
@@ -57,7 +54,6 @@ void computeOutputColour(inout vec3 colour) {
     colour *= multiplier;
 }
 
-#ifdef RENDER_FOG
 //2 ways to do it, either use an interpolation, or screenspace reversal, screenspace reversal is better when many many vertices
 // however interpolation increases ISBE
 void applyFog(inout vec4 colour) {
@@ -69,9 +65,16 @@ void applyFog(inout vec4 colour) {
     colour = mix(colour, fogColour.rgb, fogLerp);
     */
     //colour = mix(colour, fogColour.rgb, fogLerp);
+    //
+#ifdef RENDER_FOG
     colour = _linearFog(colour, v_FragDistance, fogColour, environmentFog, renderFog);
-}
+#else
+    vec4 clip = (MVPInv * vec4((gl_FragCoord.xy/screenSize)-1, gl_FragCoord.z*2-1, 1));
+    vec3 pos = clip.xyz/clip.w;
+    vec2 fragDistance = getFragDistance(pos);
+    colour = _linearFog(colour, fragDistance, fogColour, environmentFog, renderFog);
 #endif
+}
 
 
 layout(binding = 0) uniform sampler2D tex_diffuse;
@@ -98,7 +101,7 @@ void main() {
     computeOutputColour(colour.rgb);
     #endif
 
-    #ifdef RENDER_FOG
+    //#ifdef RENDER_FOG
     applyFog(colour);
-    #endif
+    //#endif
 }

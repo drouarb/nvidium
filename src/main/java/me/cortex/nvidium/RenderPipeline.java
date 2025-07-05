@@ -291,13 +291,13 @@ public class RenderPipeline {
                     .translate(delta)//Translate the subchunk position
                     .getToAddress(addr);
             addr += 4*4*4;
-            if (this.compiledForFog) {
+            //if (this.compiledForFog) {
                 new Matrix4f(crm.projection())
                         .mul(crm.modelView())
                         .invert()
                         .getToAddress(addr);
                 addr += 4*4*4;
-            }
+            //}
             new Vector4i(chunkPos.x, chunkPos.y, chunkPos.z, 0).getToAddress(addr);//Chunk the camera is in
             addr += 16;
             new Vector4f(delta,0).getToAddress(addr);//Subchunk offset (note, delta is already negated)
