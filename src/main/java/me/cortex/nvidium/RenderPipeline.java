@@ -13,11 +13,15 @@ import me.cortex.nvidium.util.DownloadTaskStream;
 import me.cortex.nvidium.util.TickableManager;
 import me.cortex.nvidium.util.UploadingBufferStream;
 import net.caffeinemc.mods.sodium.client.SodiumClientMod;
+import net.caffeinemc.mods.sodium.client.gl.device.GLRenderDevice;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
+import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.impl.CompactChunkVertex;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.caffeinemc.mods.sodium.client.util.FogParameters;
+import net.caffeinemc.mods.sodium.mixin.core.render.texture.TextureAtlasAccessor;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.texture.SpriteAtlasTexture;
 import org.joml.*;
 import org.lwjgl.opengl.GL11C;
 import org.lwjgl.system.MemoryUtil;
@@ -80,6 +84,7 @@ public class RenderPipeline {
                     4*4 +   // vec4      fogColour
                     2*4 +   // vec2      environmentFog
                     2*4 +   // vec2      renderFog
+                    4*2 +   // vec2      texCoordShrink
                     4 +     // uint      flags
                     2 +     // uint16_t  regionCount
                     1       // uint8_t   frameId
@@ -207,6 +212,16 @@ public class RenderPipeline {
         int screenWidth = MinecraftClient.getInstance().getWindow().getFramebufferWidth();
         int screenHeight = MinecraftClient.getInstance().getWindow().getFramebufferHeight();
 
+        var textureAtlas = (TextureAtlasAccessor) MinecraftClient.getInstance()
+                .getTextureManager()
+                .getTexture(SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE);
+
+        double subTexelPrecision = (1 << GLRenderDevice.INSTANCE.getSubTexelPrecisionBits());
+        double subTexelOffset = 1.0f / CompactChunkVertex.TEXTURE_MAX_VALUE;
+
+        float subTexelWidth = (float)(subTexelOffset - (((1.0D / textureAtlas.getWidth()) / subTexelPrecision)));
+        float subTexelHeight = (float)(subTexelOffset - (((1.0D / textureAtlas.getHeight()) / subTexelPrecision)));
+
         int visibleRegions = 0;
 
         long queryAddr = 0;
@@ -323,6 +338,10 @@ public class RenderPipeline {
             addr += 8;
             new Vector2f(fogParameters.renderStart(), fogParameters.renderEnd()).getToAddress(addr);
             addr += 8;
+            MemoryUtil.memPutFloat(addr, subTexelWidth);
+            addr += 4;
+            MemoryUtil.memPutFloat(addr, subTexelHeight);
+            addr += 4;
             int flags = 0;
             flags |= SodiumClientMod.options().performance.useBlockFaceCulling?1:0;
             MemoryUtil.memPutInt(addr, flags);//Flags

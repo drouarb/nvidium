@@ -1,4 +1,20 @@
+#ifdef USE_SODIUM_VERTEX_FORMAT
+struct Vertex {
+    uint hi;
+    uint lo;
+    uint color;
+
+    uint16_t u;
+    uint16_t v;
+
+    uint8_t blockLight;
+    uint8_t skyLight;
+    uint8_t material;
+    uint8_t section;
+};
+#else
 #define Vertex uvec4
+#endif
 
 // this is cause in the section rasterizer you get less cache misses thus higher throughput
 struct Section {
@@ -84,6 +100,8 @@ layout(std140, binding=0) uniform SceneData {
     vec4 fogColour;
     vec2 environmentFog;
     vec2 renderFog;
+
+    vec2 texCoordShrink;
 
     uint flags;
 

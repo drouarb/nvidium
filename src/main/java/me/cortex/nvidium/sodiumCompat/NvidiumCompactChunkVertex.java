@@ -75,7 +75,8 @@ public class NvidiumCompactChunkVertex implements ChunkVertexType {
     }
 
     private static int encodePosition(float v) {
-        return (int) ((MODEL_ORIGIN + v) * MODEL_SCALE_INV);
+        //System.out.println(v + " " + MODEL_ORIGIN + " " + MODEL_RANGE + " " + MODEL_SCALE_INV);
+        return (int) (((MODEL_ORIGIN + v) / MODEL_RANGE) * POSITION_MAX_VALUE);
     }
 
     private static int encodeDrawParameters(int material) {
