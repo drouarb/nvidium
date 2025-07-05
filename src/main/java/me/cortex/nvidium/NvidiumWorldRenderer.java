@@ -12,6 +12,7 @@ import net.caffeinemc.mods.sodium.client.render.chunk.RenderSection;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.BuilderTaskOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkBuildOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkSortOutput;
+import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkMeshFormats;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.texture.Sprite;
@@ -50,7 +51,7 @@ public class NvidiumWorldRenderer {
 
         update_allowed_memory();
         //this.sectionManager = new SectionManager(device, max_geometry_memory*1024*1024, uploadStream, 150, 24, CompactChunkVertex.STRIDE);
-        this.sectionManager = new SectionManager(device, max_geometry_memory*1024*1024, uploadStream, NvidiumCompactChunkVertex.STRIDE, this);
+        this.sectionManager = new SectionManager(device, max_geometry_memory*1024*1024, uploadStream, Nvidium.config.use_sodium_vertex_format ? ChunkMeshFormats.COMPACT.getVertexFormat().getStride() : NvidiumCompactChunkVertex.STRIDE, this);
         this.renderPipeline = new RenderPipeline(device, uploadStream, downloadStream, sectionManager);
 
 
