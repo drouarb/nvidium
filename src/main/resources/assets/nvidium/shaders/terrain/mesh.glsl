@@ -126,9 +126,10 @@ void main() {
     pV2 = transformVertex(V2);
     pV3 = transformVertex(V3);
 
-    bool t0draw;
-    bool t1draw;
+    bool t0draw = true;
+    bool t1draw = true;
 
+#ifdef CULL_DEGENERATE_TRIANGLES
     //Compute the bounding pixels of the 2 triangles in the quad. note, vertex 0 and 2 are the common verticies
     {
         vec2 ssmin = ((pV0.xy/pV0.w)+1)*screenSize;
@@ -155,6 +156,7 @@ void main() {
     if (!(t0draw || t1draw)) {
         return;
     }
+#endif
 
     //barrier();
     uint triCnt = uint(t0draw)+uint(t1draw);
