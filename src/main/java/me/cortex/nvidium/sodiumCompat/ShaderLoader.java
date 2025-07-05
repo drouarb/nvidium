@@ -44,6 +44,9 @@ public class ShaderLoader {
         if (Nvidium.config.use_sodium_vertex_format) {
             builder.add("USE_SODIUM_VERTEX_FORMAT");
         }
+        if (Nvidium.config.cull_degenerate_triangles) {
+            builder.add("CULL_DEGENERATE_TRIANGLES");
+        }
 
         builder.add("TEXTURE_MAX_SCALE", String.valueOf(NvidiumCompactChunkVertex.TEXTURE_MAX_VALUE));
         constantBuilder.accept(builder);
