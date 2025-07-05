@@ -1,11 +1,11 @@
 package me.cortex.nvidium.mixin.minecraft;
 
-import net.minecraft.client.texture.SpriteAtlasTexture;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin(SpriteAtlasTexture.class)
-public interface SpriteAtlasTextureAccessor {
+@Mixin(TextureAtlas.class)
+public interface TextureAtlasAccessor {
     @Accessor
     int getWidth();
 

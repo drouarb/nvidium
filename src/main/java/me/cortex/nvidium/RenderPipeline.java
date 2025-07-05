@@ -8,7 +8,7 @@ import me.cortex.nvidium.gl.buffers.IDeviceMappedBuffer;
 import me.cortex.nvidium.managers.RegionManager;
 import me.cortex.nvidium.managers.RegionVisibilityTracker;
 import me.cortex.nvidium.managers.SectionManager;
-import me.cortex.nvidium.mixin.minecraft.SpriteAtlasTextureAccessor;
+import me.cortex.nvidium.mixin.minecraft.TextureAtlasAccessor;
 import me.cortex.nvidium.renderers.*;
 import me.cortex.nvidium.util.DownloadTaskStream;
 import me.cortex.nvidium.util.TickableManager;
@@ -20,8 +20,8 @@ import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.impl.CompactChunkVertex;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.caffeinemc.mods.sodium.client.util.FogParameters;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.texture.SpriteAtlasTexture;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import org.joml.*;
 import org.lwjgl.opengl.GL11C;
 import org.lwjgl.system.MemoryUtil;
@@ -210,12 +210,12 @@ public class RenderPipeline {
         //Clear the first gl error, not our fault
         //glGetError();
 
-        int screenWidth = MinecraftClient.getInstance().getWindow().getFramebufferWidth();
-        int screenHeight = MinecraftClient.getInstance().getWindow().getFramebufferHeight();
+        int screenWidth = Minecraft.getInstance().getWindow().getWidth();
+        int screenHeight = Minecraft.getInstance().getWindow().getHeight();
 
-        var textureAtlas = (SpriteAtlasTextureAccessor) MinecraftClient.getInstance()
+        var textureAtlas = (TextureAtlasAccessor) Minecraft.getInstance()
                 .getTextureManager()
-                .getTexture(SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE);
+                .getTexture(TextureAtlas.LOCATION_BLOCKS);
 
         double subTexelPrecision = (1 << GLRenderDevice.INSTANCE.getSubTexelPrecisionBits());
         double subTexelOffset = 1.0f / CompactChunkVertex.TEXTURE_MAX_VALUE;
@@ -237,7 +237,7 @@ public class RenderPipeline {
             for (int i = 0; i < rm.maxRegionIndex(); i++) {
                 if (!rm.regionExists(i)) continue;
                 if ((Nvidium.config.region_keep_distance != 257 && Nvidium.config.region_keep_distance != 32 &&
-                        Nvidium.config.region_keep_distance > MinecraftClient.getInstance().options.getClampedViewDistance())
+                        Nvidium.config.region_keep_distance > Minecraft.getInstance().options.getEffectiveRenderDistance())
                         && !rm.withinSquare(Nvidium.config.region_keep_distance+4, i, chunkPos.x, chunkPos.y, chunkPos.z)) {
                     removeRegion(i);
                     continue;

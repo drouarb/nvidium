@@ -1,14 +1,14 @@
 package me.cortex.nvidium.mixin.minecraft;
 
 import me.cortex.nvidium.Nvidium;
-import net.minecraft.client.render.fog.FogRenderer;
+import net.minecraft.client.renderer.fog.FogRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.*;
 
 @Mixin(FogRenderer.class)
 public class MixinFogRenderer {
     @ModifyVariable(
-            method = "applyFog(Lnet/minecraft/client/render/Camera;IZLnet/minecraft/client/render/RenderTickCounter;FLnet/minecraft/client/world/ClientWorld;)Lorg/joml/Vector4f;",
+            method = "setupFog(Lnet/minecraft/client/Camera;IZLnet/minecraft/client/DeltaTracker;FLnet/minecraft/client/multiplayer/ClientLevel;)Lorg/joml/Vector4f;",
             at = @At(value = "STORE"),
             ordinal = 2
     )

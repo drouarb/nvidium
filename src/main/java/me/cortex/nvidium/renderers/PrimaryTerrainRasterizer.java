@@ -1,13 +1,13 @@
 package me.cortex.nvidium.renderers;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.opengl.GlTexture;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.texture.GlTexture;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.Minecraft;
+import net.minecraft.resources.ResourceLocation;
 import org.lwjgl.opengl.GL12C;
 import org.lwjgl.opengl.GL32C;
 import org.lwjgl.opengl.GL45;
@@ -24,9 +24,9 @@ public class PrimaryTerrainRasterizer extends Phase {
     private final int blockSampler = glGenSamplers();
     private final int lightSampler = glGenSamplers();
     private final Shader shader = Shader.make()
-            .addSource(TASK, ShaderLoader.parse(Identifier.of("nvidium", "terrain/task.glsl")))
-            .addSource(MESH, ShaderLoader.parse(Identifier.of("nvidium", "terrain/mesh.glsl")))
-            .addSource(FRAGMENT, ShaderLoader.parse(Identifier.of("nvidium", "terrain/frag.frag"))).compile();
+            .addSource(TASK, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/task.glsl")))
+            .addSource(MESH, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/mesh.glsl")))
+            .addSource(FRAGMENT, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/frag.frag"))).compile();
 
     public PrimaryTerrainRasterizer() {
         GL45C.glSamplerParameteri(blockSampler,     GL45C.GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
@@ -42,17 +42,17 @@ public class PrimaryTerrainRasterizer extends Phase {
     private static void setTexture(GpuTextureView texView, int bindingPoint) {
         GlTexture tex = (GlTexture) texView.texture();
         GlStateManager._activeTexture(GL32C.GL_TEXTURE0 + bindingPoint);
-        GlStateManager._bindTexture(tex.getGlId());
+        GlStateManager._bindTexture(tex.glId());
         GlStateManager._texParameter(GL32C.GL_TEXTURE_2D, 33084, texView.baseMipLevel());
         GlStateManager._texParameter(GL32C.GL_TEXTURE_2D, 33085, texView.baseMipLevel() + texView.mipLevels() - 1);
-        tex.checkDirty(GL32C.GL_TEXTURE_2D);
+        tex.flushModeChanges(GL32C.GL_TEXTURE_2D);
     }
 
     public void raster(TerrainRenderPass pass, int regionCount, long commandAddr) {
         shader.bind();
 
         GpuTextureView blockTexture = pass.getAtlas();
-        GpuTextureView lightTexture = MinecraftClient.getInstance().gameRenderer.getLightmapTextureManager().getGlTextureView();
+        GpuTextureView lightTexture = Minecraft.getInstance().gameRenderer.lightTexture().getTextureView();
 
         GL45C.glBindSampler(0, blockSampler);
         GL45C.glBindSampler(1, lightSampler);

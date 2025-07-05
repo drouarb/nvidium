@@ -1,12 +1,12 @@
 package me.cortex.nvidium.renderers;
 
+import com.mojang.blaze3d.opengl.GlTexture;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.texture.GlTexture;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.Minecraft;
+import net.minecraft.resources.ResourceLocation;
 import org.lwjgl.opengl.GL12C;
 import org.lwjgl.opengl.GL45;
 import org.lwjgl.opengl.GL45C;
@@ -23,9 +23,9 @@ public class TemporalTerrainRasterizer extends Phase {
     private final int blockSampler = glGenSamplers();
     private final int lightSampler = glGenSamplers();
     private final Shader shader = Shader.make()
-            .addSource(TASK, ShaderLoader.parse(Identifier.of("nvidium", "terrain/temporal_task.glsl")))
-            .addSource(MESH, ShaderLoader.parse(Identifier.of("nvidium", "terrain/mesh.glsl")))
-            .addSource(FRAGMENT, ShaderLoader.parse(Identifier.of("nvidium", "terrain/frag.frag"))).compile();
+            .addSource(TASK, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/temporal_task.glsl")))
+            .addSource(MESH, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/mesh.glsl")))
+            .addSource(FRAGMENT, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/frag.frag"))).compile();
 
     public TemporalTerrainRasterizer() {
         GL45C.glSamplerParameteri(blockSampler, GL45C.GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
@@ -42,12 +42,12 @@ public class TemporalTerrainRasterizer extends Phase {
         shader.bind();
 
         GpuTextureView blockTexture = pass.getAtlas();
-        GpuTextureView lightTexture = MinecraftClient.getInstance().gameRenderer.getLightmapTextureManager().getGlTextureView();
+        GpuTextureView lightTexture = Minecraft.getInstance().gameRenderer.lightTexture().getTextureView();
 
-        GL45C.glBindTextureUnit(0, ((GlTexture)blockTexture.texture()).getGlId());
+        GL45C.glBindTextureUnit(0, ((GlTexture)blockTexture.texture()).glId());
         GL45C.glBindSampler(0, blockSampler);
 
-        GL45C.glBindTextureUnit(1, ((GlTexture)lightTexture.texture()).getGlId());
+        GL45C.glBindTextureUnit(1, ((GlTexture)lightTexture.texture()).glId());
         GL45C.glBindSampler(1, lightSampler);
 
         glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandAddr, regionCount*8L);//Bind the command buffer

@@ -5,8 +5,8 @@
   "client": [
     "minecraft.MixinFogRenderer",
     "minecraft.MixinGameRenderer",
-    "minecraft.MixinGlBackend",
-    "minecraft.SpriteAtlasTextureAccessor",
+    "minecraft.MixinGlDevice",
+    "minecraft.TextureAtlasAccessor",
     "sodium.MixinChunkBuilder",
     "sodium.MixinChunkBuilderMeshingTask",
     "sodium.MixinChunkBuildOutput",
