@@ -8,6 +8,7 @@
     "minecraft.MixinGameRenderer",
     "minecraft.MixinWindow",
     "minecraft.MixinWorldRenderer",
+    "minecraft.SpriteAtlasTextureAccessor",
     "sodium.MixinChunkBuilder",
     "sodium.MixinChunkBuilderMeshingTask",
     "sodium.MixinChunkBuildOutput",
@@ -19,8 +20,7 @@
     "sodium.MixinRenderSectionManager",
     "sodium.MixinSodiumOptionsGUI",
     "sodium.MixinSodiumWorldRenderer",
-    "sodium.SodiumWorldRendererAccessor",
-    "sodium.MixinPerformanceSettings"
+    "sodium.SodiumWorldRendererAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
