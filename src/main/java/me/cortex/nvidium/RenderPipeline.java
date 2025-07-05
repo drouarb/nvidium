@@ -110,6 +110,7 @@ public class RenderPipeline {
         public int regionCount;
         public int sectionCount;
         public int quadCount;
+        public int cullCount;
     }
 
     private final Statistics stats;
@@ -521,6 +522,7 @@ public class RenderPipeline {
                 stats.regionCount = MemoryUtil.memGetInt(addr);
                 stats.sectionCount = MemoryUtil.memGetInt(addr+4);
                 stats.quadCount = MemoryUtil.memGetInt(addr+8);
+                stats.cullCount = MemoryUtil.memGetInt(addr+12);
             });
         }
 
@@ -573,6 +575,9 @@ public class RenderPipeline {
             }
             if (Nvidium.config.statistics_level.ordinal() >=  StatisticsLoggingLevel.QUADS.ordinal()) {
                 builder.append(", Q: ").append(stats.quadCount);
+            }
+            if (Nvidium.config.statistics_level.ordinal() >=  StatisticsLoggingLevel.CULL.ordinal()) {
+                builder.append(", C: ").append(stats.cullCount);
             }
             info.addAll(List.of(builder.toString().split("\n")));
         }
