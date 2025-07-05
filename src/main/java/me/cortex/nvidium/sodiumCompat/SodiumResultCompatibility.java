@@ -6,6 +6,7 @@ import me.cortex.nvidium.config.TranslucencySortingLevel;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkBuildOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.DefaultTerrainRenderPasses;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkMeshFormats;
+import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.impl.CompactChunkVertex;
 import net.caffeinemc.mods.sodium.client.util.NativeBuffer;
 import net.minecraft.client.Minecraft;
 import org.joml.Vector3i;
@@ -51,8 +52,11 @@ public class SodiumResultCompatibility {
 
 
     private static void copyQuad(long from, long too) {
-        //Quads are 64 bytes big
-        for (long i = 0; i < 64; i+=8) {
+        //Quads are 64 bytes big using NvidiumCompactChunkVertex otherwise 80 bytes using CompactChunkVertex
+        long quadSize = Nvidium.config.use_sodium_vertex_format ?
+                CompactChunkVertex.STRIDE * 4 :
+                NvidiumCompactChunkVertex.STRIDE * 4;
+        for (long i = 0; i < quadSize; i+=8) {
             MemoryUtil.memPutLong(too + i, MemoryUtil.memGetLong(from + i));
         }
     }
