@@ -3,9 +3,8 @@ package me.cortex.nvidium;
 import me.cortex.nvidium.config.NvidiumConfig;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
-import net.minecraft.util.Util;
+import net.minecraft.Util;
 import org.lwjgl.opengl.GL;
-import org.lwjgl.opengl.GLCapabilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +40,7 @@ public class Nvidium {
         } else {
             LOGGER.warn("Not all requirements met, disabling nvidium");
         }
-        if (IS_COMPATIBLE && Util.getOperatingSystem() == Util.OperatingSystem.LINUX) {
+        if (IS_COMPATIBLE && Util.getPlatform() == Util.OS.LINUX) {
             LOGGER.warn("Linux currently uses fallback terrain buffer due to driver inconsistencies, expect increase vram usage");
             SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER = false;
         }

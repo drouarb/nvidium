@@ -16,7 +16,7 @@ import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkBuildOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkSortOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.DefaultTerrainRenderPasses;
 import net.caffeinemc.mods.sodium.client.util.NativeBuffer;
-import net.minecraft.util.math.ChunkSectionPos;
+import net.minecraft.core.SectionPos;
 import org.joml.Vector3i;
 import org.joml.Vector4i;
 import org.lwjgl.system.MemoryUtil;
@@ -83,7 +83,7 @@ public class SectionManager {
         }
 
         RenderSection section = sortOutput.render;
-        long sectionKey = ChunkSectionPos.asLong(section.getChunkX(), section.getChunkY(), section.getChunkZ());
+        long sectionKey = SectionPos.asLong(section.getChunkX(), section.getChunkY(), section.getChunkZ());
         var quadCountData = this.translucencyQuadCounts.get(sectionKey);
         if (quadCountData == null) { // early exist if we don't have a section
             return;
@@ -137,7 +137,7 @@ public class SectionManager {
         var output = ((IRepackagedResult)result).getOutput();
 
         RenderSection section = result.render;
-        long sectionKey = ChunkSectionPos.asLong(section.getChunkX(), section.getChunkY(), section.getChunkZ());
+        long sectionKey = SectionPos.asLong(section.getChunkX(), section.getChunkY(), section.getChunkZ());
 
         if (output == null || output.quads() == 0) {
             deleteSection(sectionKey);
@@ -193,7 +193,7 @@ public class SectionManager {
         //Get the section id or allocate a new instance for it
         int sectionIdx = this.section2id.computeIfAbsent(
                 sectionKey,
-                key -> this.regionManager.allocateSection(ChunkSectionPos.unpackX(key), ChunkSectionPos.unpackY(key), ChunkSectionPos.unpackZ(key))
+                key -> this.regionManager.allocateSection(SectionPos.x(key), SectionPos.y(key), SectionPos.z(key))
         );
 
 
@@ -221,7 +221,7 @@ public class SectionManager {
     }
 
     public void setHideBit(int x, int y, int z, boolean hide) {
-        long sectionKey = ChunkSectionPos.asLong(x, y, z);
+        long sectionKey = SectionPos.asLong(x, y, z);
 
         if (hide) {
             //Do a fast return if it was already hidden
@@ -244,7 +244,7 @@ public class SectionManager {
     }
 
     public void deleteSection(RenderSection section) {
-        deleteSection(ChunkSectionPos.asLong(section.getChunkX(), section.getChunkY(), section.getChunkZ()));
+        deleteSection(SectionPos.asLong(section.getChunkX(), section.getChunkY(), section.getChunkZ()));
     }
 
     private void deleteSection(long sectionKey) {
@@ -281,13 +281,13 @@ public class SectionManager {
     public void removeRegionById(int regionId) {
         if (!this.regionManager.regionExists(regionId)) return;
         long rk = this.regionManager.regionIdToKey(regionId);
-        int X = ChunkSectionPos.unpackX(rk)<<3;
-        int Y = ChunkSectionPos.unpackY(rk)<<2;
-        int Z = ChunkSectionPos.unpackZ(rk)<<3;
+        int X = SectionPos.x(rk)<<3;
+        int Y = SectionPos.y(rk)<<2;
+        int Z = SectionPos.z(rk)<<3;
         for (int x = X; x < X+8; x++) {
             for (int y = Y; y < Y+4; y++) {
                 for (int z = Z; z < Z+8; z++) {
-                    this.deleteSection(ChunkSectionPos.asLong(x, y, z));
+                    this.deleteSection(SectionPos.asLong(x, y, z));
                 }
             }
         }

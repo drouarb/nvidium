@@ -4,19 +4,16 @@ import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.config.StatisticsLoggingLevel;
 import me.cortex.nvidium.config.TranslucencySortingLevel;
 import net.caffeinemc.mods.sodium.client.gl.shader.ShaderConstants;
-import net.caffeinemc.mods.sodium.client.gl.shader.ShaderConstants.Builder;
 import net.caffeinemc.mods.sodium.client.gl.shader.ShaderParser;
-import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.impl.CompactChunkVertex;
-import net.minecraft.util.Identifier;
-
+import net.minecraft.resources.ResourceLocation;
 import java.util.function.Consumer;
 
 public class ShaderLoader {
-    public static String parse(Identifier path) {
+    public static String parse(ResourceLocation path) {
         return parse(path, shaderConstants -> {});
     }
 
-    public static String parse(Identifier path, Consumer<ShaderConstants.Builder> constantBuilder) {
+    public static String parse(ResourceLocation path, Consumer<ShaderConstants.Builder> constantBuilder) {
         var builder = ShaderConstants.builder();
         if (Nvidium.IS_DEBUG) {
             builder.add("DEBUG");
