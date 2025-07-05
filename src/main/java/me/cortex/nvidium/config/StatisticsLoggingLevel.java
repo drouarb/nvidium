@@ -5,5 +5,6 @@ public enum StatisticsLoggingLevel {
     FRUSTUM,
     REGIONS,
     SECTIONS,
-    QUADS
+    QUADS,
+    CULL
 }
