@@ -14,10 +14,14 @@ import me.cortex.nvidium.util.DownloadTaskStream;
 import me.cortex.nvidium.util.TickableManager;
 import me.cortex.nvidium.util.UploadingBufferStream;
 import net.caffeinemc.mods.sodium.client.SodiumClientMod;
+import net.caffeinemc.mods.sodium.client.gl.device.GLRenderDevice;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Fog;
+import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.impl.CompactChunkVertex;
+import net.caffeinemc.mods.sodium.mixin.core.render.texture.TextureAtlasAccessor;
+import net.minecraft.client.texture.SpriteAtlasTexture;
 import org.joml.*;
 import org.lwjgl.opengl.GL11C;
 import org.lwjgl.system.MemoryUtil;
@@ -78,6 +82,7 @@ public class RenderPipeline {
                     8 +     // uint64_t  *originArray
                     8 +     // uint32_t  *statistics_buffe
                     4*2 +   // vec2      screenSize
+                    4*2 +   // vec2      texCoordShrink
                     4 +     // float     fogStart
                     4 +     // float     fogEnd
                     4 +     // bool      isCylindricalFog
@@ -207,6 +212,16 @@ public class RenderPipeline {
         int screenWidth = MinecraftClient.getInstance().getWindow().getFramebufferWidth();
         int screenHeight = MinecraftClient.getInstance().getWindow().getFramebufferHeight();
 
+        var textureAtlas = (TextureAtlasAccessor) MinecraftClient.getInstance()
+                .getTextureManager()
+                .getTexture(SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE);
+
+        double subTexelPrecision = (1 << GLRenderDevice.INSTANCE.getSubTexelPrecisionBits());
+        double subTexelOffset = 1.0f / CompactChunkVertex.TEXTURE_MAX_VALUE;
+
+        float subTexelWidth = (float)(subTexelOffset - (((1.0D / textureAtlas.getWidth()) / subTexelPrecision)));
+        float subTexelHeight = (float)(subTexelOffset - (((1.0D / textureAtlas.getHeight()) / subTexelPrecision)));
+
         int visibleRegions = 0;
 
         long queryAddr = 0;
@@ -319,6 +334,10 @@ public class RenderPipeline {
             MemoryUtil.memPutFloat(addr, ((float)screenWidth)/2);
             addr += 4;
             MemoryUtil.memPutFloat(addr, ((float)screenHeight)/2);
+            addr += 4;
+            MemoryUtil.memPutFloat(addr, subTexelWidth);
+            addr += 4;
+            MemoryUtil.memPutFloat(addr, subTexelHeight);
             addr += 4;
             MemoryUtil.memPutFloat(addr, fog.start());//FogStart
             addr += 4;

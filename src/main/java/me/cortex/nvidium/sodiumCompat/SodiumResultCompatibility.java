@@ -8,6 +8,7 @@ import net.caffeinemc.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkBuildOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.data.BuiltSectionMeshParts;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.DefaultTerrainRenderPasses;
+import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkMeshFormats;
 import net.caffeinemc.mods.sodium.client.util.NativeBuffer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.Vec3d;
@@ -18,7 +19,7 @@ import org.lwjgl.system.MemoryUtil;
 public class SodiumResultCompatibility {
 
     public static RepackagedSectionOutput repackage(ChunkBuildOutput result) {
-        int formatSize = 16;
+        int formatSize = Nvidium.config.use_sodium_vertex_format ? ChunkMeshFormats.COMPACT.getVertexFormat().getStride() : NvidiumCompactChunkVertex.STRIDE;
         int geometryBytes = result.meshes.values().stream().mapToInt(a->a.getVertexData().getLength()).sum();
         var output = new NativeBuffer(geometryBytes);
         var offsets = new short[8];
@@ -102,15 +103,12 @@ public class SodiumResultCompatibility {
                     long src = MemoryUtil.memAddress(output.getDirectBuffer()) + (long) partOffset * formatSize;
                     long base = src + (long) j * formatSize;
 
-                    float x = decodePosition(MemoryUtil.memGetShort(base));
-                    float y = decodePosition(MemoryUtil.memGetShort(base + 2));
-                    float z = decodePosition(MemoryUtil.memGetShort(base + 4));
-                    updateSectionBounds(min, max, x, y, z);
+                    updateSectionBounds(min, max, base);
                 }
 
                 partOffset += part;
             }
-            offset += translucentData.getVertexData().getLength() / 64;
+            offset += translucentData.getVertexData().getLength() / (formatSize * 4);
 
         } else if (translucentData != null) {
             int quadCount = 0;
@@ -135,10 +133,21 @@ public class SodiumResultCompatibility {
                 for (int j = 0; j < part; j++) {
                     long base = src + (long) j * formatSize;
 
-                    float x = decodePosition(MemoryUtil.memGetShort(base));
-                    float y = decodePosition(MemoryUtil.memGetShort(base + 2));
-                    float z = decodePosition(MemoryUtil.memGetShort(base + 4));
-                    updateSectionBounds(min, max, x, y, z);
+                    float x, y, z;
+                    if (Nvidium.config.use_sodium_vertex_format) {
+                        int hi = MemoryUtil.memGetInt(base);
+                        int lo = MemoryUtil.memGetInt(base + 4);
+
+                        x = scalePos((((hi >>  0) & 0x3FF) << 10) | ((lo >>  0) & 0x3FF));
+                        y = scalePos((((hi >> 10) & 0x3FF) << 10) | ((lo >> 10) & 0x3FF));
+                        z = scalePos((((hi >> 20) & 0x3FF) << 10) | ((lo >> 20) & 0x3FF));
+
+                    } else {
+                        x = decodePosition(MemoryUtil.memGetShort(base));
+                        y = decodePosition(MemoryUtil.memGetShort(base + 2));
+                        z = decodePosition(MemoryUtil.memGetShort(base + 4));
+                    }
+                    updateSectionBounds(min, max, base);
 
                     cx += x;
                     cy += y;
@@ -240,10 +249,28 @@ public class SodiumResultCompatibility {
         return Short.toUnsignedInt(v)*(1f/2048.0f)-8.0f;
     }
 
+    private static float scalePos(int pos) {
+        float vertexScale = 32f / (float)((1<<20)-1);
+        return (((float)pos) * vertexScale) - 8;
+    }
+
     private static void updateSectionBounds(Vector3i min, Vector3i max, long vertex) {
-        float x = decodePosition(MemoryUtil.memGetShort(vertex));
-        float y = decodePosition(MemoryUtil.memGetShort(vertex + 2));
-        float z = decodePosition(MemoryUtil.memGetShort(vertex + 4));
+        float x, y, z;
+
+        if (Nvidium.config.use_sodium_vertex_format) {
+            int hi = MemoryUtil.memGetInt(vertex);
+            int lo = MemoryUtil.memGetInt(vertex + 4);
+
+            x = scalePos((((hi >>  0) & 0x3FF) << 10) | ((lo >>  0) & 0x3FF));
+            y = scalePos((((hi >> 10) & 0x3FF) << 10) | ((lo >> 10) & 0x3FF));
+            z = scalePos((((hi >> 20) & 0x3FF) << 10) | ((lo >> 20) & 0x3FF));
+
+        } else {
+            x = decodePosition(MemoryUtil.memGetShort(vertex));
+            y = decodePosition(MemoryUtil.memGetShort(vertex + 2));
+            z = decodePosition(MemoryUtil.memGetShort(vertex + 4));
+        }
+
         updateSectionBounds(min, max, x, y, z);
     }
 

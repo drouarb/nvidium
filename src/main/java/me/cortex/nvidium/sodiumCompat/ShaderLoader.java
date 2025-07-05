@@ -6,6 +6,7 @@ import me.cortex.nvidium.config.TranslucencySortingLevel;
 import net.caffeinemc.mods.sodium.client.gl.shader.ShaderConstants;
 import net.caffeinemc.mods.sodium.client.gl.shader.ShaderConstants.Builder;
 import net.caffeinemc.mods.sodium.client.gl.shader.ShaderParser;
+import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.impl.CompactChunkVertex;
 import net.minecraft.util.Identifier;
 
 import java.util.function.Consumer;
@@ -38,6 +39,10 @@ public class ShaderLoader {
 
         if (Nvidium.config.render_fog) {
             builder.add("RENDER_FOG");
+        }
+
+        if (Nvidium.config.use_sodium_vertex_format) {
+            builder.add("USE_SODIUM_VERTEX_FORMAT");
         }
 
         builder.add("TEXTURE_MAX_SCALE", String.valueOf(NvidiumCompactChunkVertex.TEXTURE_MAX_VALUE));
