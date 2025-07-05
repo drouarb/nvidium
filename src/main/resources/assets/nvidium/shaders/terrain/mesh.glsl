@@ -148,8 +148,9 @@ void main() {
         vec2 t1max = max(ssmax, point);
 
         //Possibly cull the triangles if they dont cover the center of a pixel on the screen (degen)
-        t0draw = all(notEqual(round(t0min),round(t0max)));
-        t1draw = all(notEqual(round(t1min),round(t1max)));
+        float degenBias = 0.01f;
+        t0draw = all(notEqual(round(t0min-degenBias),round(t0max+degenBias)));
+        t1draw = all(notEqual(round(t1min-degenBias),round(t1max+degenBias)));
     }
 
     //Abort if there are no triangles to dispatch
@@ -160,6 +161,11 @@ void main() {
 
     //barrier();
     uint triCnt = uint(t0draw)+uint(t1draw);
+
+#ifdef STATISTICS_CULL
+    atomicAdd(statistics_buffer+3, 2-triCnt);
+#endif
+
     //Do a subgroup prefix sum to compute emission indies and verticies, aswell as a max to compute the total count
     uint triIndex = subgroupExclusiveAdd(triCnt);
     uint vertBase = subgroupExclusiveAdd((t0draw==t1draw)?4:3);//if both tris are needed, its 4 verticies else its only 3

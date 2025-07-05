@@ -150,7 +150,8 @@ public class ConfigGuiBuilder {
                                                 Text.translatable("nvidium.options.statistics_level.frustum"),
                                                 Text.translatable("nvidium.options.statistics_level.regions"),
                                                 Text.translatable("nvidium.options.statistics_level.sections"),
-                                                Text.translatable("nvidium.options.statistics_level.quads")
+                                                Text.translatable("nvidium.options.statistics_level.quads"),
+                                                Text.translatable("nvidium.options.statistics_level.cull")
                                         }
                                 )
                         )
