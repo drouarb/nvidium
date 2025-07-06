@@ -11,6 +11,7 @@ import me.cortex.nvidium.managers.SectionManager;
 import me.cortex.nvidium.mixin.minecraft.TextureAtlasAccessor;
 import me.cortex.nvidium.renderers.*;
 import me.cortex.nvidium.util.DownloadTaskStream;
+import me.cortex.nvidium.util.FrameTimeProfiler;
 import me.cortex.nvidium.util.TickableManager;
 import me.cortex.nvidium.util.UploadingBufferStream;
 import net.caffeinemc.mods.sodium.client.SodiumClientMod;
@@ -113,6 +114,7 @@ public class RenderPipeline {
     }
 
     private final Statistics stats;
+    private FrameTimeProfiler frameTimeProfiler = new FrameTimeProfiler(100);
 
     public RenderPipeline(RenderDevice device, UploadingBufferStream uploadStream, DownloadTaskStream downloadStream, SectionManager sectionManager) {
         this.device = device;
@@ -386,7 +388,7 @@ public class RenderPipeline {
 
         if (prevRegionCount != 0) {
             glEnable(GL_DEPTH_TEST);
-            terrainRasterizer.raster(pass, prevRegionCount, terrainCommandBuffer.getDeviceAddress());
+            terrainRasterizer.raster(pass, prevRegionCount, terrainCommandBuffer.getDeviceAddress(), frameTimeProfiler);
             glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
         }
 
@@ -578,6 +580,7 @@ public class RenderPipeline {
             }
             info.addAll(List.of(builder.toString().split("\n")));
         }
+        info.add("Frame time: " +  String.format("%.03f", frameTimeProfiler.getAverageMs()) + "ms");
     }
 
     public void reloadShaders() {
