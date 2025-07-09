@@ -5,6 +5,7 @@ import com.mojang.blaze3d.opengl.GlTexture;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
+import me.cortex.nvidium.util.FrameTimeProfiler;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
@@ -50,7 +51,7 @@ public class TranslucentTerrainRasterizer extends Phase {
 
     //Translucency is rendered in a very cursed and incorrect way
     // it hijacks the unassigned indirect command dispatch and uses that to dispatch the translucent chunks as well
-    public void raster(TerrainRenderPass pass, int regionCount, long commandAddr) {
+    public void raster(TerrainRenderPass pass, int regionCount, long commandAddr, FrameTimeProfiler frameTimeProfiler) {
         shader.bind();
 
         GpuTextureView blockTexture = pass.getAtlas();
@@ -63,7 +64,9 @@ public class TranslucentTerrainRasterizer extends Phase {
 
         //the +8*6 is to offset to the unassigned dispatch
         glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandAddr, regionCount*8L);//Bind the command buffer
+        frameTimeProfiler.startQuery();
         glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
+        frameTimeProfiler.endQuery();
         GL45C.glBindSampler(0, 0);
         GL45C.glBindSampler(1, 0);
     }

@@ -8,8 +8,11 @@
 
 //#extension GL_NV_conservative_raster_underestimation : enable
 
+#ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
 #extension GL_NV_fragment_shader_barycentric : require
+#endif
 
+layout(binding = 1) uniform sampler2D tex_light;
 
 #import <nvidium:occlusion/scene.glsl>
 #import <nvidium:terrain/vertex_format.glsl>
@@ -21,54 +24,38 @@
 
 
 layout(location = 0) out vec4 colour;
-#if defined(RENDER_FOG) || defined(TRANSLUCENT_PASS)
+#ifndef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
 layout(location = 1) in Interpolants {
     #ifdef RENDER_FOG
     vec2 v_FragDistance;
     #endif
-    #ifdef TRANSLUCENT_PASS
+
     vec2 uv;
     vec3 v_colour;
-    #endif
 };
 #endif
-
-
-layout(binding = 1) uniform sampler2D tex_light;
-
-vec4 sampleLight(vec2 uv) {
-    //Its divided by 16 to match sodium/vanilla (it can never be 1 which is funny)
-    return vec4(texture(tex_light, uv).rgb, 1);
-}
-
-vec3 computeMultiplier(Vertex V) {
-    vec4 tint = decodeVertexColour(V);
-    tint *= sampleLight(decodeLightUV(V));
-    tint *= tint.w;
-    return tint.xyz;
-}
-
 
 Vertex V0;
 Vertex Vp;
 Vertex V2;
+#ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
 void computeOutputColour(inout vec3 colour) {
     vec3 multiplier = gl_BaryCoordNV.x*computeMultiplier(V0) + gl_BaryCoordNV.y*computeMultiplier(Vp) + gl_BaryCoordNV.z*computeMultiplier(V2);
     colour *= multiplier;
 }
+#endif
 
 #ifdef RENDER_FOG
 //2 ways to do it, either use an interpolation, or screenspace reversal, screenspace reversal is better when many many vertices
 // however interpolation increases ISBE
 void applyFog(inout vec4 colour) {
-    /*
+
+#ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
     //Reverse the transformation and compute the original position
     vec4 clip = (MVPInv * vec4((gl_FragCoord.xy/screenSize)-1, gl_FragCoord.z*2-1, 1));
     vec3 pos = clip.xyz/clip.w;
-    float fogLerp = clamp(computeFogLerp(pos, isCylindricalFog, fogStart, fogEnd) * fogColour.a, 0,1);
-    colour = mix(colour, fogColour.rgb, fogLerp);
-    */
-    //colour = mix(colour, fogColour.rgb, fogLerp);
+    vec2 v_FragDistance = getFragDistance(pos);
+#endif
     colour = _linearFog(colour, v_FragDistance, fogColour, environmentFog, renderFog);
 }
 #endif
@@ -83,19 +70,36 @@ void main() {
     Vp = terrainData[(quadId<<2)+TRI_INDICIES.y];
     V2 = terrainData[(quadId<<2)+TRI_INDICIES.z];
 
+    #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
+        float HALF_SHIFT = (1f/TEXTURE_MAX_SCALE)/2f;
+        vec2 uv0 = decodeVertexUV(V0);
+        vec2 uvp = decodeVertexUV(Vp);
+        vec2 uv2 = decodeVertexUV(V2);
+        vec2 uvr = gl_BaryCoordNV.x*uv0 + gl_BaryCoordNV.y*uvp + gl_BaryCoordNV.z*uv2;
+        vec2 uv = clamp(uvr, min(min(uv0, uv2),uvp)+HALF_SHIFT, max(max(uv0, uv2),uvp)-HALF_SHIFT);
 
-    #ifdef TRANSLUCENT_PASS
-    colour = texture(tex_diffuse, uv, 0);
-    colour.rgb *= v_colour;
+        if (hasMipping(V0)) {
+            //Since this is a dynamic uniform it is safe to use dF* functions
+            //Compute the partial derivatives w.r.t pre-clamping
+            colour = textureGrad(tex_diffuse, uv, dFdx(uvr), dFdy(uvr));
+        } else {
+            colour = textureLod(tex_diffuse, uv, 0);//No mipping
+        }
     #else
-    float lodBias = hasMipping(V0)?0.0f:-4.0f;
-    uint alphaCutoff = rawVertexAlphaCutoff(V0);
+        float lodBias = hasMipping(V0)?0.0f:-4.0f;
+        colour = texture(tex_diffuse, uv, lodBias);
+    #endif
 
-    vec2 uv = gl_BaryCoordNV.x*decodeVertexUV(V0) + gl_BaryCoordNV.y*decodeVertexUV(Vp) + gl_BaryCoordNV.z*decodeVertexUV(V2);
-    colour = texture(tex_diffuse, uv, lodBias);
-    if (colour.a < getVertexAlphaCutoff(alphaCutoff)) discard;
-    colour.a = 1;
-    computeOutputColour(colour.rgb);
+    #ifndef TRANSLUCENT_PASS
+        uint alphaCutoff = rawVertexAlphaCutoff(V0);
+        if (colour.a < getVertexAlphaCutoff(alphaCutoff)) discard;
+        colour.a = 1;
+    #endif
+
+    #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
+        computeOutputColour(colour.rgb);
+    #else
+        colour.rgb *= v_colour;
     #endif
 
     #ifdef RENDER_FOG
