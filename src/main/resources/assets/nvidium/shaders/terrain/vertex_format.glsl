@@ -97,3 +97,15 @@ vec2 decodeLightUV(Vertex v) {
 float getVertexAlphaCutoff(uint v) {
     return (float[](0.0f, 0.1f,0.1f,1.0f))[v];
 }
+
+vec4 sampleLight(vec2 uv) {
+    //Its divided by 16 to match sodium/vanilla (it can never be 1 which is funny)
+    return vec4(texture(tex_light, uv).rgb, 1);
+}
+
+vec3 computeMultiplier(Vertex V) {
+    vec4 tint = decodeVertexColour(V);
+    tint *= sampleLight(decodeLightUV(V));
+    tint *= tint.w;
+    return tint.xyz;
+}
