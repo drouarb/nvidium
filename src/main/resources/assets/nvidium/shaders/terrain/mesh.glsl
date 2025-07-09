@@ -12,6 +12,8 @@
 #extension GL_KHR_shader_subgroup_ballot : require
 #extension GL_KHR_shader_subgroup_vote : require
 
+layout(binding = 1) uniform sampler2D tex_light;
+
 #import <nvidium:occlusion/scene.glsl>
 #import <nvidium:terrain/fog.glsl>
 #import <nvidium:terrain/vertex_format.glsl>
@@ -21,9 +23,13 @@
 layout(local_size_x = 16) in;
 layout(triangles, max_vertices=64, max_primitives=32) out;
 
-#ifdef RENDER_FOG
+#ifndef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
 layout(location=1) out Interpolants {
+#ifdef RENDER_FOG
     float fogLerp;
+#endif
+    vec2 uv;
+    vec3 v_colour;
 } OUT[];
 #endif
 
@@ -84,16 +90,18 @@ vec4 pV2;
 Vertex V3;
 vec4 pV3;
 
-
-
 void putVertex(uint id, Vertex V) {
+#ifndef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
     #ifdef RENDER_FOG
     vec3 pos = decodeVertexPosition(V)+origin;
     vec3 exactPos = pos+subchunkOffset.xyz;
     OUT[id].fogLerp = clamp(computeFogLerp(exactPos, isCylindricalFog, fogStart, fogEnd) * fogColour.a, 0, 1);
     #endif
-}
 
+    OUT[id].uv = decodeVertexUV(V);
+    OUT[id].v_colour = computeMultiplier(V);
+#endif
+}
 
 //TODO: make it so that its 32 threads but still 16 quads, each thread processes 2 verticies
 // it computes the min of 0,2 with subgroups, then locally it decieds if its triangle needs to be discarded

@@ -12,6 +12,7 @@ import me.cortex.nvidium.managers.SectionManager;
 import me.cortex.nvidium.mixin.minecraft.TextureAtlasAccessor;
 import me.cortex.nvidium.renderers.*;
 import me.cortex.nvidium.util.DownloadTaskStream;
+import me.cortex.nvidium.util.FrameTimeProfiler;
 import me.cortex.nvidium.util.TickableManager;
 import me.cortex.nvidium.util.UploadingBufferStream;
 import net.caffeinemc.mods.sodium.client.SodiumClientMod;
@@ -114,6 +115,8 @@ public class RenderPipeline {
     }
 
     private final Statistics stats;
+    private final FrameTimeProfiler primaryFrameTimeProfiler = new FrameTimeProfiler(100);
+    private final FrameTimeProfiler transluscentFrameTimeProfiler = new FrameTimeProfiler(100);
 
     public RenderPipeline(RenderDevice device, UploadingBufferStream uploadStream, DownloadTaskStream downloadStream, SectionManager sectionManager) {
         this.device = device;
@@ -389,7 +392,7 @@ public class RenderPipeline {
 
         if (prevRegionCount != 0) {
             glEnable(GL_DEPTH_TEST);
-            terrainRasterizer.raster(prevRegionCount, terrainCommandBuffer.getDeviceAddress());
+            terrainRasterizer.raster(prevRegionCount, terrainCommandBuffer.getDeviceAddress(), primaryFrameTimeProfiler);
             glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
         }
 
@@ -505,7 +508,7 @@ public class RenderPipeline {
         //Translucency sorting
         {
             glEnable(GL_DEPTH_TEST);
-            translucencyTerrainRasterizer.raster(prevRegionCount, translucencyCommandBuffer.getDeviceAddress());
+            translucencyTerrainRasterizer.raster(prevRegionCount, translucencyCommandBuffer.getDeviceAddress(), transluscentFrameTimeProfiler);
         }
 
         glDisableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
@@ -581,6 +584,8 @@ public class RenderPipeline {
             }
             info.addAll(List.of(builder.toString().split("\n")));
         }
+        info.add("Primary frame time: " +  String.format("%.03f", primaryFrameTimeProfiler.getAverageMs()) + "ms");
+        info.add("Translucent frame time: " +  String.format("%.03f", transluscentFrameTimeProfiler.getAverageMs()) + "ms");
     }
 
     public void reloadShaders() {

@@ -44,6 +44,9 @@ public class ShaderLoader {
         if (Nvidium.config.cull_degenerate_triangles) {
             builder.add("CULL_DEGENERATE_TRIANGLES");
         }
+        if (Nvidium.config.use_nv_fragment_shader_barycentric) {
+            builder.add("USE_NV_FRAGMENT_SHADER_BARYCENTRIC");
+        }
 
         builder.add("TEXTURE_MAX_SCALE", String.valueOf(NvidiumCompactChunkVertex.TEXTURE_MAX_VALUE));
         constantBuilder.accept(builder);
