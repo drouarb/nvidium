@@ -24,8 +24,9 @@ public class NvidiumConfig {
 
 
     public boolean render_fog = true;
-    public boolean use_sodium_vertex_format = true;
+    public boolean use_sodium_vertex_format = false;
     public boolean cull_degenerate_triangles = true;
+    public boolean use_nv_fragment_shader_barycentric = true;
 
     public TranslucencySortingLevel translucency_sorting_level = TranslucencySortingLevel.SODIUM;
 
