@@ -63,11 +63,9 @@ void emitVertex(uint vertexBaseId, uint innerId) {
     vec3 pos = decodeVertexPosition(V)+originAndBaseData.xyz;
     gl_MeshVerticesNV[outId].gl_Position = MVP*vec4(pos,1.0);
 
-    vec3 exactPos = pos+subchunkOffset.xyz;
-
 #ifndef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
     #ifdef RENDER_FOG
-    float fogLerp = clamp(computeFogLerp(exactPos, isCylindricalFog, fogStart, fogEnd) * fogColour.a, 0, 1);
+    float fogLerp = clamp(computeFogLerp(pos+subchunkOffset.xyz, isCylindricalFog, fogStart, fogEnd) * fogColour.a, 0, 1);
     OUT[outId].fogLerp = float16_t(fogLerp);
     #endif
 
@@ -78,14 +76,19 @@ void emitVertex(uint vertexBaseId, uint innerId) {
     tint *= tint.w;
     OUT[outId].v_colour = tint.rgb;
 #endif
-
-    #ifdef TRANSLUCENCY_SORTING_QUADS
-    depthPos += exactPos;
-    #endif
-
 }
 
 #ifdef TRANSLUCENCY_SORTING_QUADS
+void computeDepth(uint vertexBaseId) {
+    for (uint innerId = 0; innerId < 4; innerId++) {
+        Vertex V = terrainData[vertexBaseId + innerId];
+        uint outId = (gl_LocalInvocationID.x<<2)+innerId;
+        vec3 pos = decodeVertexPosition(V)+originAndBaseData.xyz;
+        vec3 exactPos = pos+subchunkOffset.xyz;
+        depthPos += exactPos;
+    }
+}
+
 void swapQuads(uint idxA, uint idxB) {
     if (idxA == idxB) {
         return;
@@ -169,6 +172,12 @@ void main() {
     #endif
 
     #ifdef TRANSLUCENCY_SORTING_QUADS
+    // Need to sort before emitting quads if we want to do nv fragment shader barycentric
+    computeDepth(id);
+    performTranslucencySort();
+    barrier();
+    memoryBarrierShared();
+
     //If we are at the start, dont want to render as it contains garbled data (out of bounds)
     if (gl_GlobalInvocationID.x < jiggle) {
         gl_MeshVerticesNV[(gl_LocalInvocationID.x<<2)+0].gl_Position = vec4(1,1,1,-1);
@@ -182,10 +191,6 @@ void main() {
         emitVertex(id, 2);
         emitVertex(id, 3);
     }
-    barrier();
-    memoryBarrierShared();
-
-    performTranslucencySort();
     #else
     emitVertex(id, 0);
     emitVertex(id, 1);
