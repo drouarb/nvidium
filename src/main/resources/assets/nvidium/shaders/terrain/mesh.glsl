@@ -16,7 +16,7 @@ layout(binding = 1) uniform sampler2D tex_light;
 
 #import <nvidium:occlusion/scene.glsl>
 #import <nvidium:terrain/fog.glsl>
-#import <nvidium:terrain/vertex_format.glsl>
+#import <nvidium:terrain/vertex_format/vertex_format.glsl>
 
 
 //It seems like for terrain at least, the sweat spot is ~16 quads per mesh invocation (even if the local size is not 32 )

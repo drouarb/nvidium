@@ -15,7 +15,7 @@ layout(binding = 1) uniform sampler2D tex_light;
 
 #import <nvidium:occlusion/scene.glsl>
 #import <nvidium:terrain/fog.glsl>
-#import <nvidium:terrain/vertex_format.glsl>
+#import <nvidium:terrain/vertex_format/vertex_format.glsl>
 
 
 #ifdef TRANSLUCENCY_SORTING_QUADS
