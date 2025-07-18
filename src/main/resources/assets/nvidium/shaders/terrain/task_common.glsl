@@ -1,4 +1,4 @@
-#define MESH_WORKLOAD_PER_INVOCATION 16
+#define MESH_WORKLOAD_PER_INVOCATION 32
 
 taskNV out Task {
     vec3 origin;
@@ -88,6 +88,6 @@ void populateTasks(ivec3 relChunkPos, uvec4 ranges) {
 
     quadCount = lastIndex;
 
-    //Emit enough mesh shaders such that max(gl_GlobalInvocationID.x)>=quadCount
-    gl_TaskCountNV = (lastIndex+MESH_WORKLOAD_PER_INVOCATION-1)/MESH_WORKLOAD_PER_INVOCATION;
+    //Emit enough mesh shaders such that max(gl_GlobalInvocationID.x)>=2*quadCount
+    gl_TaskCountNV = ((lastIndex*2)+MESH_WORKLOAD_PER_INVOCATION-1)/MESH_WORKLOAD_PER_INVOCATION;
 }
