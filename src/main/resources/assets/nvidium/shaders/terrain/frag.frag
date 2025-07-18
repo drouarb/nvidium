@@ -15,7 +15,7 @@
 layout(binding = 1) uniform sampler2D tex_light;
 
 #import <nvidium:occlusion/scene.glsl>
-#import <nvidium:terrain/vertex_format.glsl>
+#import <nvidium:terrain/vertex_format/vertex_format.glsl>
 
 #ifdef RENDER_FOG
 #define USE_FOG
