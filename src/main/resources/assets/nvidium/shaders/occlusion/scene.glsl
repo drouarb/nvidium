@@ -23,8 +23,16 @@ struct Section {
     //Header.y -> 0-3=offsetz 4-7=sizez 8-31=chunk z
     //Header.z -> 0-3=offsety 4-7=sizey 8-15=chunk y
     //Header.w -> quad offset
-    ivec4 renderRanges;
-    int   translucencyDataIdx;
+    uvec4 renderRanges;
+    // renderRanges.x         => 0-16 offset POS_X                  | 16-32 offset POS_Y
+    // renderRanges.y         => 0-16 offset POS_Z                  | 16-32 offset NEG_X
+    // renderRanges.z         => 0-16 offset NEG_Y                  | 16-32 offset NEG_Z
+    // renderRanges.w         => 0-16 offset UNASSIGNED             | 16-32 => bits 0-16 of translucencyIdx
+    uvec4 translucencyRanges;
+    // translucencyRanges.x   => 0-16 offset POS_X                  | 16-32 offset POS_Y
+    // translucencyRanges.y   => 0-16 offset POS_Z                  | 16-32 offset NEG_X
+    // translucencyRanges.z   => 0-16 offset NEG_Y                  | 16-32 offset NEG_Z
+    // translucencyRanges.w   => 0-16 offset UNASSIGNED             | 16-32 => bits 16 32 of translucencyIdx
 };
 
 struct Region {

@@ -48,8 +48,13 @@ void main() {
     origin = vec3(chunk<<4);
     baseOffset = (uint)header.w;
 
-    populateTasks(chunk, uvec4(sectionData[sectionId].renderRanges));
-
+#ifdef TRANSLUCENT_PASS
+    translucencyIdx = int(((sectionData[sectionId].renderRanges.w>>16)&0xFFFF) | // Reconstruct translucencyIdx
+                      ((sectionData[sectionId].translucencyRanges.w>>16)&0xFFFF)<<16);
+    populateTasks(chunk, sectionData[sectionId].translucencyRanges, uvec4(0));
+#else
+    populateTasks(chunk, sectionData[sectionId].renderRanges, sectionData[sectionId].translucencyRanges);
+#endif
 
     #ifdef STATISTICS_QUADS
     atomicAdd(statistics_buffer+2, quadCount);

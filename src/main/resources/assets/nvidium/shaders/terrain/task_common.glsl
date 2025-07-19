@@ -11,6 +11,10 @@ taskNV out Task {
     uvec4 binIb;
     uvec4 binVa;
     uvec4 binVb;
+
+#ifdef TRANSLUCENT_PASS
+    int translucencyIdx;
+#endif
 };
 
 void putBinData(inout uint idx, inout uint lastIndex, uint offset, uint nextOffset) {
@@ -27,7 +31,7 @@ void putBinData(inout uint idx, inout uint lastIndex, uint offset, uint nextOffs
 }
 
 //Populate the tasks with respect to the chunk face visibility
-void populateTasks(ivec3 relChunkPos, uvec4 ranges) {
+void populateTasks(ivec3 relChunkPos, uvec4 ranges, uvec4 translucencyRanges) {
     //TODO: make the ranges cumulate up, this means that we can fit much much more data per chunk
     // as the range will be spred across all the offsets since they are not the absolute offset
 
@@ -42,7 +46,12 @@ void populateTasks(ivec3 relChunkPos, uvec4 ranges) {
     binIa = uvec4(0);
     binIb = uvec4(0);
 
-    uint fr = (ranges.w>>16)&0xFFFF;
+    // And now we sum all translucent ranges
+    uint fr = ((translucencyRanges.x&0xFFFF) + ((translucencyRanges.x>>16)&0xFFFF) +
+               (translucencyRanges.y&0xFFFF) + ((translucencyRanges.y>>16)&0xFFFF) +
+               (translucencyRanges.z&0xFFFF) + ((translucencyRanges.z>>16)&0xFFFF) +
+               (translucencyRanges.w&0xFFFF)
+    );
 
     uint delta = (ranges.x&0xFFFF);
     if (relChunkPos.x <= 0 && delta > 0) {

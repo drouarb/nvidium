@@ -26,7 +26,7 @@ import java.nio.IntBuffer;
 import static me.cortex.nvidium.Nvidium.LOGGER;
 
 public class SectionManager {
-    public static final int SECTION_SIZE = 32 + 16;
+    public static final int SECTION_SIZE = 48; // 3x16 ivec4 header; ivec4 solidRanges; ivec4 translucentRanges
 
     //Sections should be grouped and batched into sizes of the count of sections in a region
     private final RegionManager regionManager;
@@ -129,8 +129,10 @@ public class SectionManager {
         }
 
         long metadata = regionManager.setSectionData(sectionIdx);
-        metadata += 32; // Go to translucency data offset
-        MemoryUtil.memPutInt(metadata, indexDataAddress);
+        metadata += 16 + 14; // Go to 1st half
+        MemoryUtil.memPutShort(metadata, (short)(indexDataAddress&0xFFFF));
+        metadata += 16;
+        MemoryUtil.memPutShort(metadata, (short)((indexDataAddress>>16)&0xFFFF));
     }
 
     public void uploadChunkBuildResult(ChunkBuildOutput result) {
@@ -144,7 +146,7 @@ public class SectionManager {
             return;
         }
 
-        // We need to store quadCount per ModelFacing to pad translucency sorting data
+        // We need to store quadCount per ModelFacing to pad translucency sorting data // TODO REMOVE WE CAN MIXIN TransluscentData
         var translucentData = result.meshes.get(DefaultTerrainRenderPasses.TRANSLUCENT);
         if (translucentData != null) {
             int[] quadOffsets = translucencyQuadCounts.get(sectionKey);
@@ -156,7 +158,7 @@ public class SectionManager {
             }
 
             translucencyQuadCounts.put(sectionKey, quadOffsets);
-        }
+        } // TODO REMOVE WE CAN MIXIN TransluscentData
 
         int terrainAddress;
         {
@@ -213,7 +215,7 @@ public class SectionManager {
         metadata += 4*4;
 
         //Write the geometry offsets, packed into ints
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 8; i++) {
             int geo = Short.toUnsignedInt(output.offsets()[i*2])|(Short.toUnsignedInt(output.offsets()[i*2+1])<<16);
             MemoryUtil.memPutInt(metadata, geo);
             metadata += 4;

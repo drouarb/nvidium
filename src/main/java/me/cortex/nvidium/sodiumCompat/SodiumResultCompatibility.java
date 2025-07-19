@@ -18,7 +18,9 @@ public class SodiumResultCompatibility {
         int formatSize = Nvidium.config.use_sodium_vertex_format ? ChunkMeshFormats.COMPACT.getVertexFormat().getStride() : NvidiumCompactChunkVertex.STRIDE;
         int geometryBytes = result.meshes.values().stream().mapToInt(a->a.getVertexData().getLength()).sum();
         var output = new NativeBuffer(geometryBytes);
-        var offsets = new short[8];
+        var offsets = new short[16]; // 7 solid ranges, 7 translucent ranges, 2 translucencyIdx
+        offsets[7] = -1; // slot for translucencyIdx /shrug
+        offsets[15] = -1; // both will merge to an int that is -1
         var min = new Vector3i(2000);
         var max = new Vector3i(-2000);
         packageSectionGeometry(formatSize, output, offsets, result, min, max);
@@ -93,21 +95,23 @@ public class SodiumResultCompatibility {
 
         // If we are using sodium translucency sorting, we don't need to sort quads
         if (translucentData != null && Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.SODIUM) {
-            var partOffset = 0;
+            var translucentPartOffset = 0;
             MemoryUtil.memCopy(translucentData.getVertexData().getDirectBuffer(), output.getDirectBuffer());
             for (int i = 0; i < 7; i++) { // For each Facing
+                int poff = offset;
                 var part = translucentData.getVertexCounts()[i];
 
                 for (int j = 0; j < part; j++) {
-                    long src = MemoryUtil.memAddress(output.getDirectBuffer()) + (long) partOffset * formatSize;
+                    long src = MemoryUtil.memAddress(output.getDirectBuffer()) + (long) translucentPartOffset * formatSize;
                     long base = src + (long) j * formatSize;
 
                     updateSectionBounds(min, max, base);
                 }
 
-                partOffset += part;
+                offset += part/4;
+                translucentPartOffset += part;
+                outOffsets[i + 8] = (short) (offset - poff);
             }
-            offset += translucentData.getVertexData().getLength() / (formatSize * 4);
 
         } else if (translucentData != null) {
             int quadCount = 0;
@@ -194,7 +198,6 @@ public class SodiumResultCompatibility {
             offset += quadCount;
         }
 
-        outOffsets[7] = (short) offset;
 
 
         var solid  = result.meshes.get(DefaultTerrainRenderPasses.SOLID);

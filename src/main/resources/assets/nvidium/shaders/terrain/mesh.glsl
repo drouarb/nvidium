@@ -46,6 +46,10 @@ taskNV in Task {
     uvec4 binIb;
     uvec4 binVa;
     uvec4 binVb;
+
+#ifdef TRANSLUCENT_PASS
+    int translucencyIdx;
+#endif
 };
 
 
@@ -53,6 +57,12 @@ taskNV in Task {
 // Note, all threads in the work group are probably going to take the same path
 uint getOffset() {
     uint gii = gl_GlobalInvocationID.x >> 1;
+
+#ifdef TRANSLUCENT_PASS
+    if (translucencyIdx != -1) {
+        gii = translucencyIndexData[translucencyIdx + gii];
+    }
+#endif
 
     //TODO: replace this with binary search
     if (gii < binIa.x) {

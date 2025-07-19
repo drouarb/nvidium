@@ -49,7 +49,7 @@ void main() {
     origin = vec3(chunk<<4);
     baseOffset = (uint)header.w;
 
-    populateTasks(chunk, uvec4(sectionData[sectionId].renderRanges));
+    populateTasks(chunk, sectionData[sectionId].renderRanges, sectionData[sectionId].translucencyRanges);
 
     #ifdef STATISTICS_QUADS
     atomicAdd(statistics_buffer+2, quadCount);
