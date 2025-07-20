@@ -25,7 +25,7 @@ bool shouldRenderVisible(uint sectionId) {
     return (data&uint8_t(3)) == uint8_t(1);//If the section was not visible last frame but is visible this frame, render it
 }
 
-#import <nvidium:terrain/task_common.glsl>
+#import <nvidium:terrain/task_common2.glsl>
 
 void main() {
     uint sectionId = gl_WorkGroupID.x;
@@ -47,9 +47,8 @@ void main() {
     chunk -= unpackOriginOffsetId(transformationId);
 
     origin = vec3(chunk<<4);
-    baseOffset = (uint)header.w;
 
-    populateTasks(chunk, uvec4(sectionData[sectionId].renderRanges));
+    populateTasks(chunk, (uint)header.w, uvec4(sectionData[sectionId].renderRanges));
 
     #ifdef STATISTICS_QUADS
     atomicAdd(statistics_buffer+2, quadCount);
