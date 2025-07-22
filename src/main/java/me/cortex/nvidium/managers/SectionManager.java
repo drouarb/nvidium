@@ -53,8 +53,10 @@ public class SectionManager {
         this.device = device;
         this.uploadStream = uploadStream;
 
-        this.terrainAreana = new BufferArena(device, fallbackMemorySize, 2 * 4);
-        this.attributesArena = new BufferArena(device, fallbackMemorySize, 3 * 4);
+        //this.terrainAreana = new BufferArena(device, fallbackMemorySize, 2 * 4);
+        //this.attributesArena = new BufferArena(device, fallbackMemorySize, 3 * 4);
+        this.terrainAreana = new BufferArena(device, fallbackMemorySize, 6);
+        this.attributesArena = new BufferArena(device, fallbackMemorySize, 10);
         // TODO adapt fallbackMemorySize
         this.translucencyIndexArena = new BufferArena(device, fallbackMemorySize, 1);
         this.regionManager = new RegionManager(device, maxRegions, maxRegions * 200, uploadStream, worldRenderer::enqueueRegionSort);
@@ -213,31 +215,33 @@ public class SectionManager {
             long geometryUpload = terrainAreana.upload(uploadStream, terrainAddress);
             long attributesUpload = attributesArena.upload(uploadStream, terrainAddress);
             for (long vertId = 0; vertId < output.quads() * 4L; vertId++) {
-                MemoryUtil.memCopy(vertexDataAddress + vertId * 20,         geometryUpload   + vertId * 2 * 4, 2 * 4);
-                MemoryUtil.memCopy(vertexDataAddress + vertId * 20 + 2 * 4, attributesUpload + vertId * 3 * 4, 3 * 4);
+                //MemoryUtil.memCopy(vertexDataAddress + vertId * 20,         geometryUpload   + vertId * 2 * 4, 2 * 4);
+                //MemoryUtil.memCopy(vertexDataAddress + vertId * 20 + 2 * 4, attributesUpload + vertId * 3 * 4, 3 * 4);
+                MemoryUtil.memCopy(vertexDataAddress + vertId * 16,     geometryUpload   + vertId * 6, 6);
+                MemoryUtil.memCopy(vertexDataAddress + vertId * 16 + 6, attributesUpload + vertId * 10, 10);
             }
 
             /*
             System.out.print("==============================INPUT====================================\n");
-            for (long vertId = 0; vertId < output.quads() * 20L; vertId++) {
+            for (long vertId = 0; vertId < output.quads() * 16L; vertId++) {
                 System.out.printf("%02x\t", MemoryUtil.memGetByte(vertexDataAddress + vertId));
-                if (vertId % 20 == 19)
+                if (vertId % 16 == 15)
                     System.out.print("\n");
             }
             System.out.print("==============================VERT=====================================\n");
-            for (long vertId = 0; vertId < output.quads() * 8L; vertId++) {
+            for (long vertId = 0; vertId < output.quads() * 6L; vertId++) {
                 System.out.printf("%02x\t", MemoryUtil.memGetByte(geometryUpload + vertId));
-                if (vertId % 8 == 7)
+                if (vertId % 6 == 5)
                     System.out.print("\n");
             }
             System.out.print("========================================================================\n");
-            for (long vertId = 0; vertId < output.quads() * 12L; vertId++) {
+            for (long vertId = 0; vertId < output.quads() * 10L; vertId++) {
                 System.out.printf("%02x\t", MemoryUtil.memGetByte(attributesUpload + vertId));
-                if (vertId % 12 == 11)
+                if (vertId % 10 == 9)
                     System.out.print("\n");
             }
             System.out.print("========================================================================\n");
-             */
+            //*/
             //MemoryUtil.memCopy(MemoryUtil.memAddress(output.geometry().getDirectBuffer()), geometryUpload, output.geometry().getLength());
         }
 

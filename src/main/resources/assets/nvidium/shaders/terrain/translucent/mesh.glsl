@@ -61,6 +61,7 @@ void emitQuadIndicies() {
 
 void emitVertex(uint vertexBaseId, uint innerId) {
     Vertex V = terrainData[vertexBaseId + innerId];
+    VertexAttribute VA = attributesData[vertexBaseId + innerId];
     uint outId = (gl_LocalInvocationID.x<<2)+innerId;
     vec3 pos = decodeVertexPosition(V)+originAndBaseData.xyz;
     gl_MeshVerticesNV[outId].gl_Position = MVP*vec4(pos,1.0);
@@ -70,10 +71,10 @@ void emitVertex(uint vertexBaseId, uint innerId) {
     OUT[outId].v_FragDistance = getFragDistance(pos+subchunkOffset.xyz);
     #endif
 
-    OUT[outId].uv = decodeVertexUV(V);
+    OUT[outId].uv = decodeVertexUV(VA);
 
-    vec4 tint = decodeVertexColour(V);
-    tint *= sampleLight(decodeLightUV(V));
+    vec4 tint = decodeVertexColour(VA);
+    tint *= sampleLight(decodeLightUV(VA));
     tint *= tint.w;
     OUT[outId].v_colour = tint.rgb;
 #endif

@@ -25,7 +25,7 @@ loom {
     mixin.defaultRefmapName = "nvidium.refmap.json"
     runs {
         it.configureEach {
-            vmArgs("-Xmx8G", "-XX:+UseZGC")
+            vmArgs("-Xmx16G", "-XX:+UseZGC")
         }
     }
 }
