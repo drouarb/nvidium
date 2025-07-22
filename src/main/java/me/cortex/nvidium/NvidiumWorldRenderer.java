@@ -93,7 +93,7 @@ public class NvidiumWorldRenderer {
     }
 
     public void renderTranslucent(TerrainRenderPass pass) {
-        this.renderPipeline.renderTranslucent(pass);
+        //this.renderPipeline.renderTranslucent(pass);
     }
 
     public void deleteSection(RenderSection section) {

@@ -15,7 +15,7 @@ vec4 sampleLight(vec2 uv) {
     return vec4(texture(tex_light, uv).rgb, 1);
 }
 
-vec3 computeMultiplier(Vertex V) {
+vec3 computeMultiplier(VertexAttribute V) {
     vec4 tint = decodeVertexColour(V);
     tint *= sampleLight(decodeLightUV(V));
     tint *= tint.w;

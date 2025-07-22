@@ -18,6 +18,7 @@ import static me.cortex.nvidium.RenderPipeline.GL_DRAW_INDIRECT_ADDRESS_NV;
 import static me.cortex.nvidium.gl.shader.ShaderType.*;
 import static org.lwjgl.opengl.GL11C.*;
 import static org.lwjgl.opengl.GL33.glGenSamplers;
+import static org.lwjgl.opengl.GL43C.*;
 import static org.lwjgl.opengl.NVMeshShader.glMultiDrawMeshTasksIndirectNV;
 import static org.lwjgl.opengl.NVVertexBufferUnifiedMemory.glBufferAddressRangeNV;
 
@@ -62,7 +63,9 @@ public class PrimaryTerrainRasterizer extends Phase {
 
         glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandAddr, regionCount*8L);//Bind the command buffer
         frameTimeProfiler.startQuery();
+        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, "Nvidium Primary terrain rasterizer");
         glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
+        glPopDebugGroup();
         frameTimeProfiler.endQuery();
         GL45C.glBindSampler(0, 0);
         GL45C.glBindSampler(1, 0);
