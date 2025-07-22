@@ -16,8 +16,22 @@ struct VertexAttribute {
     uint8_t section;
 };
 #else
-#define Vertex uvec2
-#define VertexAttribute uvec2
+struct Vertex {
+    uint16_t x;
+    uint16_t y;
+    uint16_t z;
+};
+
+struct VertexAttribute {
+    uint8_t material;
+    uint8_t blockLight;
+    uint8_t colorR;
+    uint8_t colorG;
+    uint8_t colorB;
+    uint8_t skyLight;
+    uint16_t u;
+    uint16_t v;
+};
 #endif
 
 // this is cause in the section rasterizer you get less cache misses thus higher throughput
