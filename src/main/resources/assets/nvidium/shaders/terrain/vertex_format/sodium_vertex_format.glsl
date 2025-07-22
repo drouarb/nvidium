@@ -20,31 +20,31 @@ vec3 decodeVertexPosition(Vertex v) {
     return (_deinterleave_u20x3(v) * VERTEX_SCALE) + VERTEX_OFFSET;
 }
 
-vec2 decodeVertexRawUV(Vertex v) {
+vec2 decodeVertexRawUV(VertexAttribute v) {
     return vec2(v.u & TEXTURE_MAX_VALUE, v.v & TEXTURE_MAX_VALUE) / float(TEXTURE_MAX_COORD);
 }
 
-vec2 decodeVertexUVBias(Vertex v) {
+vec2 decodeVertexUVBias(VertexAttribute v) {
     return mix(vec2(-1.0), vec2(1.0), bvec2(uvec2(v.u, v.v) >> TEXTURE_BITS));
 }
 
-vec2 decodeVertexUV(Vertex v) {
+vec2 decodeVertexUV(VertexAttribute v) {
     return (decodeVertexUVBias(v) * texCoordShrink) + decodeVertexRawUV(v);
 }
 
-vec2 decodeLightUV(Vertex v) {
+vec2 decodeLightUV(VertexAttribute v) {
     return vec2(v.blockLight, v.skyLight)/256.0;
 }
 
-bool hasMipping(Vertex v) {
+bool hasMipping(VertexAttribute v) {
     return bool(int(v.material) & 1);
 }
 
-uint rawVertexAlphaCutoff(Vertex v) {
+uint rawVertexAlphaCutoff(VertexAttribute v) {
     return (int(v.material) >> 1) & 3;
 }
 
-vec4 decodeVertexColour(Vertex v) {
+vec4 decodeVertexColour(VertexAttribute v) {
     uvec3 packed_color = (uvec3(v.color) >> uvec3(0, 8, 16)) & uvec3(0xFFu);
     return vec4(vec3(packed_color) * COLOR_SCALE, 1);
 }

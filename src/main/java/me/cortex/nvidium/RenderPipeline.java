@@ -74,6 +74,7 @@ public class RenderPipeline {
                     8 +     // uvec2     *translucencyCommandBuffer
                     8 +     // uint16_t  *sortingRegionList
                     8 +     // Vertex    *terrainData
+                    16 +     // Vertex    *attributesData
                     8 +     // uint      *translucencyIndexData TODO
                     8 +     // mat4      *transformationArray
                     8 +     // uint64_t  *originArray
@@ -126,7 +127,7 @@ public class RenderPipeline {
         regionRasterizer = new RegionRasterizer();
         sectionRasterizer = new SectionRasterizer();
         temporalRasterizer = new TemporalTerrainRasterizer();
-        translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
+        translucencyTerrainRasterizer = null; // new TranslucentTerrainRasterizer();
         regionSectionSorter = new SortRegionSectionPhase();
 
         int maxRegions = sectionManager.getRegionManager().maxRegions();
@@ -321,6 +322,8 @@ public class RenderPipeline {
             addr += 8;
             MemoryUtil.memPutLong(addr, sectionManager.terrainAreana.buffer.getDeviceAddress());
             addr += 8;
+            MemoryUtil.memPutLong(addr, sectionManager.attributesArena.buffer.getDeviceAddress());
+            addr += 16;
             MemoryUtil.memPutLong(addr, sectionManager.translucencyIndexArena.buffer.getDeviceAddress());
             addr += 8;
             MemoryUtil.memPutLong(addr, this.transformationArray.getDeviceAddress());

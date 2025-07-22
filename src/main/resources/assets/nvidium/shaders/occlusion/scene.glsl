@@ -2,6 +2,9 @@
 struct Vertex {
     uint hi;
     uint lo;
+};
+
+struct VertexAttribute {
     uint color;
 
     uint16_t u;
@@ -13,7 +16,8 @@ struct Vertex {
     uint8_t section;
 };
 #else
-#define Vertex uvec4
+#define Vertex uvec2
+#define VertexAttribute uvec2
 #endif
 
 // this is cause in the section rasterizer you get less cache misses thus higher throughput
@@ -84,7 +88,9 @@ layout(std140, binding=0) uniform SceneData {
 
     //TODO:FIXME: only apply non readonly to translucency mesh
     restrict Vertex *terrainData;//readonly
-    restrict uint   *translucencyIndexData;
+    restrict VertexAttribute *attributesData;//readonly
+    restrict VertexAttribute *padding;
+    restrict uint *translucencyIndexData;
 
     //TODO: possibly make this a uniform instead of a buffer, but it might get quite large is the issue
     readonly restrict mat4 *transformationArray;

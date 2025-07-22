@@ -33,10 +33,12 @@ public class SectionManager {
 
     private final Long2IntOpenHashMap section2id = new Long2IntOpenHashMap();
     private final Long2IntOpenHashMap section2terrain = new Long2IntOpenHashMap();
+    private final Long2IntOpenHashMap section2attributes = new Long2IntOpenHashMap();
     private final Long2IntOpenHashMap section2index = new Long2IntOpenHashMap();
 
     public final UploadingBufferStream uploadStream;
     public final BufferArena terrainAreana;
+    public final BufferArena attributesArena;
     public final BufferArena translucencyIndexArena;
 
     private final Long2ObjectOpenHashMap<int[]> translucencyQuadCounts = new Long2ObjectOpenHashMap<int[]>();
@@ -51,13 +53,15 @@ public class SectionManager {
         this.device = device;
         this.uploadStream = uploadStream;
 
-        this.terrainAreana = new BufferArena(device, fallbackMemorySize, quadVertexSize);
+        this.terrainAreana = new BufferArena(device, fallbackMemorySize, 2 * 4);
+        this.attributesArena = new BufferArena(device, fallbackMemorySize, 3 * 4);
         // TODO adapt fallbackMemorySize
         this.translucencyIndexArena = new BufferArena(device, fallbackMemorySize, 1);
         this.regionManager = new RegionManager(device, maxRegions, maxRegions * 200, uploadStream, worldRenderer::enqueueRegionSort);
 
         this.section2id.defaultReturnValue(-1);
         this.section2terrain.defaultReturnValue(-1);
+        this.section2attributes.defaultReturnValue(-1);
         this.section2index.defaultReturnValue(-1);
 
         this.translucencyQuadCounts.defaultReturnValue(null);
@@ -159,6 +163,7 @@ public class SectionManager {
         }
 
         int terrainAddress;
+        int attributesAddress;
         {
             //Attempt to reuse the same memory
             terrainAddress = this.section2terrain.get(sectionKey);
@@ -167,9 +172,18 @@ public class SectionManager {
                 this.terrainAreana.free(terrainAddress);
                 terrainAddress = -1;
             }
+            attributesAddress = this.section2attributes.get(sectionKey);
+            if (attributesAddress != -1 && !this.attributesArena.canReuse(attributesAddress, output.quads())) {
+                this.section2attributes.remove(sectionKey);
+                this.attributesArena.free(attributesAddress);
+                attributesAddress = -1;
+            }
 
             if (terrainAddress == -1) {
                 terrainAddress = this.terrainAreana.allocQuads(output.quads());
+            }
+            if (attributesAddress == -1) {
+                attributesAddress = this.attributesArena.allocQuads(output.quads());
             }
 
             if (terrainAddress == SegmentedManager.SIZE_LIMIT) {
@@ -182,10 +196,46 @@ public class SectionManager {
                 return;
             }
 
-            this.section2terrain.put(sectionKey, terrainAddress);
+            if (terrainAddress != attributesAddress) {
+                System.out.println("DESYNC!! Terrain: " + terrainAddress + " Attributes: " + attributesAddress + " Quads: " + output.quads() + " data: " + output.geometry().getLength());
+            }
+            if (attributesAddress == -1) {
+                System.out.println("attribute address -1");
+            }
 
+            this.section2terrain.put(sectionKey, terrainAddress);
+            this.section2attributes.put(sectionKey, attributesAddress);
+
+            long vertexDataAddress = MemoryUtil.memAddress(output.geometry().getDirectBuffer());
             long geometryUpload = terrainAreana.upload(uploadStream, terrainAddress);
-            MemoryUtil.memCopy(MemoryUtil.memAddress(output.geometry().getDirectBuffer()), geometryUpload, output.geometry().getLength());
+            long attributesUpload = attributesArena.upload(uploadStream, terrainAddress);
+            for (long vertId = 0; vertId < output.quads() * 4L; vertId++) {
+                MemoryUtil.memCopy(vertexDataAddress + vertId * 20,         geometryUpload   + vertId * 2 * 4, 2 * 4);
+                MemoryUtil.memCopy(vertexDataAddress + vertId * 20 + 2 * 4, attributesUpload + vertId * 3 * 4, 3 * 4);
+            }
+
+            /*
+            System.out.print("==============================INPUT====================================\n");
+            for (long vertId = 0; vertId < output.quads() * 20L; vertId++) {
+                System.out.printf("%02x\t", MemoryUtil.memGetByte(vertexDataAddress + vertId));
+                if (vertId % 20 == 19)
+                    System.out.print("\n");
+            }
+            System.out.print("==============================VERT=====================================\n");
+            for (long vertId = 0; vertId < output.quads() * 8L; vertId++) {
+                System.out.printf("%02x\t", MemoryUtil.memGetByte(geometryUpload + vertId));
+                if (vertId % 8 == 7)
+                    System.out.print("\n");
+            }
+            System.out.print("========================================================================\n");
+            for (long vertId = 0; vertId < output.quads() * 12L; vertId++) {
+                System.out.printf("%02x\t", MemoryUtil.memGetByte(attributesUpload + vertId));
+                if (vertId % 12 == 11)
+                    System.out.print("\n");
+            }
+            System.out.print("========================================================================\n");
+             */
+            //MemoryUtil.memCopy(MemoryUtil.memAddress(output.geometry().getDirectBuffer()), geometryUpload, output.geometry().getLength());
         }
 
 
@@ -256,6 +306,10 @@ public class SectionManager {
             if (terrainIndex != -1) {
                 this.terrainAreana.free(terrainIndex);
             }
+            int attributesIndex = this.section2attributes.remove(sectionKey);
+            if (attributesIndex != -1) {
+                this.attributesArena.free(terrainIndex);
+            }
             int indexIdx = this.section2index.remove(sectionKey);
             if (indexIdx != -1) {
                 this.translucencyIndexArena.free(indexIdx);
@@ -269,6 +323,7 @@ public class SectionManager {
     public void destroy() {
         this.regionManager.destroy();
         this.terrainAreana.delete();
+        this.attributesArena.delete();
         this.translucencyIndexArena.delete();
     }
 
