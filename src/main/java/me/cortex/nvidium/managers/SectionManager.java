@@ -219,6 +219,39 @@ public class SectionManager {
             }
 
             /*
+            System.out.printf("==============================DATA (%d)====================================\n", output.quads());
+            int curRange = 0;
+            long accRange = 0;
+            for (long quadId = 0; quadId < output.quads(); quadId++) {
+                if (quadId - accRange == 0) {
+                    System.out.printf("==SWITCH FACING %s %d\n", ModelQuadFacing.VALUES[curRange].toString(), output.offsets()[curRange]);
+                }
+                System.out.printf("%d\tV0(%f|%f|%f)\tV1(%f|%f|%f)\tV2(%f|%f|%f)\tV3(%f|%f|%f)\n", quadId,
+                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 0) * (32.0 / 65536.0) - 8.0,
+                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 2) * (32.0 / 65536.0) - 8.0,
+                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 4) * (32.0 / 65536.0) - 8.0,
+
+                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 6) * (32.0 / 65536.0) - 8.0,
+                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 8) * (32.0 / 65536.0) - 8.0,
+                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 10) * (32.0 / 65536.0) - 8.0,
+
+                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 12) * (32.0 / 65536.0) - 8.0,
+                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 14) * (32.0 / 65536.0) - 8.0,
+                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 16) * (32.0 / 65536.0) - 8.0,
+
+                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 18) * (32.0 / 65536.0) - 8.0,
+                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 20) * (32.0 / 65536.0) - 8.0,
+                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 22) * (32.0 / 65536.0) - 8.0
+                );
+
+                if ((quadId - accRange) + 1 == output.offsets()[curRange]) {
+                    accRange = quadId + 1;
+                    curRange++;
+                }
+            }
+            System.out.print("========================================================================\n");
+
+            /*
             System.out.print("==============================INPUT====================================\n");
             for (long vertId = 0; vertId < output.quads() * 16L; vertId++) {
                 System.out.printf("%02x\t", MemoryUtil.memGetByte(vertexDataAddress + vertId));
