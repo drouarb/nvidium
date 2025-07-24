@@ -27,7 +27,7 @@ public class PrimaryTerrainRasterizer extends Phase {
     private final int lightSampler = glGenSamplers();
     private final Shader shader = Shader.make()
             .addSource(TASK, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/task.glsl")))
-            .addSource(MESH, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/mesh.glsl")))
+            .addSource(MESH, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/mesh2.glsl")))
             .addSource(FRAGMENT, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/frag.frag"))).compile();
 
     public PrimaryTerrainRasterizer() {
