@@ -3,6 +3,7 @@ package me.cortex.nvidium.sodiumCompat;
 import it.unimi.dsi.fastutil.longs.LongArrays;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.config.TranslucencySortingLevel;
+import me.cortex.nvidium.meshletengine.MeshletBuilder;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkBuildOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.DefaultTerrainRenderPasses;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkMeshFormats;
@@ -13,7 +14,6 @@ import org.joml.Vector3i;
 import org.lwjgl.system.MemoryUtil;
 
 public class SodiumResultCompatibility {
-
     public static RepackagedSectionOutput repackage(ChunkBuildOutput result) {
         int formatSize = Nvidium.config.use_sodium_vertex_format ? ChunkMeshFormats.COMPACT.getVertexFormat().getStride() : NvidiumCompactChunkVertex.STRIDE;
         int geometryBytes = result.meshes.values().stream().mapToInt(a->a.getVertexData().getLength()).sum();
@@ -21,6 +21,11 @@ public class SodiumResultCompatibility {
         var offsets = new short[8];
         var min = new Vector3i(2000);
         var max = new Vector3i(-2000);
+
+        long start = System.nanoTime();
+        MeshletBuilder.work(result);
+        System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ " + (float)(System.nanoTime() - start) / 1_000_000 + "ms");
+
         packageSectionGeometry(formatSize, output, offsets, result, min, max);
 
         Vector3i size;
