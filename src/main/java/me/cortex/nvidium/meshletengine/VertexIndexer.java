@@ -2,6 +2,7 @@ package me.cortex.nvidium.meshletengine;
 
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
+import org.lwjgl.system.MemoryUtil;
 
 public class VertexIndexer {
     private final int MAX_VERTEX_COUNT;
@@ -29,11 +30,20 @@ public class VertexIndexer {
                    (indexMap.get(v2) == -1 ? 1 : 0) +
                    (indexMap.get(v3) == -1 ? 1 : 0);
 
-        if (cost + vertices.size() >= MAX_VERTEX_COUNT) {
+        if (cost + vertices.size() > MAX_VERTEX_COUNT) {
             System.out.printf("Meshlet full of vertex, need %d, used %d, max %d`\n", cost, indexMap.size(), MAX_VERTEX_COUNT);
             return false;
         }
         return true;
+    }
+
+    public long serialize(long addr) {
+        for (long vtx : vertices) {
+            MemoryUtil.memPutInt(addr, (int)vtx);
+            MemoryUtil.memPutShort(addr + 4, (short)(vtx >> 32));
+            addr += MeshletBuilder.VTX_SIZE;
+        }
+        return addr;
     }
 
     public int getVertexCount() {
