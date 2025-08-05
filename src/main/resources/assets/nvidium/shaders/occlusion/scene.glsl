@@ -1,3 +1,5 @@
+#define INVOCATIONS_PER_MESHLET 32
+
 #ifdef USE_SODIUM_VERTEX_FORMAT
 struct Vertex {
     uint hi;
@@ -51,7 +53,7 @@ struct Section {
     //Header.w -> quad offset
     ivec4 renderRanges;
     int   translucencyDataIdx;
-    int   meshletIdx;
+    int   meshletOffset;
     int   meshletCount;
 };
 
