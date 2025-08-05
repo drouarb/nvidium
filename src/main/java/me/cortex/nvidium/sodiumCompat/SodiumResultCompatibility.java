@@ -3,6 +3,7 @@ package me.cortex.nvidium.sodiumCompat;
 import it.unimi.dsi.fastutil.longs.LongArrays;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.config.TranslucencySortingLevel;
+import me.cortex.nvidium.meshletengine.MeshletData;
 import me.cortex.nvidium.meshletengine.MeshletEngine;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkBuildOutput;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.DefaultTerrainRenderPasses;
@@ -23,7 +24,7 @@ public class SodiumResultCompatibility {
         var max = new Vector3i(-2000);
 
         long start = System.nanoTime();
-        MeshletEngine.work(result);
+        MeshletData meshletData = MeshletEngine.work(result);
         System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ " + (float)(System.nanoTime() - start) / 1_000_000 + "ms");
 
         packageSectionGeometry(formatSize, output, offsets, result, min, max);
@@ -50,7 +51,7 @@ public class SodiumResultCompatibility {
             size.y = Math.min(15, Math.max(size.y, 0));
             size.z = Math.min(15, Math.max(size.z, 0));
         }
-        var repackagedGeometry = new RepackagedSectionOutput((geometryBytes/formatSize)/4, output, offsets, min, size);
+        var repackagedGeometry = new RepackagedSectionOutput((geometryBytes/formatSize)/4, output, offsets, min, size, meshletData);
         //NvidiumGeometryReencoder.transpileGeometry(repackagedGeometry);
         return repackagedGeometry;
     }

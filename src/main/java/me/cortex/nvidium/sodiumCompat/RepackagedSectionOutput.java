@@ -1,5 +1,6 @@
 package me.cortex.nvidium.sodiumCompat;
 
+import me.cortex.nvidium.meshletengine.MeshletData;
 import net.caffeinemc.mods.sodium.client.util.NativeBuffer;
 import org.joml.Vector3i;
 
@@ -8,8 +9,10 @@ public record RepackagedSectionOutput(int quads,
                                       NativeBuffer geometry,
                                       short[] offsets,
                                       Vector3i min,
-                                      Vector3i size) {
+                                      Vector3i size,
+                                      MeshletData meshlet) {
     public void delete() {
         geometry.free();
+        meshlet.delete();
     }
 }

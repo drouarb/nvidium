@@ -34,6 +34,14 @@ struct VertexAttribute {
 };
 #endif
 
+struct Meshlet {
+    uint      quadOffset;
+    uint      vtxOffset;
+    uint      faceMask;
+    uint16_t  quadCount;
+    uint16_t  vtxCount;
+};
+
 // this is cause in the section rasterizer you get less cache misses thus higher throughput
 struct Section {
     ivec4 header;
@@ -43,6 +51,8 @@ struct Section {
     //Header.w -> quad offset
     ivec4 renderRanges;
     int   translucencyDataIdx;
+    int   meshletIdx;
+    int   meshletCount;
 };
 
 struct Region {
@@ -104,6 +114,13 @@ layout(std140, binding=0) uniform SceneData {
     restrict Vertex *terrainData;//readonly
     restrict VertexAttribute *attributesData;//readonly
     restrict VertexAttribute *padding;
+
+
+    Meshlet         *meshletData;
+    Vertex          *vertexData;
+    uint8_t         *indexData;
+    VertexAttribute *attributeData;
+
     restrict uint *translucencyIndexData;
 
     //TODO: possibly make this a uniform instead of a buffer, but it might get quite large is the issue

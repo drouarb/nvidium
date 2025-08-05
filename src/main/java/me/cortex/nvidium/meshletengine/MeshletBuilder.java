@@ -160,4 +160,16 @@ public class MeshletBuilder {
     public int getAttributesSize() {
         return meshlets.stream().mapToInt(Meshlet::getQuadCount).sum() * 4 * (FORMAT_SIZE - VTX_SIZE);
     }
+
+    public int getMeshletCount() {
+        return meshlets.size();
+    }
+
+    public int getVertexCount() {
+        return meshlets.stream().mapToInt(Meshlet::getVertexCount).sum();
+    }
+
+    public int getQuadCount() {
+        return meshlets.stream().mapToInt(Meshlet::getQuadCount).sum();
+    }
 }

@@ -8,7 +8,7 @@ import net.caffeinemc.mods.sodium.client.util.NativeBuffer;
 import org.lwjgl.system.MemoryUtil;
 
 public class MeshletEngine {
-    public static void work(ChunkBuildOutput result) {
+    public static MeshletData work(ChunkBuildOutput result) {
         // TODO Rework mostly for test
         long solidOffset = 0;
         long cutoutOffset = 0;
@@ -80,9 +80,13 @@ public class MeshletEngine {
                 offsets[0], offsets[1]
         );
 
-        headers.free();
-        vertices.free();
-        indices.free();
-        attributes.free();
+        return new MeshletData(
+                headers,
+                terrainBuilder.getMeshletCount() + translucentBuilder.getMeshletCount(),
+                vertices,
+                terrainBuilder.getVertexCount() + translucentBuilder.getVertexCount(),
+                indices, attributes,
+                terrainBuilder.getQuadCount() + translucentBuilder.getQuadCount()
+        );
     }
 }

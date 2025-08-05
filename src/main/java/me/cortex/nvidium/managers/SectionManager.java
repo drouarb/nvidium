@@ -34,12 +34,22 @@ public class SectionManager {
     private final Long2IntOpenHashMap section2id = new Long2IntOpenHashMap();
     private final Long2IntOpenHashMap section2terrain = new Long2IntOpenHashMap();
     private final Long2IntOpenHashMap section2attributes = new Long2IntOpenHashMap();
-    private final Long2IntOpenHashMap section2index = new Long2IntOpenHashMap();
+    private final Long2IntOpenHashMap section2translucencyIdx = new Long2IntOpenHashMap();
 
     public final UploadingBufferStream uploadStream;
     public final BufferArena terrainAreana;
     public final BufferArena attributesArena;
     public final BufferArena translucencyIndexArena;
+
+    public final BufferArena meshletArena;
+    public final BufferArena vertexArena;
+    public final BufferArena indexArena;
+    public final BufferArena attrArena;
+    private final Long2IntOpenHashMap section2meshlet = new Long2IntOpenHashMap();
+    private final Long2IntOpenHashMap section2vertex = new Long2IntOpenHashMap();
+    private final Long2IntOpenHashMap section2index = new Long2IntOpenHashMap();
+    private final Long2IntOpenHashMap section2attr = new Long2IntOpenHashMap();
+
 
     private final Long2ObjectOpenHashMap<int[]> translucencyQuadCounts = new Long2ObjectOpenHashMap<int[]>();
 
@@ -57,6 +67,16 @@ public class SectionManager {
         //this.attributesArena = new BufferArena(device, fallbackMemorySize, 3 * 4);
         this.terrainAreana = new BufferArena(device, fallbackMemorySize, 6);
         this.attributesArena = new BufferArena(device, fallbackMemorySize, 10);
+
+        this.meshletArena = new BufferArena(device, fallbackMemorySize, 4); // Since arena is working by quad, /4 our size TODO better arena
+        this.vertexArena = new BufferArena(device, fallbackMemorySize, 2);
+        this.indexArena = new BufferArena(device, fallbackMemorySize, 2);
+        this.attrArena = new BufferArena(device, fallbackMemorySize, 10); // Still 40bytes of data per quad
+        section2meshlet.defaultReturnValue(-1);
+        section2vertex.defaultReturnValue(-1);
+        section2index.defaultReturnValue(-1);
+        section2attr.defaultReturnValue(-1);
+
         // TODO adapt fallbackMemorySize
         this.translucencyIndexArena = new BufferArena(device, fallbackMemorySize, 1);
         this.regionManager = new RegionManager(device, maxRegions, maxRegions * 200, uploadStream, worldRenderer::enqueueRegionSort);
@@ -64,7 +84,7 @@ public class SectionManager {
         this.section2id.defaultReturnValue(-1);
         this.section2terrain.defaultReturnValue(-1);
         this.section2attributes.defaultReturnValue(-1);
-        this.section2index.defaultReturnValue(-1);
+        this.section2translucencyIdx.defaultReturnValue(-1);
 
         this.translucencyQuadCounts.defaultReturnValue(null);
     }
@@ -112,9 +132,9 @@ public class SectionManager {
             var idxBufferLength = indexBuffer.getLength() / 6;
             IntBuffer idxBuffer = indexBuffer.getDirectBuffer().asIntBuffer();
 
-            indexDataAddress = this.section2index.get(sectionKey);
+            indexDataAddress = this.section2translucencyIdx.get(sectionKey);
             if (indexDataAddress != -1 && !this.translucencyIndexArena.canReuse(indexDataAddress, idxBufferLength)) {
-                this.section2index.remove(sectionKey);
+                this.section2translucencyIdx.remove(sectionKey);
                 this.translucencyIndexArena.free(indexDataAddress);
                 indexDataAddress = -1;
             }
@@ -123,7 +143,7 @@ public class SectionManager {
                 indexDataAddress = this.translucencyIndexArena.allocQuads(idxBufferLength);
             }
 
-            this.section2index.put(sectionKey, indexDataAddress);
+            this.section2translucencyIdx.put(sectionKey, indexDataAddress);
 
             long upload = translucencyIndexArena.upload(uploadStream, indexDataAddress);
             uploadIndexBuffer(idxBuffer, quadCountData, upload);
@@ -139,6 +159,28 @@ public class SectionManager {
         long metadata = regionManager.setSectionData(sectionIdx);
         metadata += 32; // Go to translucency data offset
         MemoryUtil.memPutInt(metadata, indexDataAddress);
+    }
+
+    public int uploadBuffer(long sectionKey, int count, BufferArena arena, Long2IntOpenHashMap sectionMap, NativeBuffer data) {
+        int address = sectionMap.get(sectionKey);
+        if (address != -1 && !arena.canReuse(address, count)) {
+            sectionMap.remove(sectionKey);
+            arena.free(address);
+            address = -1;
+        }
+        if (address == -1) {
+            address = arena.allocQuads(count);
+        }
+        sectionMap.put(sectionKey, address);
+
+        long meshletUpload = arena.upload(uploadStream, address);
+        MemoryUtil.memCopy(
+                MemoryUtil.memAddress(data.getDirectBuffer()),
+                meshletUpload,
+                data.getLength()
+        );
+
+        return address;
     }
 
     public void uploadChunkBuildResult(ChunkBuildOutput result) {
@@ -220,64 +262,23 @@ public class SectionManager {
                 MemoryUtil.memCopy(vertexDataAddress + vertId * 16,     geometryUpload   + vertId * 6, 6);
                 MemoryUtil.memCopy(vertexDataAddress + vertId * 16 + 6, attributesUpload + vertId * 10, 10);
             }
-
-            /*
-            System.out.printf("==============================DATA (%d)====================================\n", output.quads());
-            int curRange = 0;
-            long accRange = 0;
-            for (long quadId = 0; quadId < output.quads(); quadId++) {
-                if (quadId - accRange == 0) {
-                    System.out.printf("==SWITCH FACING %s %d\n", ModelQuadFacing.VALUES[curRange].toString(), output.offsets()[curRange]);
-                }
-                System.out.printf("%d\tV0(%f|%f|%f)\tV1(%f|%f|%f)\tV2(%f|%f|%f)\tV3(%f|%f|%f)\n", quadId,
-                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 0) * (32.0 / 65536.0) - 8.0,
-                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 2) * (32.0 / 65536.0) - 8.0,
-                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 4) * (32.0 / 65536.0) - 8.0,
-
-                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 6) * (32.0 / 65536.0) - 8.0,
-                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 8) * (32.0 / 65536.0) - 8.0,
-                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 10) * (32.0 / 65536.0) - 8.0,
-
-                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 12) * (32.0 / 65536.0) - 8.0,
-                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 14) * (32.0 / 65536.0) - 8.0,
-                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 16) * (32.0 / 65536.0) - 8.0,
-
-                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 18) * (32.0 / 65536.0) - 8.0,
-                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 20) * (32.0 / 65536.0) - 8.0,
-                        (float)MemoryUtil.memGetShort(geometryUpload + quadId * 24 + 22) * (32.0 / 65536.0) - 8.0
-                );
-
-                if ((quadId - accRange) + 1 == output.offsets()[curRange]) {
-                    accRange = quadId + 1;
-                    curRange++;
-                }
-            }
-            System.out.print("========================================================================\n");
-
-            /*
-            System.out.print("==============================INPUT====================================\n");
-            for (long vertId = 0; vertId < output.quads() * 16L; vertId++) {
-                System.out.printf("%02x\t", MemoryUtil.memGetByte(vertexDataAddress + vertId));
-                if (vertId % 16 == 15)
-                    System.out.print("\n");
-            }
-            System.out.print("==============================VERT=====================================\n");
-            for (long vertId = 0; vertId < output.quads() * 6L; vertId++) {
-                System.out.printf("%02x\t", MemoryUtil.memGetByte(geometryUpload + vertId));
-                if (vertId % 6 == 5)
-                    System.out.print("\n");
-            }
-            System.out.print("========================================================================\n");
-            for (long vertId = 0; vertId < output.quads() * 10L; vertId++) {
-                System.out.printf("%02x\t", MemoryUtil.memGetByte(attributesUpload + vertId));
-                if (vertId % 10 == 9)
-                    System.out.print("\n");
-            }
-            System.out.print("========================================================================\n");
-            //*/
-            //MemoryUtil.memCopy(MemoryUtil.memAddress(output.geometry().getDirectBuffer()), geometryUpload, output.geometry().getLength());
         }
 
+        int meshletAddr;
+        {
+            // TODO Probaby patch offsets ?
+            // Upload meshlets
+            meshletAddr = this.uploadBuffer(sectionKey, output.meshlet().meshletCount(), this.meshletArena, section2meshlet, output.meshlet().meshlet());
+            // Upload vertex
+            int vtxAddr = this.uploadBuffer(sectionKey, output.meshlet().vertexCount(), this.vertexArena, section2vertex, output.meshlet().vertex());
+            // Upload indices
+            int idxAddr = this.uploadBuffer(sectionKey, output.meshlet().quadCount(), this.indexArena, section2index, output.meshlet().index());
+            // Upload attributes TODO should be synced to idxAddr
+            int attributeAddr = this.uploadBuffer(sectionKey, output.meshlet().quadCount(), this.attrArena, section2attr, output.meshlet().attributes());
+
+            System.out.printf("meshletAddr: %d vtxAddr: %d idxAddr: %d attributeAddr: %d\n", meshletAddr, vtxAddr, idxAddr, attributeAddr);
+            System.out.printf("MeshletCount: %d | VtxCount: %d | QuadCount: %d\n", output.meshlet().meshletCount(), output.meshlet().vertexCount(), output.meshlet().quadCount());
+        }
 
 
         //Get the section id or allocate a new instance for it
@@ -308,6 +309,11 @@ public class SectionManager {
             MemoryUtil.memPutInt(metadata, geo);
             metadata += 4;
         }
+        metadata += 4;
+        MemoryUtil.memPutInt(metadata, meshletAddr);
+        metadata += 4;
+        MemoryUtil.memPutInt(metadata, output.meshlet().meshletCount());
+        metadata += 4;
     }
 
     public void setHideBit(int x, int y, int z, boolean hide) {
@@ -348,7 +354,25 @@ public class SectionManager {
             if (attributesIndex != -1) {
                 this.attributesArena.free(terrainIndex);
             }
-            int indexIdx = this.section2index.remove(sectionKey);
+
+            int meshletIndex = this.section2meshlet.remove(sectionKey);
+            if (meshletIndex != -1) {
+                this.meshletArena.free(meshletIndex);
+            }
+            int vertexIndex = this.section2vertex.remove(sectionKey);
+            if (vertexIndex != -1) {
+                this.vertexArena.free(vertexIndex);
+            }
+            int indexIndex = this.section2index.remove(sectionKey);
+            if (indexIndex != -1) {
+                this.indexArena.free(indexIndex);
+            }
+            int attrIndex = this.section2attr.remove(sectionKey);
+            if (attrIndex != -1) {
+                this.attrArena.free(attrIndex);
+            }
+
+            int indexIdx = this.section2translucencyIdx.remove(sectionKey);
             if (indexIdx != -1) {
                 this.translucencyIndexArena.free(indexIdx);
             }
@@ -363,6 +387,11 @@ public class SectionManager {
         this.terrainAreana.delete();
         this.attributesArena.delete();
         this.translucencyIndexArena.delete();
+
+        this.meshletArena.delete();
+        this.vertexArena.delete();
+        this.indexArena.delete();
+        this.attrArena.delete();
     }
 
     public void commitChanges() {
