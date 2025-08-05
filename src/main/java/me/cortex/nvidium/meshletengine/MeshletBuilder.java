@@ -62,7 +62,7 @@ public class MeshletBuilder {
         }
 
         previousVtxCount += 4 * quadCount;
-        System.out.printf("Ingested %d quads %d vtxs\n", quadCount, vtx2quad.size());
+        //System.out.printf("Ingested %d quads %d vtxs\n", quadCount, vtx2quad.size());
     }
 
 
@@ -86,7 +86,7 @@ public class MeshletBuilder {
         todo.remove(addr);
         currentMeshlet.addQuad(vertices[0], vertices[1], vertices[2], vertices[3], addr, quad2facing.get(addr));
 
-        MeshletEngineDebugger.INSTANCE.injectQuadDebug(addr, meshlets.size());
+        //MeshletEngineDebugger.INSTANCE.injectQuadDebug(addr, meshlets.size());
 
         // Refill queue
         for (int i = 0; i < vertices.length; i++) {
@@ -127,7 +127,7 @@ public class MeshletBuilder {
             //System.out.printf("Meshlet %d | Vtx: %d | Tri: %d\n", i, m.getVertexCount(), m.getTriangleCount());
             totalVtx += m.getVertexCount();
         }
-        System.out.printf("Built %d meshlets totalVtx: %d previousVtx: %d compression: %.2f%%\n", meshlets.size(), totalVtx, previousVtxCount, ((float)totalVtx / (float)previousVtxCount) * 100.0);
+        //System.out.printf("Built %d meshlets totalVtx: %d previousVtx: %d compression: %.2f%%\n", meshlets.size(), totalVtx, previousVtxCount, ((float)totalVtx / (float)previousVtxCount) * 100.0);
     }
 
     public int[] serialize(long headerAddr, long vtxAddr, long idxAddr, long attributeAddr, int quadOffset, int vtxOffset) {

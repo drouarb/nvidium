@@ -53,7 +53,7 @@ struct Section {
     //Header.w -> quad offset
     ivec4 renderRanges;
     int   translucencyDataIdx;
-    int   meshletOffset;
+    uint  meshletOffset;
     int   meshletCount;
 };
 
@@ -121,7 +121,7 @@ layout(std140, binding=0) uniform SceneData {
     Meshlet         *meshletData;
     Vertex          *vertexData;
     uint8_t         *indexData;
-    VertexAttribute *attributeData;
+    VertexAttribute *attrData;
 
     restrict uint *translucencyIndexData;
 

@@ -21,7 +21,7 @@ public class MeshletEngine {
         MeshletBuilder translucentBuilder = new MeshletBuilder();
 
         for (ModelQuadFacing facing : ModelQuadFacing.values()) {
-            System.out.printf("===================================== %s ===================================\n", facing.toString());
+            //System.out.printf("===================================== %s ===================================\n", facing.toString());
             if (solidData != null) {
                 terrainBuilder.ingestFacing(
                         MemoryUtil.memAddress(solidData.getVertexData().getDirectBuffer()) + solidOffset,

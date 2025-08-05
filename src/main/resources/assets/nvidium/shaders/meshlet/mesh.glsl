@@ -52,17 +52,29 @@ void main() {
     // Emit a quad per invocation
     uint triCount = 0;
     if (gl_LocalInvocationIndex < meshlet.quadCount) {
-        int quadId = int(gl_LocalInvocationIndex);
+        uint quadId = gl_LocalInvocationIndex + meshlet.quadOffset;
         // TODO Culling
-        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 0] = indexData[(gl_LocalInvocationIndex + meshlet.quadOffset) * 6 + 0];
-        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 1] = indexData[(gl_LocalInvocationIndex + meshlet.quadOffset) * 6 + 1];
-        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 2] = indexData[(gl_LocalInvocationIndex + meshlet.quadOffset) * 6 + 2];
-        gl_MeshPrimitivesNV[(quadId << 1) | 0].gl_PrimitiveID = (quadId << 1) | 0;
+        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 0] = indexData[quadId * 6 + 0];
+        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 1] = indexData[quadId * 6 + 1];
+        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 2] = indexData[quadId * 6 + 2];
 
-        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 3] = indexData[(gl_LocalInvocationIndex + meshlet.quadOffset) * 6 + 3];
-        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 4] = indexData[(gl_LocalInvocationIndex + meshlet.quadOffset) * 6 + 4];
-        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 5] = indexData[(gl_LocalInvocationIndex + meshlet.quadOffset) * 6 + 5];
-        gl_MeshPrimitivesNV[(quadId << 1) | 1].gl_PrimitiveID = (quadId << 1) | 1;
+        // Pack meshletId + quad id in meshlet + triangle0
+        gl_MeshPrimitivesNV[(gl_LocalInvocationIndex << 1) | 0u].gl_PrimitiveID = int(
+            ((meshletOffset + gl_WorkGroupID.x) << 6) |
+            (gl_LocalInvocationIndex << 1) |
+            0u
+        );
+
+        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 3] = indexData[quadId * 6 + 3];
+        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 4] = indexData[quadId * 6 + 4];
+        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 5] = indexData[quadId * 6 + 5];
+
+        // Pack meshletId + quad id in meshlet + triangle1
+        gl_MeshPrimitivesNV[(gl_LocalInvocationIndex << 1) | 1u].gl_PrimitiveID = int(
+            ((meshletOffset + gl_WorkGroupID.x) << 6) |
+            (gl_LocalInvocationIndex << 1) |
+            1u
+        );
 
         triCount = 2;
     }

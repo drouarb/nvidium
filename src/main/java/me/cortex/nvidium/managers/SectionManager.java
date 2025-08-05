@@ -191,7 +191,7 @@ public class SectionManager {
         RenderSection section = result.render;
         long sectionKey = SectionPos.asLong(section.getChunkX(), section.getChunkY(), section.getChunkZ());
 
-        if (output == null || output.quads() == 0) {
+        if (output == null || output.quads() == 0 || output.meshlet().meshletCount() == 0) {
             deleteSection(sectionKey);
             return;
         }
@@ -267,6 +267,7 @@ public class SectionManager {
 
         int meshletAddr;
         {
+            System.out.printf("Uploading %d meshlets %d vertices %d quads\n", output.meshlet().meshletCount(), output.meshlet().vertexCount(), output.meshlet().quadCount());
             // Upload vertex
             int vtxAddr = this.uploadBuffer(sectionKey, output.meshlet().vertexCount(), this.vertexArena, section2vertex, output.meshlet().vertex());
             // Upload indices
@@ -279,6 +280,7 @@ public class SectionManager {
             for (long i = 0; i < output.meshlet().meshletCount(); i++) {
                 int quadOffset = MemoryUtil.memGetInt(inputMeshletAddr + i * MESHLET_HEADER_SIZE);
                 int vtxOffset  = MemoryUtil.memGetInt(inputMeshletAddr + i * MESHLET_HEADER_SIZE + 4);
+                /*
                 System.out.printf("Patch quadOffset: %d => %d | vtxAddr %d => %d | QuadCount: %d | VtxCount: %d\n",
                         quadOffset,
                         quadOffset + idxAddr,
@@ -287,6 +289,7 @@ public class SectionManager {
                         MemoryUtil.memGetShort(inputMeshletAddr + i * MESHLET_HEADER_SIZE + 12),
                         MemoryUtil.memGetShort(inputMeshletAddr + i * MESHLET_HEADER_SIZE + 14)
                 );
+                 */
 
                 MemoryUtil.memPutInt(inputMeshletAddr + i * MESHLET_HEADER_SIZE, quadOffset + idxAddr);
                 MemoryUtil.memPutInt(inputMeshletAddr + i * MESHLET_HEADER_SIZE + 4, vtxOffset + vtxAddr);
@@ -295,8 +298,8 @@ public class SectionManager {
             // Upload meshlets
             meshletAddr = this.uploadBuffer(sectionKey, output.meshlet().meshletCount(), this.meshletArena, section2meshlet, output.meshlet().meshlet());
 
-            System.out.printf("meshletAddr: %d vtxAddr: %d idxAddr: %d attributeAddr: %d\n", meshletAddr, vtxAddr, idxAddr, attributeAddr);
-            System.out.printf("MeshletCount: %d | VtxCount: %d | QuadCount: %d\n", output.meshlet().meshletCount(), output.meshlet().vertexCount(), output.meshlet().quadCount());
+            //System.out.printf("meshletAddr: %d vtxAddr: %d idxAddr: %d attributeAddr: %d\n", meshletAddr, vtxAddr, idxAddr, attributeAddr);
+            //System.out.printf("MeshletCount: %d | VtxCount: %d | QuadCount: %d\n", output.meshlet().meshletCount(), output.meshlet().vertexCount(), output.meshlet().quadCount());
         }
 
 

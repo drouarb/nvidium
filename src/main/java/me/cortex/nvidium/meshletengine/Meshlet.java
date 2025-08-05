@@ -67,8 +67,10 @@ public class Meshlet {
 
     public long serializeAttributes(long addr) {
         for (long quad : quads) {
-            MemoryUtil.memCopy(quad + MeshletBuilder.VTX_SIZE, addr, MeshletBuilder.ATTRIBUTE_SIZE);
-            addr += MeshletBuilder.ATTRIBUTE_SIZE;
+            for (int i = 0; i < 4; i++) {
+                MemoryUtil.memCopy(quad + (MeshletBuilder.FORMAT_SIZE * i) + MeshletBuilder.VTX_SIZE, addr, MeshletBuilder.ATTRIBUTE_SIZE);
+                addr += MeshletBuilder.ATTRIBUTE_SIZE;
+            }
         }
         return addr;
     }
