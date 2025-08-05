@@ -40,7 +40,7 @@ public class MeshletEngine {
                 cutoutOffset += cutoutData.getVertexCounts()[facing.ordinal()] * 16L;
             }
 
-            if (translucentData != null) {
+            if (translucentData != null && false) {
                 translucentBuilder.ingestFacing(
                         MemoryUtil.memAddress(translucentData.getVertexData().getDirectBuffer()) + translucentOffset,
                         translucentData.getVertexCounts()[facing.ordinal()] / 4,

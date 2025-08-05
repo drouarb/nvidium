@@ -24,6 +24,7 @@ import org.lwjgl.system.MemoryUtil;
 import java.nio.IntBuffer;
 
 import static me.cortex.nvidium.Nvidium.LOGGER;
+import static me.cortex.nvidium.meshletengine.MeshletBuilder.MESHLET_HEADER_SIZE;
 
 public class SectionManager {
     public static final int SECTION_SIZE = 32 + 16;
@@ -65,20 +66,20 @@ public class SectionManager {
 
         //this.terrainAreana = new BufferArena(device, fallbackMemorySize, 2 * 4);
         //this.attributesArena = new BufferArena(device, fallbackMemorySize, 3 * 4);
-        this.terrainAreana = new BufferArena(device, fallbackMemorySize, 6);
-        this.attributesArena = new BufferArena(device, fallbackMemorySize, 10);
+        this.terrainAreana = new BufferArena(device, fallbackMemorySize, 6, 4);
+        this.attributesArena = new BufferArena(device, fallbackMemorySize, 10, 4);
 
-        this.meshletArena = new BufferArena(device, fallbackMemorySize, 4); // Since arena is working by quad, /4 our size TODO better arena
-        this.vertexArena = new BufferArena(device, fallbackMemorySize, 2);
-        this.indexArena = new BufferArena(device, fallbackMemorySize, 2);
-        this.attrArena = new BufferArena(device, fallbackMemorySize, 10); // Still 40bytes of data per quad
+        this.meshletArena = new BufferArena(device, fallbackMemorySize, 16, 1);
+        this.vertexArena = new BufferArena(device, fallbackMemorySize, 6, 1);
+        this.indexArena = new BufferArena(device, fallbackMemorySize, 6, 1);
+        this.attrArena = new BufferArena(device, fallbackMemorySize, 10, 4);
         section2meshlet.defaultReturnValue(-1);
         section2vertex.defaultReturnValue(-1);
         section2index.defaultReturnValue(-1);
         section2attr.defaultReturnValue(-1);
 
         // TODO adapt fallbackMemorySize
-        this.translucencyIndexArena = new BufferArena(device, fallbackMemorySize, 1);
+        this.translucencyIndexArena = new BufferArena(device, fallbackMemorySize, 1, 4);
         this.regionManager = new RegionManager(device, maxRegions, maxRegions * 200, uploadStream, worldRenderer::enqueueRegionSort);
 
         this.section2id.defaultReturnValue(-1);
@@ -266,15 +267,33 @@ public class SectionManager {
 
         int meshletAddr;
         {
-            // TODO Probaby patch offsets ?
-            // Upload meshlets
-            meshletAddr = this.uploadBuffer(sectionKey, output.meshlet().meshletCount(), this.meshletArena, section2meshlet, output.meshlet().meshlet());
             // Upload vertex
             int vtxAddr = this.uploadBuffer(sectionKey, output.meshlet().vertexCount(), this.vertexArena, section2vertex, output.meshlet().vertex());
             // Upload indices
             int idxAddr = this.uploadBuffer(sectionKey, output.meshlet().quadCount(), this.indexArena, section2index, output.meshlet().index());
-            // Upload attributes TODO should be synced to idxAddr
+            // Upload attributes TODO check, should be synced to idxAddr
             int attributeAddr = this.uploadBuffer(sectionKey, output.meshlet().quadCount(), this.attrArena, section2attr, output.meshlet().attributes());
+
+            // Patch our meshlet with our arena values
+            long inputMeshletAddr = MemoryUtil.memAddress(output.meshlet().meshlet().getDirectBuffer());
+            for (long i = 0; i < output.meshlet().meshletCount(); i++) {
+                int quadOffset = MemoryUtil.memGetInt(inputMeshletAddr + i * MESHLET_HEADER_SIZE);
+                int vtxOffset  = MemoryUtil.memGetInt(inputMeshletAddr + i * MESHLET_HEADER_SIZE + 4);
+                System.out.printf("Patch quadOffset: %d => %d | vtxAddr %d => %d | QuadCount: %d | VtxCount: %d\n",
+                        quadOffset,
+                        quadOffset + idxAddr,
+                        vtxOffset,
+                        vtxOffset + vtxAddr,
+                        MemoryUtil.memGetShort(inputMeshletAddr + i * MESHLET_HEADER_SIZE + 12),
+                        MemoryUtil.memGetShort(inputMeshletAddr + i * MESHLET_HEADER_SIZE + 14)
+                );
+
+                MemoryUtil.memPutInt(inputMeshletAddr + i * MESHLET_HEADER_SIZE, quadOffset + idxAddr);
+                MemoryUtil.memPutInt(inputMeshletAddr + i * MESHLET_HEADER_SIZE + 4, vtxOffset + vtxAddr);
+            }
+
+            // Upload meshlets
+            meshletAddr = this.uploadBuffer(sectionKey, output.meshlet().meshletCount(), this.meshletArena, section2meshlet, output.meshlet().meshlet());
 
             System.out.printf("meshletAddr: %d vtxAddr: %d idxAddr: %d attributeAddr: %d\n", meshletAddr, vtxAddr, idxAddr, attributeAddr);
             System.out.printf("MeshletCount: %d | VtxCount: %d | QuadCount: %d\n", output.meshlet().meshletCount(), output.meshlet().vertexCount(), output.meshlet().quadCount());

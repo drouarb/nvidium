@@ -15,9 +15,11 @@ public class BufferArena {
     private final int vertexFormatSize;
 
     private final long memory_size;
+    private final long batchSize;
 
 
-    public BufferArena(RenderDevice device, long memory, int vertexFormatSize) {
+    public BufferArena(RenderDevice device, long memory, int vertexFormatSize, long batchSize) {
+        this.batchSize = batchSize;
         this.device = device;
         this.vertexFormatSize = vertexFormatSize;
         this.memory_size = memory;
@@ -25,7 +27,7 @@ public class BufferArena {
             buffer = device.createSparseBuffer(20000000000L);//Create a 80gb buffer
         } else {
             buffer = device.createDeviceOnlyMappedBuffer(memory);
-            this.segments.setLimit(memory/(4L*this.vertexFormatSize));
+            this.segments.setLimit(memory/(batchSize*this.vertexFormatSize));
         }
         //Reserve index 0
         this.allocQuads(1);
@@ -38,7 +40,7 @@ public class BufferArena {
             return addr;
         }
         if (buffer instanceof PersistentSparseAddressableBuffer psab) {
-            psab.ensureAllocated(Integer.toUnsignedLong(addr) * 4L * vertexFormatSize, quadCount * 4L * vertexFormatSize);
+            psab.ensureAllocated(Integer.toUnsignedLong(addr) * batchSize * vertexFormatSize, quadCount * batchSize * vertexFormatSize);
         }
         return addr;
     }
@@ -47,12 +49,12 @@ public class BufferArena {
         int count = segments.free(addr);
         totalQuads -= count;
         if (buffer instanceof PersistentSparseAddressableBuffer psab) {
-            psab.deallocate(Integer.toUnsignedLong(addr) * 4L * vertexFormatSize, count * 4L * vertexFormatSize);
+            psab.deallocate(Integer.toUnsignedLong(addr) * batchSize * vertexFormatSize, count * batchSize * vertexFormatSize);
         }
     }
 
     public long upload(UploadingBufferStream stream, int addr) {
-        return stream.upload(buffer, Integer.toUnsignedLong(addr)*4L*vertexFormatSize, (int) segments.getSize(addr)*4*vertexFormatSize);
+        return stream.upload(buffer, Integer.toUnsignedLong(addr)*batchSize*vertexFormatSize, (int) segments.getSize(addr)*batchSize*vertexFormatSize);
     }
 
     public void delete() {
@@ -68,7 +70,7 @@ public class BufferArena {
     }
 
     public int getUsedMB() {
-        return (int) ((totalQuads * vertexFormatSize * 4)/(1024*1024));
+        return (int) ((totalQuads * vertexFormatSize * batchSize)/(1024*1024));
     }
 
     public long getMemoryUsed() {
@@ -80,7 +82,7 @@ public class BufferArena {
     }
 
     public float getFragmentation() {
-        long expected = totalQuads * vertexFormatSize * 4;
+        long expected = totalQuads * vertexFormatSize * batchSize;
         return (float) ((double)expected/getMemoryUsed());
     }
 

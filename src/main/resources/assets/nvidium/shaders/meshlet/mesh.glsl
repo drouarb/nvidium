@@ -54,20 +54,20 @@ void main() {
     if (gl_LocalInvocationIndex < meshlet.quadCount) {
         int quadId = int(gl_LocalInvocationIndex);
         // TODO Culling
-        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 0] = indexData[(gl_LocalInvocationIndex * 6) + 0];
-        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 1] = indexData[(gl_LocalInvocationIndex * 6) + 1];
-        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 2] = indexData[(gl_LocalInvocationIndex * 6) + 2];
+        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 0] = indexData[(gl_LocalInvocationIndex + meshlet.quadOffset) * 6 + 0];
+        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 1] = indexData[(gl_LocalInvocationIndex + meshlet.quadOffset) * 6 + 1];
+        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 2] = indexData[(gl_LocalInvocationIndex + meshlet.quadOffset) * 6 + 2];
         gl_MeshPrimitivesNV[(quadId << 1) | 0].gl_PrimitiveID = (quadId << 1) | 0;
 
-        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 3] = indexData[(gl_LocalInvocationIndex * 6) + 3];
-        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 4] = indexData[(gl_LocalInvocationIndex * 6) + 4];
-        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 5] = indexData[(gl_LocalInvocationIndex * 6) + 5];
+        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 3] = indexData[(gl_LocalInvocationIndex + meshlet.quadOffset) * 6 + 3];
+        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 4] = indexData[(gl_LocalInvocationIndex + meshlet.quadOffset) * 6 + 4];
+        gl_PrimitiveIndicesNV[(gl_LocalInvocationIndex * 6) + 5] = indexData[(gl_LocalInvocationIndex + meshlet.quadOffset) * 6 + 5];
         gl_MeshPrimitivesNV[(quadId << 1) | 1].gl_PrimitiveID = (quadId << 1) | 1;
 
         triCount = 2;
     }
 
-    uint totalTri = subgroupInclusiveAdd(triCount);
+    uint totalTri = subgroupAdd(triCount);
     uint maxTri = subgroupMax(totalTri);
 
     if (subgroupElect()) {

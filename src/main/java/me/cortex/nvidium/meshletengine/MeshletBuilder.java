@@ -131,10 +131,9 @@ public class MeshletBuilder {
     }
 
     public int[] serialize(long headerAddr, long vtxAddr, long idxAddr, long attributeAddr, int quadOffset, int vtxOffset) {
-        int i = 0;
         for (Meshlet m : meshlets) {
             headerAddr = m.serializeHeader(headerAddr, quadOffset, vtxOffset);
-            quadOffset += m.getVertexCount();
+            quadOffset += m.getQuadCount();
             vtxOffset += m.getVertexCount();
 
             vtxAddr = m.serializeVertices(vtxAddr);

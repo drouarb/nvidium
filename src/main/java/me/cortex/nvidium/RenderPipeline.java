@@ -526,7 +526,7 @@ public class RenderPipeline {
         //Translucency sorting
         {
             glEnable(GL_DEPTH_TEST);
-            translucencyTerrainRasterizer.raster(pass, prevRegionCount, translucencyCommandBuffer.getDeviceAddress(), transluscentFrameTimeProfiler);
+            //translucencyTerrainRasterizer.raster(pass, prevRegionCount, translucencyCommandBuffer.getDeviceAddress(), transluscentFrameTimeProfiler);
         }
 
         glDisableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
