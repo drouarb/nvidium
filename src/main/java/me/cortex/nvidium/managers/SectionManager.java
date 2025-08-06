@@ -327,7 +327,7 @@ public class SectionManager {
 
         //Write the geometry offsets, packed into ints
         for (int i = 0; i < 4; i++) {
-            int geo = Short.toUnsignedInt(output.offsets()[i*2])|(Short.toUnsignedInt(output.offsets()[i*2+1])<<16);
+            int geo = Short.toUnsignedInt(output.meshlet().meshletOffsets()[i*2])|(Short.toUnsignedInt(output.meshlet().meshletOffsets()[i*2+1])<<16);
             MemoryUtil.memPutInt(metadata, geo);
             metadata += 4;
         }

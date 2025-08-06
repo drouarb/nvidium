@@ -57,6 +57,10 @@ void populateTasks(ivec3 relative, uint baseOffset, uvec4 ranges) {
     binOffsets = offsets-starts;//Make it a delta from start
 
     quadCount = sum;
+
+#ifdef STATISTICS_SECTIONS
+    atomicAdd(statistics_buffer+1, quadCount);
+#endif
     //Emit enough mesh shaders such that max(gl_GlobalInvocationID.x)>=2*quadCount
-    gl_TaskCountNV = ((sum)+MESH_WORKLOAD_PER_INVOCATION-1)/MESH_WORKLOAD_PER_INVOCATION;
+    gl_TaskCountNV = quadCount;
 }

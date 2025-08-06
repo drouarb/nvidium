@@ -7,7 +7,7 @@ public class Meshlet {
     public static final int MAX_VERTEX_COUNT = 96;
     public static final int MAX_TRIANGLE_COUNT = 64;
 
-    private int faceMask = 0;
+    public int faceMask = 0;
     private int idxCount = 0;
     private final byte[] indices = new byte[MAX_TRIANGLE_COUNT * 3];
     private final VertexIndexer vtxIndexer = new VertexIndexer(MAX_VERTEX_COUNT);

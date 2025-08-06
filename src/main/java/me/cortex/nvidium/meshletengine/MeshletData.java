@@ -4,6 +4,7 @@ import net.caffeinemc.mods.sodium.client.util.NativeBuffer;
 
 public record MeshletData(NativeBuffer meshlet,
                           int meshletCount,
+                          short[] meshletOffsets,
                           NativeBuffer vertex,
                           int vertexCount,
                           NativeBuffer index,

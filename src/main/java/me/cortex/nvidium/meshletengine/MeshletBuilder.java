@@ -5,6 +5,8 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.caffeinemc.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import org.lwjgl.system.MemoryUtil;
 
+import java.util.Comparator;
+
 public class MeshletBuilder {
     public final static int FORMAT_SIZE = 16;
     public final static int VTX_SIZE = 6;
@@ -127,7 +129,26 @@ public class MeshletBuilder {
             //System.out.printf("Meshlet %d | Vtx: %d | Tri: %d\n", i, m.getVertexCount(), m.getTriangleCount());
             totalVtx += m.getVertexCount();
         }
-        //System.out.printf("Built %d meshlets totalVtx: %d previousVtx: %d compression: %.2f%%\n", meshlets.size(), totalVtx, previousVtxCount, ((float)totalVtx / (float)previousVtxCount) * 100.0);
+        System.out.printf("Built %d meshlets totalVtx: %d previousVtx: %d compression: %.2f%%\n", meshlets.size(), totalVtx, previousVtxCount, ((float)totalVtx / (float)previousVtxCount) * 100.0);
+    }
+
+    public short[] getOffsets() {
+        short[] offsets = new short[8];
+        offsets[7] = 0;
+
+        //meshlets.sort((m1, m2) -> m2.faceMask - m1.faceMask);
+
+        int offset = 0;
+        for (int i = 0; i < ModelQuadFacing.COUNT; i++) {
+            int partOffset = offset;
+            while (meshlets.size() > offset && (meshlets.get(offset).faceMask & (1 << i)) != 0) {
+                offset++;
+            }
+            offsets[i] = (short)(offset - partOffset);
+            //System.out.println("facing: " + ModelQuadFacing.values()[i].toString() + "count:" + offsets[i]);
+        }
+
+        return offsets;
     }
 
     public int[] serialize(long headerAddr, long vtxAddr, long idxAddr, long attributeAddr, int quadOffset, int vtxOffset) {

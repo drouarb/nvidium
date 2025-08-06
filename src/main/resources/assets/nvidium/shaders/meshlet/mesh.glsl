@@ -14,14 +14,41 @@ layout(binding = 1) uniform sampler2D tex_light;
 #import <nvidium:terrain/vertex_format/vertex_format.glsl>
 
 taskNV in Task {
+    uvec4 binStarts;
+    uvec4 binOffsets;
+
     vec3 origin;
-    uint meshletOffset;
-    uint meshletCount;
+    uint quadCount;
     uint transformationId;
 };
 
 layout(local_size_x = INVOCATIONS_PER_MESHLET) in;
 layout(triangles, max_vertices=96, max_primitives=64) out;
+
+//Do a binary search via global invocation index to determine the base offset
+// Note, all threads in the work group are probably going to take the same path
+uint getOffset() {
+    uint gii = gl_WorkGroupID.x;
+    bvec4 le = lessThan(uvec4(gii), binStarts);
+    /*
+    //This is so jank and funny
+    return dot(binOffsets,notEqual(bvec4(ge.yzw,true), not(ge.xyzw)));
+    */
+
+    //TODO:IDEA, since x is always false (i.e. binStarts[0] == 0) we can use that extra space to pack more of the offset bits
+    // this allows us to use a single uvec4 to transmit an entire section
+    // since max size is 16 bit, we need 2/3 extra bits to store worst case, which we can
+    // it does mean we need to readd the baseOffset to the task, but that contains inbuilt start offset of binOffsets.x
+    uint retval = binOffsets.w;
+    if (le.y) {//x is always true
+        retval = binOffsets.x;
+    } else if (le.z) {
+        retval = binOffsets.y;
+    } else if (le.w) {
+        retval = binOffsets.z;
+    }
+    return retval+gii;
+}
 
 mat4 transformMat;
 vec4 transformVertex(Vertex V) {
@@ -36,7 +63,8 @@ void main() {
     transformMat = transformationArray[transformationId];
 
     // Fetch our meshlet
-    Meshlet meshlet = meshletData[meshletOffset + gl_WorkGroupID.x];
+    uint meshletId = getOffset();
+    Meshlet meshlet = meshletData[meshletId];
 
     // Emit our vertices
     for (uint i = 0; i < (uint(meshlet.vtxCount) + INVOCATIONS_PER_MESHLET - 1) / INVOCATIONS_PER_MESHLET; i++) {
@@ -65,16 +93,6 @@ void main() {
     vec4 pV1 = transformVertex(V1);
     Vertex V2 = vertexData[meshlet.vtxOffset + indexData[quadId * 6 + 2]];
     vec4 pV2 = transformVertex(V2);
-
-    vec2 v0 = pV0.xy / pV0.w;
-    vec2 v1 = pV1.xy / pV1.w;
-    vec2 v2 = pV2.xy / pV2.w;
-
-    float area = (v1.x - v0.x)*(v2.y - v0.y) - (v1.y - v0.y)*(v2.x - v0.x);
-    if (area <= 0.0) { // Backface quad
-        return;
-    }
-
     // indexData[quadId * 6 + 3] is actually V2
     Vertex V3 = vertexData[meshlet.vtxOffset + indexData[quadId * 6 + 4]];
     vec4 pV3 = transformVertex(V3);
@@ -128,7 +146,7 @@ void main() {
 
         // Pack meshletId + local quad id in meshlet + triangle0
         gl_MeshPrimitivesNV[triIndex++].gl_PrimitiveID = int(
-            ((meshletOffset + gl_WorkGroupID.x) << 6) |
+            (meshletId << 6) |
             (gl_LocalInvocationIndex << 1) |
             0u
         );
@@ -141,7 +159,7 @@ void main() {
 
         // Pack meshletId + quad id in meshlet + triangle1
         gl_MeshPrimitivesNV[triIndex].gl_PrimitiveID = int(
-            ((meshletOffset + gl_WorkGroupID.x) << 6) |
+            (meshletId << 6) |
             (gl_LocalInvocationIndex << 1) |
             1u
         );

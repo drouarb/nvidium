@@ -42,6 +42,8 @@ public class MeshletEngine {
                 cutoutOffset += cutoutData.getVertexCounts()[facing.ordinal()] * 16L;
             }
 
+            terrainBuilder.mesh();
+
             if (translucentData != null && false) {
                 translucentBuilder.ingestFacing(
                         MemoryUtil.memAddress(translucentData.getVertexData().getDirectBuffer()) + translucentOffset,
@@ -51,7 +53,8 @@ public class MeshletEngine {
                 translucentOffset += translucentData.getVertexCounts()[facing.ordinal()] * 16L;
             }
         }
-        terrainBuilder.mesh();
+
+        short[] meshletOffsets = terrainBuilder.getOffsets();
         translucentBuilder.mesh();
 
         NativeBuffer headers = new NativeBuffer(terrainBuilder.getHeadersSize() + translucentBuilder.getHeadersSize());
@@ -85,6 +88,7 @@ public class MeshletEngine {
         return new MeshletData(
                 headers,
                 terrainBuilder.getMeshletCount() + translucentBuilder.getMeshletCount(),
+                meshletOffsets,
                 vertices,
                 terrainBuilder.getVertexCount() + translucentBuilder.getVertexCount(),
                 indices, attributes,

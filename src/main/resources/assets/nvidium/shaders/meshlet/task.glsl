@@ -6,15 +6,9 @@
 #extension GL_NV_gpu_shader5 : require
 
 #import <nvidium:occlusion/scene.glsl>
+#import <nvidium:terrain/task_common2.glsl>
 
 layout(local_size_x=1) in;
-
-taskNV out Task {
-    vec3 origin;
-    uint meshletOffset;
-    uint meshletCount;
-    uint transformationId;
-};
 
 bool shouldRenderVisible(uint sectionId) {
     return (sectionVisibility[sectionId]&uint8_t(1)) != uint8_t(0);
@@ -41,12 +35,5 @@ void main() {
 
     origin = vec3(chunk<<4);
 
-    // TODO Meshlet culling ?
-    meshletOffset = sectionData[sectionId].meshletOffset;
-    meshletCount = sectionData[sectionId].meshletCount;
-    gl_TaskCountNV = meshletCount;
-
-#ifdef STATISTICS_SECTIONS
-    atomicAdd(statistics_buffer+1, meshletCount);
-#endif
+    populateTasks(chunk, sectionData[sectionId].meshletOffset, uvec4(sectionData[sectionId].renderRanges));
 }
