@@ -42,8 +42,11 @@ void main() {
     origin = vec3(chunk<<4);
 
     // TODO Meshlet culling ?
-
     meshletOffset = sectionData[sectionId].meshletOffset;
     meshletCount = sectionData[sectionId].meshletCount;
     gl_TaskCountNV = meshletCount;
+
+#ifdef STATISTICS_SECTIONS
+    atomicAdd(statistics_buffer+1, meshletCount);
+#endif
 }

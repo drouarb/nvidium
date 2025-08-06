@@ -23,6 +23,7 @@ public class MeshletEngine {
         for (ModelQuadFacing facing : ModelQuadFacing.values()) {
             //System.out.printf("===================================== %s ===================================\n", facing.toString());
             if (solidData != null) {
+                //System.out.printf("Solid %d\n", solidData.getVertexCounts()[facing.ordinal()]);
                 terrainBuilder.ingestFacing(
                         MemoryUtil.memAddress(solidData.getVertexData().getDirectBuffer()) + solidOffset,
                         solidData.getVertexCounts()[facing.ordinal()] / 4,
@@ -32,6 +33,7 @@ public class MeshletEngine {
             }
 
             if (cutoutData != null) {
+                //.out.printf("Cutout %d\n", cutoutData.getVertexCounts()[facing.ordinal()]);
                 terrainBuilder.ingestFacing(
                         MemoryUtil.memAddress(cutoutData.getVertexData().getDirectBuffer()) + cutoutOffset,
                         cutoutData.getVertexCounts()[facing.ordinal()] / 4,
