@@ -85,6 +85,9 @@ public class MeshletEngine {
                 offsets[0], offsets[1]
         );
 
+        //System.out.printf("Trade %d => %d\n",  terrainBuilder.previousVtxCount * MeshletBuilder.FORMAT_SIZE,
+        //        headers.getLength() + vertices.getLength() + indices.getLength() + attributes.getLength());
+
         return new MeshletData(
                 headers,
                 terrainBuilder.getMeshletCount() + translucentBuilder.getMeshletCount(),

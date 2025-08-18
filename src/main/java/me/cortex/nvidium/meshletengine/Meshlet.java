@@ -9,7 +9,7 @@ public class Meshlet {
 
     public int faceMask = 0;
     private int idxCount = 0;
-    private final byte[] indices = new byte[MAX_TRIANGLE_COUNT * 3];
+    private final byte[] indices = new byte[MAX_TRIANGLE_COUNT * 2];
     private final VertexIndexer vtxIndexer = new VertexIndexer(MAX_VERTEX_COUNT);
     private final LongArrayList quads = new LongArrayList();
 
@@ -22,17 +22,14 @@ public class Meshlet {
         indices[idxCount++] = (byte) v0idx;
         indices[idxCount++] = (byte) v1idx;
         indices[idxCount++] = (byte) v2idx;
-
-        indices[idxCount++] = (byte) v2idx;
         indices[idxCount++] = (byte) v3idx;
-        indices[idxCount++] = (byte) v0idx;
 
         faceMask |= 1 << facing;
         quads.add(quad);
     }
 
     public boolean canAdd(long v0, long v1, long v2, long v3) {
-        if (idxCount + 6 > MAX_TRIANGLE_COUNT * 3) {
+        if (getTriangleCount() + 2 > MAX_TRIANGLE_COUNT) {
             //System.out.print("Meshlet full of triangles\n");
             return false;
         }
@@ -84,7 +81,11 @@ public class Meshlet {
     }
 
     public int getTriangleCount() {
-        return idxCount / 3;
+        return idxCount / 2;
+    }
+
+    public int getIndexCount() {
+        return idxCount;
     }
 
     public int getQuadCount() {

@@ -5,8 +5,6 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.caffeinemc.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import org.lwjgl.system.MemoryUtil;
 
-import java.util.Comparator;
-
 public class MeshletBuilder {
     public final static int FORMAT_SIZE = 16;
     public final static int VTX_SIZE = 6;
@@ -24,7 +22,7 @@ public class MeshletBuilder {
     private Meshlet currentMeshlet = new Meshlet();
     private final ObjectArrayList<Meshlet> meshlets = new ObjectArrayList<>();
 
-    private int previousVtxCount = 0;
+    public int previousVtxCount = 0;
 
     public MeshletBuilder() {
     }
@@ -129,7 +127,7 @@ public class MeshletBuilder {
             //System.out.printf("Meshlet %d | Vtx: %d | Tri: %d\n", i, m.getVertexCount(), m.getTriangleCount());
             totalVtx += m.getVertexCount();
         }
-        System.out.printf("Built %d meshlets totalVtx: %d previousVtx: %d compression: %.2f%%\n", meshlets.size(), totalVtx, previousVtxCount, ((float)totalVtx / (float)previousVtxCount) * 100.0);
+        //System.out.printf("Built %d meshlets totalVtx: %d previousVtx: %d compression: %.2f%%\n", meshlets.size(), totalVtx, previousVtxCount, ((float)totalVtx / (float)previousVtxCount) * 100.0);
     }
 
     public short[] getOffsets() {
@@ -174,7 +172,7 @@ public class MeshletBuilder {
     }
 
     public int getIndicesSize() {
-        return meshlets.stream().mapToInt(Meshlet::getTriangleCount).sum() * 3;
+        return meshlets.stream().mapToInt(Meshlet::getIndexCount).sum();
     }
 
     public int getAttributesSize() {

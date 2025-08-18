@@ -71,7 +71,7 @@ public class SectionManager {
 
         this.meshletArena = new BufferArena(device, fallbackMemorySize, 16, 1);
         this.vertexArena = new BufferArena(device, fallbackMemorySize, 6, 1);
-        this.indexArena = new BufferArena(device, fallbackMemorySize, 6, 1);
+        this.indexArena = new BufferArena(device, fallbackMemorySize, 4, 1);
         this.attrArena = new BufferArena(device, fallbackMemorySize, 10, 4);
         section2meshlet.defaultReturnValue(-1);
         section2vertex.defaultReturnValue(-1);
