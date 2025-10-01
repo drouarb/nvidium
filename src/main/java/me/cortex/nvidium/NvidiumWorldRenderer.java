@@ -104,7 +104,7 @@ public class NvidiumWorldRenderer {
         if (buildOutput instanceof ChunkBuildOutput chunkBuildOutput) {
             this.sectionManager.uploadChunkBuildResult(chunkBuildOutput);
         }
-        if (buildOutput instanceof ChunkSortOutput chunkSortOutput) {
+        if (buildOutput instanceof ChunkSortOutput chunkSortOutput && !chunkSortOutput.isReusingUploadedIndexData()) {
             this.sectionManager.uploadChunkSort(chunkSortOutput);
         }
     }

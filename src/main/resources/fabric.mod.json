@@ -12,7 +12,7 @@
     "Cortex"
   ],
   "contributors": [
-    "Drouarb"
+    "drouarb"
   ],
   "contact": {},
   "license": "LGPL-3.0",
@@ -23,8 +23,8 @@
     "nvidium.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.16.13",
+    "fabricloader": ">=0.17.2",
     "minecraft": ["1.21.6", "1.21.7", "1.21.8"],
-    "sodium": "=0.6.13"
+    "sodium": "=0.7.0"
   }
 }

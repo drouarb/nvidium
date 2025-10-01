@@ -3,9 +3,11 @@ package me.cortex.nvidium.managers;
 import it.unimi.dsi.fastutil.longs.Long2ReferenceMap;
 import me.cortex.nvidium.sodiumCompat.IRenderSectionExtension;
 import net.caffeinemc.mods.sodium.client.SodiumClientMod;
-import net.caffeinemc.mods.sodium.client.render.chunk.ChunkUpdateType;
+import net.caffeinemc.mods.sodium.client.render.chunk.ChunkUpdateTypes;
 import net.caffeinemc.mods.sodium.client.render.chunk.RenderSection;
 import net.caffeinemc.mods.sodium.client.render.chunk.RenderSectionFlags;
+import net.caffeinemc.mods.sodium.client.render.chunk.TaskQueueType;
+import net.caffeinemc.mods.sodium.client.render.chunk.lists.RenderSectionVisitor;
 import net.caffeinemc.mods.sodium.client.render.chunk.occlusion.OcclusionCuller;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.client.Camera;
@@ -36,7 +38,7 @@ public class AsyncOcclusionTracker {
     private final AtomicReference<List<RenderSection>> blockEntitySectionsRef = new AtomicReference<>(new ArrayList<>());
     private final AtomicReference<TextureAtlasSprite[]> visibleAnimatedSpritesRef = new AtomicReference<>();
 
-    private final Map<ChunkUpdateType, ArrayDeque<RenderSection>> outputRebuildQueue;
+    private final Map<TaskQueueType, ArrayDeque<RenderSection>> outputRebuildQueue;
 
     private final float renderDistance;
     private volatile long iterationTimeMillis;
@@ -44,7 +46,7 @@ public class AsyncOcclusionTracker {
 
     private volatile int chunkVisibilityCount = 0;
 
-    public AsyncOcclusionTracker(int renderDistance, Long2ReferenceMap<RenderSection> sections, Level world, Map<ChunkUpdateType, ArrayDeque<RenderSection>> outputRebuildQueue) {
+    public AsyncOcclusionTracker(int renderDistance, Long2ReferenceMap<RenderSection> sections, Level world, Map<TaskQueueType, ArrayDeque<RenderSection>> outputRebuildQueue) {
         this.occlusionCuller = new OcclusionCuller(sections, world);
         this.cullThread = new Thread(this::run);
         this.cullThread.setName("Cull thread");
@@ -69,8 +71,8 @@ public class AsyncOcclusionTracker {
             List<RenderSection> blockEntitySections = new ArrayList<>();
             Set<TextureAtlasSprite> animatedSpriteSet = animateVisibleSpritesOnly?new HashSet<>():null;
             int[] visibleGeometryCounter = new int[1];
-            final OcclusionCuller.Visitor visitor = (section) -> {
-                if (section.getPendingUpdate() != null && section.getTaskCancellationToken() == null) {
+            final RenderSectionVisitor visitor = (section) -> {
+                if (section.getPendingUpdate() != 0 && section.getTaskCancellationToken() == null) {
                     if ((!((IRenderSectionExtension)section).isSubmittedRebuild()) && !((IRenderSectionExtension)section).isSeen()) {//If it is in submission queue or seen dont enqueue
                         //Set that the section has been seen
                         ((IRenderSectionExtension)section).isSeen(true);
@@ -138,10 +140,11 @@ public class AsyncOcclusionTracker {
             for (var section : bfsResult) {
                 if (section.isDisposed())
                     continue;
-                var type = section.getPendingUpdate();
-                if (type != null && section.getTaskCancellationToken() == null) {
-                    var queue = outputRebuildQueue.get(type);
-                    if (queue.size() < type.getMaximumQueueSize()) {
+                var updateType = section.getPendingUpdate();
+                if (updateType != 0 && section.getTaskCancellationToken() == null) {
+                    var queueType = ChunkUpdateTypes.getQueueType(updateType, SodiumClientMod.options().performance.chunkBuildDeferMode.getImportantRebuildQueueType());
+                    var queue = outputRebuildQueue.get(queueType);
+                    if (ChunkUpdateTypes.isInitialBuild(updateType) && queue.size() < TaskQueueType.INITIAL_BUILD.queueSizeLimit()) {
                         ((IRenderSectionExtension) section).isSubmittedRebuild(true);
                         queue.add(section);
                     }
@@ -198,7 +201,7 @@ public class AsyncOcclusionTracker {
 
     public int[] getBuildQueueSizes() {
         var ret = new int[this.outputRebuildQueue.size()];
-        for (var type : ChunkUpdateType.values()) {
+        for (var type : TaskQueueType.values()) {
             ret[type.ordinal()] = this.outputRebuildQueue.get(type).size();
         }
         return ret;

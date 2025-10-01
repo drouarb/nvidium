@@ -76,8 +76,10 @@ public class SectionManager {
     }
 
     public void uploadChunkSort(ChunkSortOutput sortOutput) {
-        NativeBuffer indexBuffer = sortOutput.getIndexBuffer();
-        // Early exit
+        if (sortOutput.getSorter() == null) {
+            return;
+        }
+        NativeBuffer indexBuffer = sortOutput.getSorter().getIndexBuffer();
         if (indexBuffer == null) {
             return;
         }
@@ -149,12 +151,15 @@ public class SectionManager {
         if (translucentData != null) {
             int[] quadOffsets = translucencyQuadCounts.get(sectionKey);
             if (quadOffsets == null) {
-                quadOffsets = new int[]{0, 0, 0, 0, 0, 0, 0};
+                quadOffsets = new int[7];
             }
-            for (var facing : ModelQuadFacing.VALUES) {
-                quadOffsets[facing.ordinal()] = translucentData.getVertexCounts()[facing.ordinal()] / 4;
+            for (int i = 0; i < ModelQuadFacing.COUNT; i++) {
+                var count = translucentData.getVertexSegments()[i * 2];
+                var facing = translucentData.getVertexSegments()[i * 2 + 1];
+                if (count > 0) {
+                    quadOffsets[facing] = count / 4;
+                }
             }
-
             translucencyQuadCounts.put(sectionKey, quadOffsets);
         }
 
@@ -218,6 +223,8 @@ public class SectionManager {
             MemoryUtil.memPutInt(metadata, geo);
             metadata += 4;
         }
+        // Reset translucency idx
+        MemoryUtil.memPutInt(metadata, -1);
     }
 
     public void setHideBit(int x, int y, int z, boolean hide) {

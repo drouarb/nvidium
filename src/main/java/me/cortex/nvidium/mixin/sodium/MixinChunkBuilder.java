@@ -11,7 +11,7 @@ import java.util.List;
 
 @Mixin(value = ChunkBuilder.class, remap = false)
 public class MixinChunkBuilder {
-    @Redirect(method = "getTotalRemainingBudget", at = @At(value = "INVOKE", target = "Ljava/util/List;size()I"))
+    @Redirect(method = "getTotalRemainingDuration", at = @At(value = "INVOKE", target = "Ljava/util/List;size()I"))
     private int moreSchedulingBudget(List<Thread> threads) {
         int budget = threads.size();
         if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs) {

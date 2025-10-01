@@ -3,7 +3,9 @@ package me.cortex.nvidium.sodiumCompat;
 import it.unimi.dsi.fastutil.longs.LongArrays;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.config.TranslucencySortingLevel;
+import net.caffeinemc.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.ChunkBuildOutput;
+import net.caffeinemc.mods.sodium.client.render.chunk.data.BuiltSectionMeshParts;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.DefaultTerrainRenderPasses;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkMeshFormats;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.impl.CompactChunkVertex;
@@ -61,75 +63,99 @@ public class SodiumResultCompatibility {
         }
     }
 
+    private static int[] computeRanges(int[] segments) {
+        var ranges = new int[14];
+
+        int offset = 0;
+        for (int i = 0; i < ModelQuadFacing.COUNT; i++) {
+            var count = segments[i * 2];
+            var facing = segments[i * 2 + 1];
+            if (count > 0) {
+                ranges[facing * 2 + 1] = count;
+            }
+            ranges[facing * 2] = offset;
+            offset += count;
+        }
+
+        return ranges;
+    }
+
+    private static int copyRange(BuiltSectionMeshParts meshData, int offset, int count, long dst, int formatSize, Vector3i min, Vector3i max) {
+        long src = MemoryUtil.memAddress(meshData.getVertexData().getDirectBuffer()) + (long) offset * formatSize;
+        MemoryUtil.memCopy(src, dst, (long) count * formatSize);
+
+        //Update the meta bits of the model format
+        for (int j = 0; j < count; j++) {
+            long base = dst + (long) j * formatSize;
+            updateSectionBounds(min, max, base);
+        }
+
+        return count / 4;
+    }
+
     //Everything is /6*4 cause its in indices and we want verticies
     private static void packageSectionGeometry(int formatSize, NativeBuffer output, short[] outOffsets, ChunkBuildOutput result, Vector3i min, Vector3i max) {
         int offset = 0;
-
         long outPtr = MemoryUtil.memAddress(output.getDirectBuffer());
-        //NOTE: mutates the input translucent geometry
-
-        var cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
-
-        float cpx = (float) (cameraPos.x - (result.render.getChunkX()<<4));
-        float cpy = (float) (cameraPos.y - (result.render.getChunkY()<<4));
-        float cpz = (float) (cameraPos.z - (result.render.getChunkZ()<<4));
-
-        {//Project the camera pos onto the bounding outline of the chunk (-8 -> 24 for each axis)
-            float len = (float) Math.sqrt(cpx*cpx + cpy*cpy + cpz*cpz);
-            cpx *= 1/len;
-            cpy *= 1/len;
-            cpz *= 1/len;
-
-            //The max range of the camera can be is like 32 blocks away so just use that
-            len = Math.min(len, 32);
-
-            cpx *= len;
-            cpy *= len;
-            cpz *= len;
-        }
 
         //Do translucent first
         var translucentData = result.meshes.get(DefaultTerrainRenderPasses.TRANSLUCENT);
 
         // If we are using sodium translucency sorting, we don't need to sort quads
         if (translucentData != null && Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.SODIUM) {
-            var partOffset = 0;
-            MemoryUtil.memCopy(translucentData.getVertexData().getDirectBuffer(), output.getDirectBuffer());
-            for (int i = 0; i < 7; i++) { // For each Facing
-                var part = translucentData.getVertexCounts()[i];
-
-                for (int j = 0; j < part; j++) {
-                    long src = MemoryUtil.memAddress(output.getDirectBuffer()) + (long) partOffset * formatSize;
-                    long base = src + (long) j * formatSize;
-
-                    updateSectionBounds(min, max, base);
-                }
-
-                partOffset += part;
+            var translucentRanges = computeRanges(translucentData.getVertexSegments());
+            for (int i = 0; i < ModelQuadFacing.COUNT; i++) {
+                offset += copyRange(
+                        translucentData,
+                        translucentRanges[i * 2],
+                        translucentRanges[i * 2 + 1],
+                        outPtr + offset * 4L * formatSize,
+                        formatSize,
+                        min,
+                        max
+                );
             }
-            offset += translucentData.getVertexData().getLength() / (formatSize * 4);
-
         } else if (translucentData != null) {
-            int quadCount = 0;
-            for (int i = 0; i < 7; i++) {
-                var part = translucentData.getVertexCounts()[i];
-                quadCount += part/4;
-            }
-            int quadId = 0;
-            long[] sortingData = new long[quadCount];
-            long[] srcs = new long[7];
-            var partOffset = 0;
-            for (int i = 0; i < 7; i++) {
-                var part = translucentData.getVertexCounts()[i];
+            //NOTE: mutates the input translucent geometry
+            var cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
 
-                long src = MemoryUtil.memAddress(translucentData.getVertexData().getDirectBuffer()) + (long) partOffset * formatSize;
+            float cpx = (float) (cameraPos.x - (result.render.getChunkX()<<4));
+            float cpy = (float) (cameraPos.y - (result.render.getChunkY()<<4));
+            float cpz = (float) (cameraPos.z - (result.render.getChunkZ()<<4));
+
+            {//Project the camera pos onto the bounding outline of the chunk (-8 -> 24 for each axis)
+                float len = (float) Math.sqrt(cpx*cpx + cpy*cpy + cpz*cpz);
+                cpx *= 1/len;
+                cpy *= 1/len;
+                cpz *= 1/len;
+
+                //The max range of the camera can be is like 32 blocks away so just use that
+                len = Math.min(len, 32);
+
+                cpx *= len;
+                cpy *= len;
+                cpz *= len;
+            }
+
+            int quadCount = translucentData.getVertexData().getLength() / (formatSize * 4);
+
+            int quadId = 0;
+            long[] srcs = new long[7];
+            long[] sortingData = new long[quadCount];
+            var ranges = computeRanges(translucentData.getVertexSegments());
+
+            for (int i = 0; i < ModelQuadFacing.COUNT; i++) {
+                var off = ranges[i * 2];
+                var count = ranges[i * 2 + 1];
+
+                long src = MemoryUtil.memAddress(translucentData.getVertexData().getDirectBuffer()) + (long) off * formatSize;
                 srcs[i] = src;
 
                 float cx = 0;
                 float cy = 0;
                 float cz = 0;
                 //Update the meta bits of the model format
-                for (int j = 0; j < part; j++) {
+                for (int j = 0; j < count; j++) {
                     long base = src + (long) j * formatSize;
 
                     float x, y, z;
@@ -176,7 +202,6 @@ public class SodiumResultCompatibility {
                         cz = 0;
                     }
                 }
-                partOffset += part;
             }
 
             if (quadId != sortingData.length) {
@@ -189,50 +214,41 @@ public class SodiumResultCompatibility {
                 long data = sortingData[i];
                 copyQuad(srcs[(int) (data&7)] + ((data>>3)&((1L<<29)-1))*4*formatSize, outPtr + ((sortingData.length-1)-i) * 4L * formatSize);
             }
-
-
             offset += quadCount;
         }
 
         outOffsets[7] = (short) offset;
 
-
         var solid  = result.meshes.get(DefaultTerrainRenderPasses.SOLID);
         var cutout = result.meshes.get(DefaultTerrainRenderPasses.CUTOUT);
 
         //Do all but translucent
-        long solidPartOffset = 0;
-        long cutoutPartOffset = 0;
-        for (int i = 0; i < 7; i++) {
+        var solidRanges = solid != null ? computeRanges(solid.getVertexSegments()) : null;
+        var cutoutRanges = cutout != null ? computeRanges(cutout.getVertexSegments()) : null;
+
+        for (int i = 0; i < ModelQuadFacing.COUNT; i++) {
             int poff = offset;
             if (solid != null) {
-                var part = solid.getVertexCounts()[i];
-                long src = MemoryUtil.memAddress(solid.getVertexData().getDirectBuffer()) + solidPartOffset * formatSize;
-                long dst = outPtr + offset * 4L * formatSize;
-                MemoryUtil.memCopy(src, dst, (long) part * formatSize);
-
-                //Update the meta bits of the model format
-                for (int j = 0; j < part; j++) {
-                    long base = dst+ (long) j * formatSize;
-                    updateSectionBounds(min, max, base);
-                }
-
-                offset += part/4;
-                solidPartOffset += part;
+                offset += copyRange(
+                        solid,
+                        solidRanges[i * 2],
+                        solidRanges[i * 2 + 1],
+                        outPtr + offset * 4L * formatSize,
+                        formatSize,
+                        min,
+                        max
+                );
             }
             if (cutout != null) {
-                var part = cutout.getVertexCounts()[i];
-                long src = MemoryUtil.memAddress(cutout.getVertexData().getDirectBuffer()) + cutoutPartOffset * formatSize;
-                long dst = outPtr + offset * 4L * formatSize;
-                MemoryUtil.memCopy(src, dst, (long) part * formatSize);
-
-                //Update the meta bits of the model format
-                for (int j = 0; j < part; j++) {
-                    long base = dst + (long) j * formatSize;
-                    updateSectionBounds(min, max, base);
-                }
-                offset += part/4;
-                cutoutPartOffset += part;
+                offset += copyRange(
+                        cutout,
+                        cutoutRanges[i * 2],
+                        cutoutRanges[i * 2 + 1],
+                        outPtr + offset * 4L * formatSize,
+                        formatSize,
+                        min,
+                        max
+                );
             }
             outOffsets[i] = (short) (offset - poff);
         }
