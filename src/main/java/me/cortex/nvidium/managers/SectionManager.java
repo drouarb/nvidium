@@ -92,12 +92,9 @@ public class SectionManager {
         }
 
         // Quick dirty integrity check to prevent race condition crash because translucencyQuadCounts can be overridden by an already reprocessed chunk
-        var totalQuads = 0;
-        for (var facing : ModelQuadFacing.values()) {
-            totalQuads += quadCountData[facing.ordinal()];
-        }
-        if (totalQuads * 6 * 4 != indexBuffer.getLength()) {
-            LOGGER.error("ChunkSortOutput integrity check failed, aborting (totalQuads={};indexBuffer={})", totalQuads, indexBuffer.getLength() / 24);
+        if (quadCountData[7] * 6 * 4 != indexBuffer.getLength()) {
+            LOGGER.error("ChunkSortOutput integrity check failed at {} {} {}, aborting (totalQuads={};indexBuffer={})",
+                    section.getChunkX(), section.getChunkY(), section.getChunkZ(), quadCountData[7], indexBuffer.getLength() / 24);
             return;
         }
 
@@ -149,15 +146,13 @@ public class SectionManager {
         // We need to store quadCount per ModelFacing to pad translucency sorting data
         var translucentData = result.meshes.get(DefaultTerrainRenderPasses.TRANSLUCENT);
         if (translucentData != null) {
-            int[] quadOffsets = translucencyQuadCounts.get(sectionKey);
-            if (quadOffsets == null) {
-                quadOffsets = new int[7];
-            }
+            int[] quadOffsets = new int[8];
             for (int i = 0; i < ModelQuadFacing.COUNT; i++) {
                 var count = translucentData.getVertexSegments()[i * 2];
                 var facing = translucentData.getVertexSegments()[i * 2 + 1];
                 if (count > 0) {
                     quadOffsets[facing] = count / 4;
+                    quadOffsets[7] += count / 4;
                 }
             }
             translucencyQuadCounts.put(sectionKey, quadOffsets);
@@ -223,8 +218,6 @@ public class SectionManager {
             MemoryUtil.memPutInt(metadata, geo);
             metadata += 4;
         }
-        // Reset translucency idx
-        MemoryUtil.memPutInt(metadata, -1);
     }
 
     public void setHideBit(int x, int y, int z, boolean hide) {
