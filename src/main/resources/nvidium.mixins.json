@@ -7,7 +7,6 @@
     "minecraft.MixinGameRenderer",
     "minecraft.MixinGlDevice",
     "minecraft.TextureAtlasAccessor",
-    "sodium.MixinChunkBuilder",
     "sodium.MixinChunkBuilderMeshingTask",
     "sodium.MixinChunkBuildOutput",
     "sodium.MixinChunkJobQueue",

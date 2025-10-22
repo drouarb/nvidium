@@ -75,7 +75,7 @@ dependencies {
 
     modImplementation(fabricApi.module("fabric-resource-loader-v0", project.fabric_version))
 
-    modImplementation "maven.modrinth:sodium:mc1.21.8-0.7.0-fabric"
+    modImplementation "maven.modrinth:sodium:mc1.21.8-0.7.2-fabric"
 
     //modImplementation "maven.modrinth:c2me-fabric:0.2.0+alpha.10.49+1.19.4"
     //modImplementation "maven.modrinth:chunks-fade-in:v1.0.3-1.19.4"

@@ -9,6 +9,7 @@ import net.caffeinemc.mods.sodium.client.render.chunk.RenderSectionFlags;
 import net.caffeinemc.mods.sodium.client.render.chunk.TaskQueueType;
 import net.caffeinemc.mods.sodium.client.render.chunk.lists.RenderSectionVisitor;
 import net.caffeinemc.mods.sodium.client.render.chunk.occlusion.OcclusionCuller;
+import net.caffeinemc.mods.sodium.client.render.chunk.translucent_sorting.SortBehavior;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -72,7 +73,7 @@ public class AsyncOcclusionTracker {
             Set<TextureAtlasSprite> animatedSpriteSet = animateVisibleSpritesOnly?new HashSet<>():null;
             int[] visibleGeometryCounter = new int[1];
             final RenderSectionVisitor visitor = (section) -> {
-                if (section.getPendingUpdate() != 0 && section.getTaskCancellationToken() == null) {
+                if (section.getPendingUpdate() != 0 && section.getRunningJob() == null) {
                     if ((!((IRenderSectionExtension)section).isSubmittedRebuild()) && !((IRenderSectionExtension)section).isSeen()) {//If it is in submission queue or seen dont enqueue
                         //Set that the section has been seen
                         ((IRenderSectionExtension)section).isSeen(true);
@@ -141,10 +142,14 @@ public class AsyncOcclusionTracker {
                 if (section.isDisposed())
                     continue;
                 var updateType = section.getPendingUpdate();
-                if (updateType != 0 && section.getTaskCancellationToken() == null) {
-                    var queueType = ChunkUpdateTypes.getQueueType(updateType, SodiumClientMod.options().performance.chunkBuildDeferMode.getImportantRebuildQueueType());
+                if (updateType != 0 && section.getRunningJob() == null) {
+                    var queueType = ChunkUpdateTypes.getQueueType(updateType,
+                            SodiumClientMod.options().performance.chunkBuildDeferMode.getImportantRebuildQueueType(),
+                            SortBehavior.DYNAMIC_DEFER_NEARBY_ZERO_FRAMES.getDeferMode().getImportantRebuildQueueType()
+                    );
+
                     var queue = outputRebuildQueue.get(queueType);
-                    if (ChunkUpdateTypes.isInitialBuild(updateType) && queue.size() < TaskQueueType.INITIAL_BUILD.queueSizeLimit()) {
+                    if (queue.size() < queueType.queueSizeLimit()) {
                         ((IRenderSectionExtension) section).isSubmittedRebuild(true);
                         queue.add(section);
                     }
