@@ -213,6 +213,8 @@ public class SectionManager {
             MemoryUtil.memPutInt(metadata, geo);
             metadata += 4;
         }
+        // Reset translucency idx
+        MemoryUtil.memPutInt(metadata, this.section2index.get(sectionKey));
     }
 
     public void setHideBit(int x, int y, int z, boolean hide) {
