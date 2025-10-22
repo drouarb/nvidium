@@ -77,7 +77,6 @@ public class SectionManager {
 
     public void uploadChunkSort(ChunkSortOutput sortOutput) {
         NativeBuffer indexBuffer = sortOutput.getIndexBuffer();
-        // Early exit
         if (indexBuffer == null) {
             return;
         }
@@ -90,12 +89,9 @@ public class SectionManager {
         }
 
         // Quick dirty integrity check to prevent race condition crash because translucencyQuadCounts can be overridden by an already reprocessed chunk
-        var totalQuads = 0;
-        for (var facing : ModelQuadFacing.values()) {
-            totalQuads += quadCountData[facing.ordinal()];
-        }
-        if (totalQuads * 6 * 4 != indexBuffer.getLength()) {
-            LOGGER.error("ChunkSortOutput integrity check failed, aborting (totalQuads={};indexBuffer={})", totalQuads, indexBuffer.getLength() / 24);
+        if (quadCountData[7] * 6 * 4 != indexBuffer.getLength()) {
+            LOGGER.error("ChunkSortOutput integrity check failed at {} {} {}, aborting (totalQuads={};indexBuffer={})",
+                    section.getChunkX(), section.getChunkY(), section.getChunkZ(), quadCountData[7], indexBuffer.getLength() / 24);
             return;
         }
 
@@ -147,14 +143,13 @@ public class SectionManager {
         // We need to store quadCount per ModelFacing to pad translucency sorting data
         var translucentData = result.meshes.get(DefaultTerrainRenderPasses.TRANSLUCENT);
         if (translucentData != null) {
-            int[] quadOffsets = translucencyQuadCounts.get(sectionKey);
-            if (quadOffsets == null) {
-                quadOffsets = new int[]{0, 0, 0, 0, 0, 0, 0};
+            int[] quadOffsets = new int[8];
+            var counts = translucentData.getVertexCounts();
+            for (var facing : ModelQuadFacing.values()) {
+                var count = counts[facing.ordinal()];
+                quadOffsets[facing.ordinal()] = count / 4;
+                quadOffsets[7] += count / 4;
             }
-            for (var facing : ModelQuadFacing.VALUES) {
-                quadOffsets[facing.ordinal()] = translucentData.getVertexCounts()[facing.ordinal()] / 4;
-            }
-
             translucencyQuadCounts.put(sectionKey, quadOffsets);
         }
 
@@ -293,7 +288,6 @@ public class SectionManager {
         }
     }
 }
-
 
 
 
