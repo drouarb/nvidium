@@ -1,6 +1,5 @@
 package me.cortex.nvidium.mixin.sodium;
 
-import com.llamalad7.mixinextras.sugar.ref.LocalBooleanRef;
 import com.mojang.blaze3d.vertex.PoseStack;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import me.cortex.nvidium.Nvidium;
@@ -12,10 +11,7 @@ import net.caffeinemc.mods.sodium.client.render.chunk.RenderSectionManager;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.caffeinemc.mods.sodium.client.util.FogParameters;
 import net.minecraft.client.Camera;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderBuffers;
-import net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher;
+import net.minecraft.client.renderer.state.LevelRenderState;
 import net.minecraft.server.level.BlockDestructionProgress;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -30,7 +26,7 @@ public abstract class MixinSodiumWorldRenderer implements INvidiumWorldRendererG
     @Shadow private RenderSectionManager renderSectionManager;
 
     @Shadow
-    protected static void renderBlockEntity(PoseStack matrices, RenderBuffers bufferBuilders, Long2ObjectMap<SortedSet<BlockDestructionProgress>> blockBreakingProgressions, float tickDelta, MultiBufferSource.BufferSource immediate, double x, double y, double z, BlockEntityRenderDispatcher dispatcher, BlockEntity entity, LocalPlayer player, LocalBooleanRef isGlowing) {
+    private void extractBlockEntity(BlockEntity blockEntity, PoseStack poseStack, Camera camera, float tickDelta, Long2ObjectMap<SortedSet<BlockDestructionProgress>> progression, LevelRenderState levelRenderState) {
     }
 
     @Inject(method = "setupTerrain", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSectionManager;needsUpdate()Z", shift = At.Shift.BEFORE))
@@ -40,16 +36,18 @@ public abstract class MixinSodiumWorldRenderer implements INvidiumWorldRendererG
         }
     }
 
-    @Inject(method = "renderBlockEntities(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/RenderBuffers;Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;FLnet/minecraft/client/renderer/MultiBufferSource$BufferSource;DDDLnet/minecraft/client/renderer/blockentity/BlockEntityRenderDispatcher;Lnet/minecraft/client/player/LocalPlayer;Lcom/llamalad7/mixinextras/sugar/ref/LocalBooleanRef;)V", at = @At("HEAD"), cancellable = true, remap = true)
-    private void overrideEntityRenderer(PoseStack matrices, RenderBuffers bufferBuilders, Long2ObjectMap<SortedSet<BlockDestructionProgress>> blockBreakingProgressions, float tickDelta, MultiBufferSource.BufferSource immediate, double x, double y, double z, BlockEntityRenderDispatcher blockEntityRenderer, LocalPlayer player, LocalBooleanRef isGlowing, CallbackInfo ci) {
+    @Inject(method = "extractBlockEntities(Lnet/minecraft/client/Camera;FLit/unimi/dsi/fastutil/longs/Long2ObjectMap;Lnet/minecraft/client/renderer/state/LevelRenderState;)V", at = @At("HEAD"), cancellable = true, remap = true)
+    private void overrideEntityRenderer(Camera camera, float tickDelta, Long2ObjectMap<SortedSet<BlockDestructionProgress>> progression, LevelRenderState levelRenderState, CallbackInfo ci) {
         if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs) {
             ci.cancel();
+            PoseStack stack = new PoseStack();
+
             var sectionsWithEntities = ((INvidiumWorldRendererGetter)renderSectionManager).getRenderer().getSectionsWithEntities();
             for (var section : sectionsWithEntities) {
                 if (section.isDisposed() || section.getCulledBlockEntities() == null)
                     continue;
                 for (var entity : section.getCulledBlockEntities()) {
-                    renderBlockEntity(matrices, bufferBuilders, blockBreakingProgressions, tickDelta, immediate, x, y, z, blockEntityRenderer, entity, player, isGlowing);
+                    extractBlockEntity(entity, stack, camera, tickDelta, progression, levelRenderState);
                 }
             }
         }
