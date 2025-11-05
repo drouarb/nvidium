@@ -7,6 +7,7 @@ import me.cortex.nvidium.NvidiumWorldRenderer;
 import me.cortex.nvidium.sodiumCompat.INvidiumWorldRendererGetter;
 import net.caffeinemc.mods.sodium.client.render.SodiumWorldRenderer;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
+import net.caffeinemc.mods.sodium.client.render.chunk.RenderSection;
 import net.caffeinemc.mods.sodium.client.render.chunk.RenderSectionManager;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.caffeinemc.mods.sodium.client.util.FogParameters;
@@ -47,6 +48,15 @@ public abstract class MixinSodiumWorldRenderer implements INvidiumWorldRendererG
                 if (section.isDisposed() || section.getCulledBlockEntities() == null)
                     continue;
                 for (var entity : section.getCulledBlockEntities()) {
+                    extractBlockEntity(entity, stack, camera, tickDelta, progression, levelRenderState);
+                }
+            }
+
+            var sectionsWithGlobalEntities = renderSectionManager.getSectionsWithGlobalEntities();
+            for (var section : sectionsWithGlobalEntities) {
+                if (section.isDisposed() || section.getGlobalBlockEntities() == null)
+                    continue;
+                for (var entity : section.getGlobalBlockEntities()) {
                     extractBlockEntity(entity, stack, camera, tickDelta, progression, levelRenderState);
                 }
             }
