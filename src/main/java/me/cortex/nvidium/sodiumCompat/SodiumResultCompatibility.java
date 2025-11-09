@@ -58,9 +58,7 @@ public class SodiumResultCompatibility {
         long quadSize = Nvidium.config.use_sodium_vertex_format ?
                 CompactChunkVertex.STRIDE * 4 :
                 NvidiumCompactChunkVertex.STRIDE * 4;
-        for (long i = 0; i < quadSize; i+=8) {
-            MemoryUtil.memPutLong(too + i, MemoryUtil.memGetLong(from + i));
-        }
+        MemoryUtil.memCopy(from, too, quadSize);
     }
 
     private static int[] computeRanges(int[] segments) {
@@ -72,8 +70,8 @@ public class SodiumResultCompatibility {
             var facing = segments[i * 2 + 1];
             if (count > 0) {
                 ranges[facing * 2 + 1] = count;
+                ranges[facing * 2] = offset;
             }
-            ranges[facing * 2] = offset;
             offset += count;
         }
 
