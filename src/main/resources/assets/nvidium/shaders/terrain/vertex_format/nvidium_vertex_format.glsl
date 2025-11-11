@@ -17,7 +17,7 @@ vec4 decodeVertexColour(Vertex v) {
 }
 
 vec2 decodeVertexUV(Vertex v) {
-    return vec2(v.w&0xffff,v.w>>16)*(1f/(TEXTURE_MAX_SCALE));
+    return vec2(v.w&0xffff,v.w>>16)*(1.0f/(TEXTURE_MAX_SCALE));
 }
 
 bool hasMipping(Vertex v) {
