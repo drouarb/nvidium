@@ -71,7 +71,7 @@ void main() {
     V2 = terrainData[(quadId<<2)+TRI_INDICIES.z];
 
     #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
-        float HALF_SHIFT = (1f/TEXTURE_MAX_SCALE)/2f;
+        float HALF_SHIFT = (1.0f/TEXTURE_MAX_SCALE)/2.0f;
         vec2 uv0 = decodeVertexUV(V0);
         vec2 uvp = decodeVertexUV(Vp);
         vec2 uv2 = decodeVertexUV(V2);
