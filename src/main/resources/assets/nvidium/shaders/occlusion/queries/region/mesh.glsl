@@ -57,7 +57,7 @@ void main() {
     corner *= 16.0f;
     gl_MeshVerticesNV[gl_LocalInvocationID.x].gl_Position = MVP*(getRegionTransformation(data)*vec4(corner, 1.0));
 
-    int visibilityIndex = (int)gl_WorkGroupID.x;
+    int visibilityIndex = int(gl_WorkGroupID.x);
 
     regionVisibility[visibilityIndex] = uint8_t(0);
 
