@@ -3,6 +3,7 @@ package me.cortex.nvidium.managers;
 import it.unimi.dsi.fastutil.longs.*;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.NvidiumWorldRenderer;
+import me.cortex.nvidium.config.TranslucencySortingLevel;
 import me.cortex.nvidium.gl.RenderDevice;
 import me.cortex.nvidium.sodiumCompat.INvidiumWorldRendererGetter;
 import me.cortex.nvidium.sodiumCompat.IRepackagedResult;
@@ -218,8 +219,21 @@ public class SectionManager {
             MemoryUtil.memPutInt(metadata, geo);
             metadata += 4;
         }
-        // Reset translucency idx
-        MemoryUtil.memPutInt(metadata, this.section2index.get(sectionKey));
+
+        // Reinject or free index data
+        if (Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.SODIUM) {
+            if (result.isReusingUploadedIndexData()) {
+                MemoryUtil.memPutInt(metadata, this.section2index.get(sectionKey));
+            } else {
+                MemoryUtil.memPutInt(metadata, -1);
+                int idxIndex = this.section2index.get(sectionKey);
+                if (idxIndex != -1) {
+                    this.section2index.remove(idxIndex);
+                    this.translucencyIndexArena.free(idxIndex);
+                }
+                this.translucencyQuadCounts.remove(sectionKey);
+            }
+        }
     }
 
     public void setHideBit(int x, int y, int z, boolean hide) {
