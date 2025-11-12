@@ -226,12 +226,11 @@ public class SectionManager {
                 MemoryUtil.memPutInt(metadata, this.section2index.get(sectionKey));
             } else {
                 MemoryUtil.memPutInt(metadata, -1);
-                int idxIndex = this.section2index.get(sectionKey);
+
+                int idxIndex = this.section2index.remove(sectionKey);
                 if (idxIndex != -1) {
-                    this.section2index.remove(idxIndex);
                     this.translucencyIndexArena.free(idxIndex);
                 }
-                this.translucencyQuadCounts.remove(sectionKey);
             }
         }
     }
