@@ -1,5 +1,6 @@
 package me.cortex.nvidium;
 
+import me.cortex.nvidium.config.TranslucencySortingLevel;
 import me.cortex.nvidium.gl.RenderDevice;
 import me.cortex.nvidium.managers.AsyncOcclusionTracker;
 import me.cortex.nvidium.managers.SectionManager;
@@ -102,7 +103,9 @@ public class NvidiumWorldRenderer {
         if (buildOutput instanceof ChunkBuildOutput chunkBuildOutput) {
             this.sectionManager.uploadChunkBuildResult(chunkBuildOutput);
         }
-        if (buildOutput instanceof ChunkSortOutput chunkSortOutput) {
+        if (buildOutput instanceof ChunkSortOutput chunkSortOutput &&
+                !chunkSortOutput.isReusingUploadedIndexData() &&
+                Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.SODIUM) {
             this.sectionManager.uploadChunkSort(chunkSortOutput);
         }
     }
