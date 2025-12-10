@@ -109,37 +109,31 @@ void putVertex(uint id, Vertex V) {
 }
 
 void main() {
-    if (task.quadCount<=(gl_GlobalInvocationID.x>>1)) {
-        if (gl_LocalInvocationIndex == 0) {
-            SetMeshOutputsEXT(0u, 0u);
+    uint quadId = -1;
+    bool draw = false;
+    bool peerDraw = false;
+    bool triangle1 = false;
+
+    if (task.quadCount > (gl_GlobalInvocationID.x>>1)) {
+        quadId = getOffset();
+
+        if (quadId != -1) {
+            triangle1 = (gl_LocalInvocationIndex & uint(1)) == 1;
+
+            //Load corner point, alterenated w.r.t neighbor thread
+            Vc = terrainData[(quadId<<2)+(triangle1?2:0)];
+
+            //Load our unique vertex V1 or V3 depending on triangle0
+            V = terrainData[(quadId<<2)+(triangle1?3:1)];
+
+            //Transform common and our vertices
+            pVc = transformVertex(Vc);
+            pV = transformVertex(V);
+
+            draw = true;
+            peerDraw = true;
         }
-        return;
     }
-
-    uint quadId = getOffset();
-
-    //If its over, dont render
-    if (quadId == uint(-1)) {
-        if (gl_LocalInvocationIndex == 0) {
-            SetMeshOutputsEXT(0u, 0u);
-        }
-        return;
-    }
-
-    bool triangle1 = (gl_LocalInvocationIndex & uint(1)) == 1;
-
-    //Load corner point, alterenated w.r.t neighbor thread
-    Vc = terrainData[(quadId<<2)+(triangle1?2:0)];
-
-    //Load our unique vertex V1 or V3 depending on triangle0
-    V = terrainData[(quadId<<2)+(triangle1?3:1)];
-
-    //Transform common and our vertices
-    pVc = transformVertex(Vc);
-    pV = transformVertex(V);
-
-    bool draw = true;
-    bool peerDraw = true;
 
 #ifdef CULL_DEGENERATE_TRIANGLES
     { //Compute the bounding pixels of the current triangle in the quad. note, vertex 0 and 2 are the common verticies
@@ -170,8 +164,12 @@ void main() {
 #endif
     uint triId = subgroupExclusiveAdd(draw ? 1 : 0);
     uint triCount = subgroupAdd(draw ? 1 : 0);
-    uint vtxCount = subgroupAdd(draw ? 2 : 1);
+    uint vtxCount = subgroupAdd(peerDraw ? (draw ? 2 : 1) : 0);
     SetMeshOutputsEXT(vtxCount, triCount);
+
+    if (!peerDraw) {
+        return;
+    }
 
     uint qId = (gl_LocalInvocationIndex&uint(~1))*2;
     //emit the common vertex
