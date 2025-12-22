@@ -29,11 +29,11 @@ layout (std430, binding = 4) readonly buffer regionVisibilityBuffer {
     uint regionVisibility[];
 };
 
-layout(std430, binding=6) writeonly buffer terrainCommandBufferBuffer {
+layout(std430, binding=6) buffer terrainCommandBufferBuffer {
     uvec4 terrainCommandBuffer[];
 };
 
-layout(std430, binding=7) writeonly buffer translucencyCommandBufferBuffer {
+layout(std430, binding=7) buffer translucencyCommandBufferBuffer {
     uvec4 translucencyCommandBuffer[];
 };
 
@@ -49,6 +49,7 @@ struct Task {
     //uint64_t bitcheck[4];//TODO: MAYBE DO THIS, each bit is whether there a section at that index, doing so is faster than pulling metadata to check if a section is valid or not
     mat4 regionTransform;
     ivec3 chunkShift;
+    uint cmdIdx;
 };
 
 taskPayloadSharedEXT Task task;
@@ -86,12 +87,13 @@ void main() {
     task.regionTransform = getRegionTransformation(data);
 
     task.chunkShift = (-chunkPosition.xyz) - unpackOriginOffsetId(unpackRegionTransformId(data));
+    task.cmdIdx = cmdIdx;
 
     //terrainCommandBuffer[cmdIdx] = uvec2(uint(count), task._visOutBase);
-    terrainCommandBuffer[cmdIdx] = uvec4(uint(count), 1, 1, task._visOutBase);
+    terrainCommandBuffer[cmdIdx] = uvec4(0, 1, 1, task._visOutBase);
     //TODO: add a bit to the region header to determine whether or not a region has any translucent
     // sections, if it doesnt, write 0 to the command buffer
-    translucencyCommandBuffer[transCmdIdx] = uvec4(uint(count), 1, 1, task._visOutBase);
+    translucencyCommandBuffer[transCmdIdx] = uvec4(0, 1, 1, task._visOutBase);
 
     EmitMeshTasksEXT(count, 1, 1);
 }

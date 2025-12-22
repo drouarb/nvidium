@@ -46,13 +46,8 @@ layout(std430, binding=13) buffer statBuffer {
 };
 #endif
 
-bool shouldRender(uint sectionId) {
-    //Check visibility
-    return (sectionVisibility[sectionId]&1u) != 0u;
-}
-
 void main() {
-    uint sectionId = translucencyCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x;
+    uint sectionId = sectionVisibility[translucencyCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x] >> 16;
     #ifdef TRANSLUCENCY_SORTING_SECTIONS
     //Compute indirection for translucency sorting
     {
@@ -66,13 +61,6 @@ void main() {
         sectionId |= uint((header.y>>18)&0xFFu);
     }
     #endif
-
-    if (!shouldRender(sectionId)) {
-        //Early exit if the section isnt visible
-        //TODO: also early exit if there are no translucents to render
-        EmitMeshTasksEXT(0, 0, 0);
-        return;
-    }
 
     task.translucencyIndex = sectionData[sectionId].translucencyDataIdx;
 

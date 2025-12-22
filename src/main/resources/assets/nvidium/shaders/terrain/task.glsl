@@ -42,12 +42,7 @@ bool shouldRenderVisible(uint sectionId) {
 }
 
 void main() {
-    uint sectionId = terrainCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x;
-
-    if (!shouldRenderVisible(sectionId)) { //Early exit if the section isnt visible
-        EmitMeshTasksEXT(0, 0, 0);
-        return;
-    }
+    uint sectionId = sectionVisibility[terrainCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x] >> 16;
 
     #ifdef STATISTICS_SECTIONS
     atomicAdd(statistics_buffer[1], 1);

@@ -17,6 +17,7 @@ layout (local_size_x = 12) in;
 layout (triangles, max_vertices = 8, max_primitives = 12) out;
 
 layout(location = 3) perprimitiveEXT out int PRIMITRASH[];
+layout(location = 4) perprimitiveEXT out uint cmdIdxStore[];
 
 layout (std430, binding = 3) readonly buffer sectionDataBuffer {
     Section sectionData[];
@@ -31,6 +32,7 @@ struct Task {
     uint _offset;
     mat4 regionTransform;
     ivec3 chunkShift;
+    uint cmdIdx;
 };
 
 taskPayloadSharedEXT Task task;
@@ -77,6 +79,7 @@ void main() {
     int prim_payload = (visibilityIndex << 8) | int((lastData << 1) & 0xFFu) | 1;
     gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationID.x] = TRILUT[gl_LocalInvocationID.x];
     PRIMITRASH[gl_LocalInvocationID.x] = prim_payload;
+    cmdIdxStore[gl_LocalInvocationID.x] = task.cmdIdx;
 
     if (gl_LocalInvocationID.x < 8) {
         vec3 mins = (header.xyz & 0xF) - ADD_SIZE;
