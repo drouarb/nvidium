@@ -155,19 +155,15 @@ void main() {
 
         // Exchage results with neighbor
         peerDraw = subgroupShuffleXor(draw, 1u);
-
-        // Abort if quad got culled
-        if (!(draw || peerDraw)) {
-            return;
-        }
     }
 #endif
     uint triId = subgroupExclusiveAdd(draw ? 1 : 0);
     uint triCount = subgroupAdd(draw ? 1 : 0);
-    uint vtxCount = subgroupAdd(peerDraw ? (draw ? 2 : 1) : 0);
+    uint vtxCount = subgroupAdd(draw ? 2 : (peerDraw ? 1 : 0));
     SetMeshOutputsEXT(vtxCount, triCount);
 
-    if (!peerDraw) {
+    // Abort if quad got culled
+    if (!(draw || peerDraw)) {
         return;
     }
 
