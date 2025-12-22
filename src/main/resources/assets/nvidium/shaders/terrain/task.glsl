@@ -42,7 +42,7 @@ bool shouldRenderVisible(uint sectionId) {
 }
 
 void main() {
-    uint sectionId = sectionVisibility[terrainCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x] >> 16;
+    uint sectionId = (sectionVisibility[terrainCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x] >> 16) + terrainCommandBuffer[gl_DrawID].w;
 
     #ifdef STATISTICS_SECTIONS
     atomicAdd(statistics_buffer[1], 1);

@@ -47,7 +47,7 @@ layout(std430, binding=13) buffer statBuffer {
 #endif
 
 void main() {
-    uint sectionId = sectionVisibility[translucencyCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x] >> 16;
+    uint sectionId = (sectionVisibility[translucencyCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x] >> 16) + translucencyCommandBuffer[gl_DrawID].w;
     #ifdef TRANSLUCENCY_SORTING_SECTIONS
     //Compute indirection for translucency sorting
     {

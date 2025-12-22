@@ -45,7 +45,7 @@ bool shouldRenderVisible(uint sectionId) {
 #import <nvidium:terrain/task_common2.glsl>
 
 void main() {
-    uint sectionId = sectionVisibility[terrainCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x] >> 16;
+    uint sectionId = (sectionVisibility[terrainCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x] >> 16) + terrainCommandBuffer[gl_DrawID].w;
 
     if (!shouldRenderVisible(sectionId)) {
         //Early exit if the section isnt visible

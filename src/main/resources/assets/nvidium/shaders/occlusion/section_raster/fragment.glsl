@@ -40,6 +40,6 @@ void main() {
         atomicAdd(translucencyCommandBuffer[(uint(regionCount) - cmdIdxStore) - 1].x, 1);
 
         // We hijack sectionVisibility to map our sections
-        atomicOr(sectionVisibility[((PRIMITRASH >> 16) << 8) + workId], (PRIMITRASH >> 8) << 16);
+        atomicOr(sectionVisibility[((PRIMITRASH >> 16) << 8) + workId], ((PRIMITRASH >> 8) & 0xFF) << 16);
     }
 }
