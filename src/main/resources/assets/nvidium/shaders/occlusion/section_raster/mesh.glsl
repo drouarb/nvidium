@@ -27,6 +27,14 @@ layout (std430, binding = 5) buffer sectionVisibilityBuffer {
     uint sectionVisibility[];
 };
 
+layout(std430, binding=6) buffer terrainCommandBufferBuffer {
+    uvec4 terrainCommandBuffer[];
+};
+
+layout(std430, binding=7) buffer translucencyCommandBufferBuffer {
+    uvec4 translucencyCommandBuffer[];
+};
+
 struct Task {
     uint _visOutBase;//Base output visibility index
     uint _offset;
@@ -110,7 +118,15 @@ void main() {
 
             //Shift and set, this gives us a bonus of having the last 8 frames as visibility history
             sectionVisibility[visibilityIndex] = uint((lastData << 1) & 0xFFu) | uint(isInSection ? 1 : 0);//Inject visibility aswell
-            //sectionVisibility[visibilityIndex] = uint8_t(lastData<<1) | uint8_t(0);
+
+            if (isInSection) {
+                uint workId = atomicAdd(terrainCommandBuffer[task.cmdIdx].x, 1);
+                atomicAdd(translucencyCommandBuffer[(uint(regionCount) - task.cmdIdx) - 1].x, 1);
+
+                atomicOr(sectionVisibility[(visibilityIndex & 0xFF00) + workId], (visibilityIndex & 0xFF) << 16);
+
+                //atomicOr(sectionVisibility[((PRIMITRASH >> 16) << 8) + workId], ((PRIMITRASH >> 8) & 0xFF) << 16);
+            }
         }
     }
 }
