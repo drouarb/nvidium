@@ -132,34 +132,35 @@ void main() {
 
             draw = true;
             peerDraw = true;
+
+#ifdef CULL_DEGENERATE_TRIANGLES
+            { //Compute the bounding pixels of the current triangle in the quad. note, vertex 0 and 2 are the common verticies
+              vec2 ssmin = ((pVc.xy/pVc.w)+1)*screenSize;
+              vec2 ssmax = ssmin;
+
+              //We exchange data of side thread common vertex here
+              vec2 pVc2 = subgroupShuffleXor(ssmin, 1u);
+              ssmin = min(ssmin, pVc2);
+              ssmax = max(ssmax, pVc2);
+
+              vec2 point = ((pV.xy/pV.w)+1)*screenSize;
+              vec2 tmin = min(ssmin, point);
+              vec2 tmax = max(ssmax, point);
+
+              //Possibly cull the triangles if they dont cover the center of a pixel on the screen (degen)
+              float degenBias = 0.01f;
+              draw = all(notEqual(round(tmin-degenBias),round(tmax+degenBias)));
+
+              // Exchage results with neighbor
+              peerDraw = subgroupShuffleXor(draw, 1u);
+            }
+#endif
         }
     }
 
-#ifdef CULL_DEGENERATE_TRIANGLES
-    { //Compute the bounding pixels of the current triangle in the quad. note, vertex 0 and 2 are the common verticies
-        vec2 ssmin = ((pVc.xy/pVc.w)+1)*screenSize;
-        vec2 ssmax = ssmin;
-
-        //We exchange data of side thread common vertex here
-        vec2 pVc2 = subgroupShuffleXor(ssmin, 1u);
-        ssmin = min(ssmin, pVc2);
-        ssmax = max(ssmax, pVc2);
-
-        vec2 point = ((pV.xy/pV.w)+1)*screenSize;
-        vec2 tmin = min(ssmin, point);
-        vec2 tmax = max(ssmax, point);
-
-        //Possibly cull the triangles if they dont cover the center of a pixel on the screen (degen)
-        float degenBias = 0.01f;
-        draw = all(notEqual(round(tmin-degenBias),round(tmax+degenBias)));
-
-        // Exchage results with neighbor
-        peerDraw = subgroupShuffleXor(draw, 1u);
-    }
-#endif
-    uint triId = subgroupExclusiveAdd(draw ? 1 : 0);
-    uint triCount = subgroupAdd(draw ? 1 : 0);
-    uint vtxCount = subgroupAdd(draw ? 2 : (peerDraw ? 1 : 0));
+    uint triId = subgroupExclusiveAdd(uint(draw));
+    uint triCount = subgroupAdd(uint(draw));
+    uint vtxCount = subgroupAdd(draw ? 2 : uint(peerDraw));
     SetMeshOutputsEXT(vtxCount, triCount);
 
     // Abort if quad got culled
