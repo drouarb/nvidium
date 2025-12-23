@@ -160,8 +160,8 @@ void main() {
 
     uint triId = subgroupExclusiveAdd(uint(draw));
     uint triCount = subgroupAdd(uint(draw));
-    uint vtxCount = subgroupAdd(draw ? 2 : uint(peerDraw));
-    SetMeshOutputsEXT(vtxCount, triCount);
+    //uint vtxCount = subgroupAdd(draw ? 2 : uint(peerDraw)); // TODO FIX ?
+    SetMeshOutputsEXT(64, triCount);
 
     // Abort if quad got culled
     if (!(draw || peerDraw)) {
