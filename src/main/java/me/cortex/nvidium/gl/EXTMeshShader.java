@@ -10,12 +10,14 @@ public class EXTMeshShader {
 
     private static final long glDrawMeshTasksEXT_ptr;
     private static final long glMultiDrawMeshTasksIndirectEXT_ptr;
+    private static final long glMultiDrawMeshTasksIndirectCountEXT_ptr;
     static {
         if (GL.getFunctionProvider() == null) {
             throw new IllegalStateException("Class must be initalized after gl context has been created");
         }
         glDrawMeshTasksEXT_ptr = GL.getFunctionProvider().getFunctionAddress("glDrawMeshTasksEXT");
         glMultiDrawMeshTasksIndirectEXT_ptr = GL.getFunctionProvider().getFunctionAddress("glMultiDrawMeshTasksIndirectEXT");
+        glMultiDrawMeshTasksIndirectCountEXT_ptr = GL.getFunctionProvider().getFunctionAddress("glMultiDrawMeshTasksIndirectCountEXT");
     }
 
     public static void glDrawMeshTasksEXT(int num_groups_x, int num_groups_y, int num_groups_z) {
@@ -32,5 +34,13 @@ public class EXTMeshShader {
         }
         //System.out.println("glDrawMeshTasksEXT " + num_groups_x + " " + num_groups_y + " " + num_groups_z);
         JNI.invokePI(indirect, draw_count, stride, glMultiDrawMeshTasksIndirectEXT_ptr);
+    }
+
+    public static void glMultiDrawMeshTasksIndirectCountEXT(long indirect, long draw_count, int max_draw, int stride) {
+        if (glDrawMeshTasksEXT_ptr == 0) {
+            throw new IllegalStateException("glMultiDrawMeshTasksIndirectCountEXT not supported");
+        }
+        //System.out.println("glDrawMeshTasksEXT " + num_groups_x + " " + num_groups_y + " " + num_groups_z);
+        JNI.invokePPI(indirect, draw_count, max_draw, stride, glMultiDrawMeshTasksIndirectCountEXT_ptr);
     }
 }

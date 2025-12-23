@@ -59,6 +59,11 @@ layout(location=1) out Interpolants {
     vec3 v_colour;
 } OUT[];
 #endif
+#ifdef EMULATE_BARY
+layout(location = 1) out Interpolants {
+    vec3 barycoord;
+} OUT[];
+#endif
 
 void emitQuadIndicies() {
     uint vertexBase = gl_LocalInvocationID.x<<2;
@@ -182,7 +187,7 @@ void main() {
     id = (floatBitsToUint(task.originAndBaseData.w) + gl_GlobalInvocationID.x)<<2;
     #endif
 
-    #ifdef TRANSLUCENCY_SORTING_QUADS
+#ifdef TRANSLUCENCY_SORTING_QUADS
     // Need to sort before emitting quads if we want to do nv fragment shader barycentric
     computeDepth(id);
     performTranslucencySort();
@@ -202,12 +207,18 @@ void main() {
         emitVertex(id, 2);
         emitVertex(id, 3);
     }
-    #else
+#else
+    #ifdef EMULATE_BARY
+    OUT[(gl_LocalInvocationID.x<<2)+0].barycoord = vec3(1.0, 0.0, 0.0);
+    OUT[(gl_LocalInvocationID.x<<2)+1].barycoord = vec3(0.0, 1.0, 0.0);
+    OUT[(gl_LocalInvocationID.x<<2)+2].barycoord = vec3(0.0, 0.0, 1.0);
+    OUT[(gl_LocalInvocationID.x<<2)+3].barycoord = vec3(0.0, 1.0, 0.0);
+    #endif
     emitVertex(id, 0);
     emitVertex(id, 1);
     emitVertex(id, 2);
     emitVertex(id, 3);
-    #endif
+#endif
 
     PRIMITRASH[(gl_LocalInvocationID.x<<1)] = int((id>>2)<<1)|0;
     PRIMITRASH[(gl_LocalInvocationID.x<<1)|1u] = int((id>>2)<<1)|1;

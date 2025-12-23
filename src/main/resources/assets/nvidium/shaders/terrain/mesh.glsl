@@ -34,6 +34,11 @@ layout(location=1) out Interpolants {
     vec3 v_colour;
 } OUT[];
 #endif
+#ifdef EMULATE_BARY
+layout(location = 1) out Interpolants {
+    vec3 barycoord;
+} OUT[];
+#endif
 
 layout(location = 3) perprimitiveEXT out int PRIMITRASH[]; // Emulate gl_PrimitiveID since it seems broken on zink
 
@@ -171,12 +176,21 @@ void main() {
     uint qId = (gl_LocalInvocationIndex&uint(~1))*2;
     //emit the common vertex
     gl_MeshVerticesEXT[qId+uint(triangle1)].gl_Position = pVc;
+#ifdef EMULATE_BARY
+    OUT[qId+uint(triangle1)].barycoord = vec3(float(triangle1), 0.0, float(!triangle1));
+#else
     putVertex(qId+uint(triangle1), Vc);
+#endif
+
     if (draw) {
         uint uId = qId+uint(triangle1)+2;
         //emit our vertex
         gl_MeshVerticesEXT[uId].gl_Position = pV;
+#ifdef EMULATE_BARY
+        OUT[uId].barycoord = vec3(0.0, 1.0, 0.0);
+#else
         putVertex(uId, V);
+#endif
 
         //Note indexing is bit funky here since we inserted in inverted order vert 0 is at idx 1 and vert 2 is at 0
         gl_PrimitiveTriangleIndicesEXT[triId] = uvec3(qId+uint(triangle1), uId, qId+uint(!triangle1));

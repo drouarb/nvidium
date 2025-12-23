@@ -45,6 +45,7 @@ public class ShaderLoader {
             builder.add("CULL_DEGENERATE_TRIANGLES");
         }
         if (Nvidium.config.use_nv_fragment_shader_barycentric) {
+            builder.add("EMULATE_BARY"); // TODO DETECT ?
             builder.add("USE_NV_FRAGMENT_SHADER_BARYCENTRIC");
         }
 

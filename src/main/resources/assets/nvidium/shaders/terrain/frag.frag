@@ -6,7 +6,7 @@
 // We need it for perprimitiveEXT
 #import <nvidium:utils/mesh_wrapper.glsl>
 
-#ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
+#if defined(USE_NV_FRAGMENT_SHADER_BARYCENTRIC) && !defined(EMULATE_BARY)
 #extension GL_NV_fragment_shader_barycentric : require
 #endif
 
@@ -34,6 +34,15 @@ layout(location = 1) in Interpolants {
     vec2 uv;
     vec3 v_colour;
 } IN;
+#endif
+#ifdef EMULATE_BARY
+layout(location = 1) in Interpolants {
+    vec3 barycoord;
+} IN;
+
+vec3 barycoord;
+
+#define gl_BaryCoordNV barycoord
 #endif
 
 layout(location = 3) perprimitiveEXT in int PRIMITRASH;
@@ -74,6 +83,9 @@ void main() {
     V2 = terrainData[(quadId<<2)+TRI_INDICIES.z];
 
     #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
+    #ifdef EMULATE_BARY
+        barycoord = triangle0 ? IN.barycoord.zyx : IN.barycoord.xyz;
+    #endif
         float HALF_SHIFT = (1.0f/TEXTURE_MAX_SCALE)/2.0f;
         vec2 uv0 = decodeVertexUV(V0);
         vec2 uvp = decodeVertexUV(Vp);
