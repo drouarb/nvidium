@@ -1,14 +1,20 @@
 #version 460 core
-//#extension GL_NV_gpu_shader5 : require
+#extension GL_ARB_gpu_shader_int64 : require
 #define SORTING_NETWORK_SIZE 256
 layout(local_size_x = (SORTING_NETWORK_SIZE>>1), local_size_y = 1 , local_size_z = 1) in;
 
 #import <nvidium:occlusion/scene.glsl>
 #import <nvidium:sorting/sorting_network.glsl>
 
+layout (std430, binding = 3) buffer sectionDataBuffer {
+    Section sectionData[];
+};
 
+layout(std430, binding=8) buffer sortingRegionListBuffer {
+    uint sortingRegionList[];
+};
 
-void populateSection(uint regionId, uint8_t sectionId) {
+void populateSection(uint regionId, uint sectionId) {
     ivec4 sectionHeader = sectionData[(regionId<<8)|uint(sectionId)].header;
     if (sectionEmpty(sectionHeader)) {
         //The section doesnt exist so nuke it from existance
@@ -33,16 +39,16 @@ bool populate() {
     //if (regionVisibility[regionId] == uint8_t(0)) {
     //    return true;
     //}
-    populateSection(regionId, uint8_t(gl_LocalInvocationID.x<<1));
-    populateSection(regionId, uint8_t((gl_LocalInvocationID.x<<1)|1));
+    populateSection(regionId, gl_LocalInvocationID.x<<1);
+    populateSection(regionId, (gl_LocalInvocationID.x<<1)|1u);
     barrier();
     memoryBarrierShared();
     return false;
 }
 
-void updateSection(uint regionId, uint8_t id) {
-    uint8_t from = id;
-    uint8_t too = threadBufferIndex[id];
+void updateSection(uint regionId, uint id) {
+    uint from = id;
+    uint too = threadBufferIndex[id];
     ivec4 header = sectionData[(regionId<<8)|uint(from)].header;
     header.y &= ~(0xFF<<18);
     header.y |= int(uint(too))<<18;
@@ -50,8 +56,8 @@ void updateSection(uint regionId, uint8_t id) {
 }
 
 void update() {
-    updateSection(regionId, uint8_t(gl_LocalInvocationID.x<<1));
-    updateSection(regionId, uint8_t((gl_LocalInvocationID.x<<1)|1));
+    updateSection(regionId, gl_LocalInvocationID.x<<1);
+    updateSection(regionId, (gl_LocalInvocationID.x<<1)|1u);
 }
 
 

@@ -127,14 +127,6 @@ layout(std140, binding=0) uniform SceneData {
     uint frameId;
 };
 
-/*
-
-layout(std430, binding=8) buffer sortingRegionListBuffer {
-    uint sortingRegionList[];
-};
-
-//*/
-
 layout(std140, binding=11) uniform transformationArrayUniform {
     mat4 transformationArray[1024]; // TODO AUTO
 };

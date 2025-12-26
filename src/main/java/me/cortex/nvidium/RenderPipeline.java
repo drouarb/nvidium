@@ -59,7 +59,7 @@ public class RenderPipeline {
     private SectionRasterizer sectionRasterizer;
     private TemporalTerrainRasterizer temporalRasterizer;
     private TranslucentTerrainRasterizer translucencyTerrainRasterizer;
-    //private SortRegionSectionPhase regionSectionSorter;
+    private SortRegionSectionPhase regionSectionSorter;
 
     private final IDeviceMappedBuffer sceneUniform;
     private final IDeviceMappedBuffer regionIndices;
@@ -133,7 +133,7 @@ public class RenderPipeline {
         sectionRasterizer = new SectionRasterizer();
         temporalRasterizer = new TemporalTerrainRasterizer();
         translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
-        //regionSectionSorter = new SortRegionSectionPhase();
+        regionSectionSorter = new SortRegionSectionPhase();
 
         int maxRegions = sectionManager.getRegionManager().maxRegions();
 
@@ -142,10 +142,10 @@ public class RenderPipeline {
         regionVisibility = new DeviceOnlyMappedBuffer(maxRegions * 4L, GL_SHADER_STORAGE_BUFFER, "RegionVisibilityBuffer");
         sectionVisibility = new DeviceOnlyMappedBuffer(maxRegions * 256L * 4L, GL_SHADER_STORAGE_BUFFER, "SectionVisibilityBuffer");
 
-        terrainCommandBuffer = new DeviceOnlyMappedBuffer(maxRegions * 16L, GL_SHADER_STORAGE_BUFFER, "TerrainCommandBuffer"); // GL_SHADER_STORAGE_BUFFER
-        translucencyCommandBuffer = new DeviceOnlyMappedBuffer(maxRegions * 16L, GL_SHADER_STORAGE_BUFFER, "TranslucencyCommandBuffer"); // GL_BUFFER_GPU_ADDRESS_NV
+        terrainCommandBuffer = new DeviceOnlyMappedBuffer(maxRegions * 16L * 4L, GL_SHADER_STORAGE_BUFFER, "TerrainCommandBuffer"); // GL_SHADER_STORAGE_BUFFER
+        translucencyCommandBuffer = new DeviceOnlyMappedBuffer(maxRegions * 16L * 4L, GL_SHADER_STORAGE_BUFFER, "TranslucencyCommandBuffer"); // GL_BUFFER_GPU_ADDRESS_NV
 
-        regionSortingList = new DeviceOnlyMappedBuffer(maxRegions * 2L, GL_SHADER_STORAGE_BUFFER, "RegionSortingListBuffer");
+        regionSortingList = new DeviceOnlyMappedBuffer(maxRegions * 2L * 4L, GL_SHADER_STORAGE_BUFFER, "RegionSortingListBuffer");
         this.transformationArray = new DeviceOnlyMappedBuffer(RegionManager.MAX_TRANSFORMATION_COUNT * (4*4*4), GL_UNIFORM_BUFFER, "TransformationArrayBuffer");
         this.originOffsetArray = new DeviceOnlyMappedBuffer(RegionManager.MAX_TRANSFORMATION_COUNT * 8, GL_UNIFORM_BUFFER, "OriginOffsetArrayBuffer");
 
@@ -491,7 +491,7 @@ public class RenderPipeline {
 
         if (regionSortSize != 0) {
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-            //regionSectionSorter.dispatch(regionSortSize);
+            regionSectionSorter.dispatch(regionSortSize);
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         }
 
@@ -591,8 +591,8 @@ public class RenderPipeline {
         regionRasterizer.delete();
         sectionRasterizer.delete();
         temporalRasterizer.delete();
-        //translucencyTerrainRasterizer.delete();
-        //regionSectionSorter.delete();
+        translucencyTerrainRasterizer.delete();
+        regionSectionSorter.delete();
         this.transformationArray.delete();
         this.originOffsetArray.delete();
 
@@ -640,13 +640,13 @@ public class RenderPipeline {
         sectionRasterizer.delete();
         temporalRasterizer.delete();
         translucencyTerrainRasterizer.delete();
-        //regionSectionSorter.delete();
+        regionSectionSorter.delete();
 
         terrainRasterizer = new PrimaryTerrainRasterizer();
         regionRasterizer = new RegionRasterizer();
         sectionRasterizer = new SectionRasterizer();
         temporalRasterizer = new TemporalTerrainRasterizer();
         translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
-        //regionSectionSorter = new SortRegionSectionPhase();
+        regionSectionSorter = new SortRegionSectionPhase();
     }
 }
