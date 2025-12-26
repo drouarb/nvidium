@@ -117,15 +117,14 @@ void main() {
             bool isInSection = all(lessThan(minPos, vec3(ADD_SIZE))) && all(lessThan(vec3(-ADD_SIZE), maxPos));
 
             //Shift and set, this gives us a bonus of having the last 8 frames as visibility history
-            sectionVisibility[visibilityIndex] = uint((lastData << 1) & 0xFFu) | uint(isInSection ? 1 : 0);//Inject visibility aswell
+            sectionVisibility[visibilityIndex] = uint((lastData << 1) & 0xFFu) | uint(isInSection ? ((1 << 8) | 1) : 0);//Inject visibility aswell
 
             if (isInSection) {
                 uint workId = atomicAdd(terrainCommandBuffer[task.cmdIdx].x, 1);
                 atomicAdd(translucencyCommandBuffer[(uint(regionCount) - task.cmdIdx) - 1].x, 1);
 
-                atomicOr(sectionVisibility[(visibilityIndex & 0xFFFFFF00) + workId], (visibilityIndex & 0xFF) << 16);
-
-                //atomicOr(sectionVisibility[((PRIMITRASH >> 16) << 8) + workId], ((PRIMITRASH >> 8) & 0xFF) << 16);
+                // Hijack sectionVisibility buffer to redirect our sections for our cmds
+                sectionVisibility[(visibilityIndex & 0xFFFFFF00) + workId] |= (visibilityIndex & 0xFF) << 16;
             }
         }
     }
