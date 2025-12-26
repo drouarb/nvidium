@@ -123,7 +123,7 @@ void main() {
                 uint workId = atomicAdd(terrainCommandBuffer[task.cmdIdx].x, 1);
                 atomicAdd(translucencyCommandBuffer[(uint(regionCount) - task.cmdIdx) - 1].x, 1);
 
-                atomicOr(sectionVisibility[(visibilityIndex & 0xFF00) + workId], (visibilityIndex & 0xFF) << 16);
+                atomicOr(sectionVisibility[(visibilityIndex & 0xFFFFFF00) + workId], (visibilityIndex & 0xFF) << 16);
 
                 //atomicOr(sectionVisibility[((PRIMITRASH >> 16) << 8) + workId], ((PRIMITRASH >> 8) & 0xFF) << 16);
             }
