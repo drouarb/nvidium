@@ -84,7 +84,7 @@ void main() {
 
     #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
     #ifdef EMULATE_BARY
-        barycoord = triangle0 ? IN.barycoord.zyx : IN.barycoord.xyz;
+        barycoord = triangle0 ? IN.barycoord.xyz : IN.barycoord.zyx;
     #endif
         float HALF_SHIFT = (1.0f/TEXTURE_MAX_SCALE)/2.0f;
         vec2 uv0 = decodeVertexUV(V0);

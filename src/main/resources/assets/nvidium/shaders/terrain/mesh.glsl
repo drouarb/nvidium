@@ -177,7 +177,7 @@ void main() {
     //emit the common vertex
     gl_MeshVerticesEXT[qId+uint(triangle1)].gl_Position = pVc;
 #ifdef EMULATE_BARY
-    OUT[qId+uint(triangle1)].barycoord = vec3(float(triangle1), 0.0, float(!triangle1));
+    OUT[qId+uint(triangle1)].barycoord = vec3(float(!triangle1), 0.0, float(triangle1));
 #else
     putVertex(qId+uint(triangle1), Vc);
 #endif
