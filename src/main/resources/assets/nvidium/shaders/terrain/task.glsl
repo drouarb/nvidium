@@ -31,6 +31,10 @@ layout(std430, binding=6) readonly buffer terrainCommandBufferBuffer {
     uvec4 terrainCommandBuffer[];
 };
 
+layout(std430, binding=14) buffer sectionIndiciesBuffer {
+    uvec3 sectionIndicies[];
+};
+
 #ifdef STATISTICS_SECTIONS
 layout(std430, binding=13) buffer statBuffer {
     uint statistics_buffer[];
@@ -42,7 +46,7 @@ bool shouldRenderVisible(uint sectionId) {
 }
 
 void main() {
-    uint sectionId = (sectionVisibility[terrainCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x] >> 16) + terrainCommandBuffer[gl_DrawID].w;
+    uint sectionId = sectionIndicies[terrainCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x].x + terrainCommandBuffer[gl_DrawID].w;
 
     #ifdef STATISTICS_SECTIONS
     atomicAdd(statistics_buffer[1], 1);

@@ -40,6 +40,10 @@ layout(std430, binding=7) readonly buffer translucencyCommandBufferBuffer {
     uvec4 translucencyCommandBuffer[];
 };
 
+layout(std430, binding=14) buffer sectionIndiciesBuffer {
+    uvec3 sectionIndicies[];
+};
+
 #ifdef STATISTICS_SECTIONS
 layout(std430, binding=13) buffer statBuffer {
     uint statistics_buffer[];
@@ -47,7 +51,7 @@ layout(std430, binding=13) buffer statBuffer {
 #endif
 
 void main() {
-    uint sectionId = (sectionVisibility[translucencyCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x] >> 16) + translucencyCommandBuffer[gl_DrawID].w;
+    uint sectionId = sectionIndicies[translucencyCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x].y + translucencyCommandBuffer[gl_DrawID].w;
     #ifdef TRANSLUCENCY_SORTING_SECTIONS
     //Compute indirection for translucency sorting
     {

@@ -17,7 +17,6 @@ layout (local_size_x = 12) in;
 layout (triangles, max_vertices = 8, max_primitives = 12) out;
 
 layout(location = 3) perprimitiveEXT out int PRIMITRASH[];
-layout(location = 4) perprimitiveEXT out uint cmdIdxStore[];
 
 layout (std430, binding = 3) readonly buffer sectionDataBuffer {
     Section sectionData[];
@@ -27,20 +26,11 @@ layout (std430, binding = 5) buffer sectionVisibilityBuffer {
     uint sectionVisibility[];
 };
 
-layout(std430, binding=6) buffer terrainCommandBufferBuffer {
-    uvec4 terrainCommandBuffer[];
-};
-
-layout(std430, binding=7) buffer translucencyCommandBufferBuffer {
-    uvec4 translucencyCommandBuffer[];
-};
-
 struct Task {
     uint _visOutBase;//Base output visibility index
     uint _offset;
     mat4 regionTransform;
     ivec3 chunkShift;
-    uint cmdIdx;
 };
 
 taskPayloadSharedEXT Task task;
@@ -87,7 +77,6 @@ void main() {
     int prim_payload = (visibilityIndex << 8) | int((lastData << 1) & 0xFFu) | 1;
     gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationID.x] = TRILUT[gl_LocalInvocationID.x];
     PRIMITRASH[gl_LocalInvocationID.x] = prim_payload;
-    cmdIdxStore[gl_LocalInvocationID.x] = task.cmdIdx;
 
     if (gl_LocalInvocationID.x < 8) {
         vec3 mins = (header.xyz & 0xF) - ADD_SIZE;
@@ -117,15 +106,7 @@ void main() {
             bool isInSection = all(lessThan(minPos, vec3(ADD_SIZE))) && all(lessThan(vec3(-ADD_SIZE), maxPos));
 
             //Shift and set, this gives us a bonus of having the last 8 frames as visibility history
-            sectionVisibility[visibilityIndex] = uint((lastData << 1) & 0xFFu) | uint(isInSection ? ((1 << 8) | 1) : 0);//Inject visibility aswell
-
-            if (isInSection) {
-                uint workId = atomicAdd(terrainCommandBuffer[task.cmdIdx].x, 1);
-                atomicAdd(translucencyCommandBuffer[(uint(regionCount) - task.cmdIdx) - 1].x, 1);
-
-                // Hijack sectionVisibility buffer to redirect our sections for our cmds
-                sectionVisibility[(visibilityIndex & 0xFFFFFF00) + workId] |= (visibilityIndex & 0xFF) << 16;
-            }
+            sectionVisibility[visibilityIndex] = uint((lastData << 1) & 0xFFu) | uint(isInSection ? 1 : 0);//Inject visibility aswell
         }
     }
 }
