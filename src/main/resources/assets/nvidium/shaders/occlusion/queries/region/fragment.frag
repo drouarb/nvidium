@@ -3,12 +3,16 @@
 #extension GL_ARB_gpu_shader_int64 : require
 #pragma optionNV(unroll all)
 #define UNROLL_LOOP
-//#extension GL_NV_gpu_shader5 : require
-//#extension GL_NV_bindless_texture : require
-//#extension GL_NV_shader_buffer_load : require
+#import <nvidium:utils/mesh_wrapper.glsl>
 
 #import <nvidium:occlusion/scene.glsl>
 layout(early_fragment_tests) in;
+
+layout(std430, binding=4) writeonly buffer regionVisibilityBuffer {
+    uint regionVisibility[];
+};
+
+layout(location = 3) perprimitiveEXT in int PRIMITRASH;
 
 #ifdef DEBUG
 layout(location = 0) out vec4 colour;

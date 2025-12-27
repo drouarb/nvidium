@@ -7,6 +7,7 @@ import me.cortex.nvidium.util.DownloadTaskStream;
 import net.minecraft.resources.ResourceLocation;
 import org.lwjgl.system.MemoryUtil;
 
+import static me.cortex.nvidium.gl.EXTMeshShader.glDrawMeshTasksEXT;
 import static me.cortex.nvidium.gl.shader.ShaderType.FRAGMENT;
 import static me.cortex.nvidium.gl.shader.ShaderType.MESH;
 import static org.lwjgl.opengl.GL42.glMemoryBarrier;
@@ -34,14 +35,14 @@ public class RegionVisibilityTracker {
 
     private int fram = 0;
     //This is kind of evil in the fact that it just reuses the visibility buffer
-    public void computeVisibility(int regionCount, Buffer regionVisibilityBuffer, short[] regionMapping) {
+    public void computeVisibility(int regionCount, Buffer regionVisibilityBuffer, int[] regionMapping) {
         shader.bind();
         fram++;
-        glDrawMeshTasksNV(0,regionCount);
+        glDrawMeshTasksEXT(regionCount, 1, 1);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-        downStream.download(regionVisibilityBuffer, 0, regionCount, ptr -> {
+        downStream.download(regionVisibilityBuffer, 0, regionCount * 4, ptr -> {
             for (int i = 0; i < regionMapping.length; i++) {
-                if (MemoryUtil.memGetByte(ptr + i) == 1) {
+                if (MemoryUtil.memGetInt(ptr + i * 4L) == 1) {
                     //System.out.println(regionMapping[i] + " was visible");
                     frustum[regionMapping[i]]++;
                     visible[regionMapping[i]] = fram;

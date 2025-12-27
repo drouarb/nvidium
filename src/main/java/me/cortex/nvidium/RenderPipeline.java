@@ -52,7 +52,7 @@ public class RenderPipeline {
 
     private final SectionManager sectionManager;
 
-    //public final RegionVisibilityTracker regionVisibilityTracking;
+    public final RegionVisibilityTracker regionVisibilityTracking;
 
     private PrimaryTerrainRasterizer terrainRasterizer;
     private RegionRasterizer regionRasterizer;
@@ -145,12 +145,12 @@ public class RenderPipeline {
         terrainCommandBuffer = new DeviceOnlyMappedBuffer(maxRegions * 16L * 4L, GL_SHADER_STORAGE_BUFFER, "TerrainCommandBuffer"); // GL_SHADER_STORAGE_BUFFER
         translucencyCommandBuffer = new DeviceOnlyMappedBuffer(maxRegions * 16L * 4L, GL_SHADER_STORAGE_BUFFER, "TranslucencyCommandBuffer"); // GL_BUFFER_GPU_ADDRESS_NV
 
-        regionSortingList = new DeviceOnlyMappedBuffer(maxRegions * 2L * 4L, GL_SHADER_STORAGE_BUFFER, "RegionSortingListBuffer");
+        regionSortingList = new DeviceOnlyMappedBuffer(maxRegions * 4L, GL_SHADER_STORAGE_BUFFER, "RegionSortingListBuffer");
         this.transformationArray = new DeviceOnlyMappedBuffer(RegionManager.MAX_TRANSFORMATION_COUNT * (4*4*4), GL_UNIFORM_BUFFER, "TransformationArrayBuffer");
         this.originOffsetArray = new DeviceOnlyMappedBuffer(RegionManager.MAX_TRANSFORMATION_COUNT * 8, GL_UNIFORM_BUFFER, "OriginOffsetArrayBuffer");
 
         regionVisibilityTracker = new BitSet(maxRegions);
-        //regionVisibilityTracking = new RegionVisibilityTracker(downloadStream, maxRegions);
+        regionVisibilityTracking = new RegionVisibilityTracker(downloadStream, maxRegions);
 
         statisticsBuffer = new DeviceOnlyMappedBuffer(4*4, GL_SHADER_STORAGE_BUFFER, "StatisticsBuffer");
         stats = new Statistics();
@@ -369,10 +369,10 @@ public class RenderPipeline {
         int regionSortSize = this.regionsToSort.size();
 
         if (regionSortSize != 0){
-            long regionSortUpload = uploadStream.upload(regionSortingList, 0, regionSortSize * 2);
+            long regionSortUpload = uploadStream.upload(regionSortingList, 0, regionSortSize * 4);
             for (int region : regionsToSort) {
                 MemoryUtil.memPutInt(regionSortUpload, region);
-                regionSortUpload += 2;
+                regionSortUpload += 4;
             }
             regionsToSort.clear();
         }
@@ -480,7 +480,7 @@ public class RenderPipeline {
             glColorMask(false, false, false, false);
             //glEnable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
 
-            //regionVisibilityTracking.computeVisibility(visibleRegions, regionVisibility, regionMap);
+            regionVisibilityTracking.computeVisibility(visibleRegions, regionVisibility, regionMap);
 
             //glDisable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
             glDepthMask(true);
@@ -512,7 +512,7 @@ public class RenderPipeline {
 
     private void removeRegion(int id) {
         sectionManager.removeRegionById(id);
-        //regionVisibilityTracking.resetRegion(id);
+        regionVisibilityTracking.resetRegion(id);
     }
 
     public void removeARegion() {
@@ -577,7 +577,7 @@ public class RenderPipeline {
     }
 
     public void delete() {
-        //regionVisibilityTracking.delete();
+        regionVisibilityTracking.delete();
 
         sceneUniform.delete();
         regionIndices.delete();
