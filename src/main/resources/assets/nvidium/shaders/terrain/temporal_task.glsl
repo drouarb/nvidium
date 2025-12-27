@@ -23,12 +23,12 @@ layout (std430, binding = 3) readonly buffer sectionDataBuffer {
     Section sectionData[];
 };
 
-layout (std430, binding = 5) readonly buffer sectionVisibilityBuffer {
-    uint sectionVisibility[];
+layout(std430, binding=14) buffer sectionIndiciesBuffer {
+    uvec3 sectionIndicies[];
 };
 
-layout(std430, binding=6) readonly buffer terrainCommandBufferBuffer {
-    uvec4 terrainCommandBuffer[];
+layout(std430, binding=15) buffer temporalCommandBufferBuffer {
+    uvec4 temporalCommandBuffer[];
 };
 
 #ifdef STATISTICS_QUADS
@@ -37,21 +37,10 @@ layout(std430, binding=13) buffer statBuffer {
 };
 #endif
 
-bool shouldRenderVisible(uint sectionId) {
-    uint data = sectionVisibility[sectionId];
-    return (data&3u) == 1u;//If the section was not visible last frame but is visible this frame, render it
-}
-
 #import <nvidium:terrain/task_common2.glsl>
 
 void main() {
-    uint sectionId = (sectionVisibility[terrainCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x] >> 16) + terrainCommandBuffer[gl_DrawID].w;
-
-    if (!shouldRenderVisible(sectionId)) {
-        //Early exit if the section isnt visible
-        EmitMeshTasksEXT(0, 0, 0);
-        return;
-    }
+    uint sectionId = sectionIndicies[temporalCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x].z + temporalCommandBuffer[gl_DrawID].w;
 
     ivec4 header = sectionData[sectionId].header;
     ivec3 chunk = ivec3(header.xyz)>>8;

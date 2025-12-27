@@ -5,6 +5,7 @@ import com.mojang.blaze3d.textures.GpuTextureView;
 import me.cortex.nvidium.gl.buffers.IDeviceMappedBuffer;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
+import me.cortex.nvidium.util.GPUTiming;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
@@ -42,7 +43,7 @@ public class TemporalTerrainRasterizer extends Phase {
         GL45C.glSamplerParameteri(lightSampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
 
-    public void raster(TerrainRenderPass pass, int regionCount, IDeviceMappedBuffer commandBuffer) {
+    public void raster(TerrainRenderPass pass, int regionCount, IDeviceMappedBuffer commandBuffer, GPUTiming timing) {
         shader.bind();
 
         GpuTextureView blockTexture = pass.getAtlas();
@@ -57,7 +58,10 @@ public class TemporalTerrainRasterizer extends Phase {
         // TODO Make it auto if we can't use nvidia
         //glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandBuffer.getDeviceAddress(), regionCount*8L);//Bind the command buffer
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, commandBuffer.getId());
+        timing.marker();
         glMultiDrawMeshTasksIndirectEXT(0, regionCount, 16);
+        timing.marker();
+        timing.tick();
         //glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
 
 

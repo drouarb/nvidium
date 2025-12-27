@@ -37,6 +37,10 @@ layout(std430, binding=7) writeonly buffer translucencyCommandBufferBuffer {
     uvec4 translucencyCommandBuffer[];
 };
 
+layout(std430, binding=15) buffer temporalCommandBufferBuffer {
+    uvec4 temporalCommandBuffer[];
+};
+
 #ifdef STATISTICS_REGIONS
 layout(std430, binding=13) buffer statBuffer {
     uint statistics_buffer[];
@@ -67,6 +71,7 @@ void main() {
     if (regionVisibility[gl_WorkGroupID.x] == 0) {
         terrainCommandBuffer[cmdIdx] = uvec4(0);
         translucencyCommandBuffer[transCmdIdx] = uvec4(0);
+        temporalCommandBuffer[cmdIdx] = uvec4(0);
         EmitMeshTasksEXT(0, 0, 0);
         return;
     }
@@ -92,6 +97,8 @@ void main() {
     //TODO: add a bit to the region header to determine whether or not a region has any translucent
     // sections, if it doesnt, write 0 to the command buffer
     translucencyCommandBuffer[transCmdIdx] = uvec4(0, 1, 1, task._visOutBase);
+
+    temporalCommandBuffer[cmdIdx] = uvec4(0, 1, 1, task._visOutBase);
 
     EmitMeshTasksEXT(count, 1, 1);
 }
