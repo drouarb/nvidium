@@ -40,7 +40,7 @@ layout(location = 1) out Interpolants {
 } OUT[];
 #endif
 
-layout(location = 3) perprimitiveEXT out int PRIMITRASH[]; // Emulate gl_PrimitiveID since it seems broken on zink
+layout(location = 10) perprimitiveEXT out int PRIMITRASH[]; // Emulate gl_PrimitiveID since it seems broken on zink
 
 layout(std430, binding=9) readonly buffer terrainDataBuffer {
     Vertex terrainData[];

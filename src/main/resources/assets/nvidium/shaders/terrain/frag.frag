@@ -45,7 +45,7 @@ vec3 barycoord;
 #define gl_BaryCoordNV barycoord
 #endif
 
-layout(location = 3) perprimitiveEXT in int PRIMITRASH;
+layout(location = 10) perprimitiveEXT in int PRIMITRASH;
 
 Vertex V0;
 Vertex Vp;
@@ -67,8 +67,10 @@ void applyFog(inout vec4 colour) {
     vec4 clip = (MVPInv * vec4((gl_FragCoord.xy/screenSize)-1, gl_FragCoord.z*2-1, 1));
     vec3 pos = clip.xyz/clip.w;
     vec2 v_FragDistance = getFragDistance(pos);
-#endif
+    colour = _linearFog(colour, v_FragDistance, fogColour, environmentFog, renderFog);
+#else
     colour = _linearFog(colour, IN.v_FragDistance, fogColour, environmentFog, renderFog);
+#endif
 }
 #endif
 

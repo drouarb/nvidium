@@ -38,7 +38,7 @@ struct Task {
 
 taskPayloadSharedEXT Task task;
 
-layout(location = 3) perprimitiveEXT out int PRIMITRASH[];
+layout(location = 10) perprimitiveEXT out int PRIMITRASH[];
 
 layout(std430, binding=9) readonly buffer terrainDataBuffer {
     Vertex terrainData[];

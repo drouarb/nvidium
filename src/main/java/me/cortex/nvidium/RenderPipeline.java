@@ -369,7 +369,7 @@ public class RenderPipeline {
         int regionSortSize = this.regionsToSort.size();
 
         if (regionSortSize != 0){
-            long regionSortUpload = uploadStream.upload(regionSortingList, 0, regionSortSize * 4);
+            long regionSortUpload = uploadStream.upload(regionSortingList, 0, regionSortSize * 4L);
             for (int region : regionsToSort) {
                 MemoryUtil.memPutInt(regionSortUpload, region);
                 regionSortUpload += 4;
