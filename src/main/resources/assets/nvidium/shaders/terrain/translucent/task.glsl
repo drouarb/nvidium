@@ -52,19 +52,6 @@ layout(std430, binding=13) buffer statBuffer {
 
 void main() {
     uint sectionId = sectionIndicies[translucencyCommandBuffer[gl_DrawID].w + gl_WorkGroupID.x].y + translucencyCommandBuffer[gl_DrawID].w;
-    #ifdef TRANSLUCENCY_SORTING_SECTIONS
-    //Compute indirection for translucency sorting
-    {
-        ivec4 header = sectionData[sectionId].header;
-        //If the section is empty, we dont care about it at all, so ignore it and return
-        if (sectionEmpty(header)) {
-            return;
-        }
-        //Compute the redirected section index
-        sectionId &= ~0xFFu;
-        sectionId |= uint((header.y>>18)&0xFFu);
-    }
-    #endif
 
     task.translucencyIndex = sectionData[sectionId].translucencyDataIdx;
 

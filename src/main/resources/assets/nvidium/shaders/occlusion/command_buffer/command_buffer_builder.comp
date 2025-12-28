@@ -42,6 +42,15 @@ layout(std430, binding=14) buffer sectionIndiciesBuffer {
     uvec3 sectionIndicies[];
 };
 
+uint getReflectedTranslucentSectionId(uint sectionId) {
+    ivec4 header = sectionData[sectionId].header;
+    if (!sectionEmpty(header)) {
+        sectionId &= ~0xFFu;
+        sectionId |= uint((header.y>>18)&0xFFu);
+    }
+    return sectionId;
+}
+
 bool hasTranslucentData(uint sectionId) {
     return ((sectionData[sectionId].renderRanges.w>>16)&0xFFFF) > 0;
 }
@@ -60,9 +69,13 @@ void main() {
     for (uint i = 0; i < 8; i++) {
         uint visibilityIndex = baseSectionId + gl_LocalInvocationID.x * 8 + i;
         uint visibilityData = sectionVisibility[visibilityIndex];
+
+        uint translucentVisibilityIndex = getReflectedTranslucentSectionId(visibilityIndex);
+        uint translucentVisibilityData = sectionVisibility[translucentVisibilityIndex];
+
         renderCounts += uvec3(
             uint((visibilityData & 1u) == 1),
-            uint((visibilityData & 1u) == 1 && hasTranslucentData(visibilityIndex)),
+            uint((translucentVisibilityData & 1u) == 1 && hasTranslucentData(translucentVisibilityIndex)),
             uint((visibilityData & 3u) == 1)
         );
     }
@@ -76,11 +89,15 @@ void main() {
 
         if ((visibilityData & 1u) == 1) {
             sectionIndicies[baseSectionId + workId.x++].x = visibilityIndex & 0xFFu;
-
-            if (hasTranslucentData(visibilityIndex)) {
-                sectionIndicies[baseSectionId + workId.y++].y = visibilityIndex & 0xFFu;
-            }
         }
+
+        uint translucentVisibilityIndex = getReflectedTranslucentSectionId(visibilityIndex);
+        uint translucentVisibilityData = sectionVisibility[translucentVisibilityIndex];
+
+        if ((translucentVisibilityData & 1u) == 1 && hasTranslucentData(translucentVisibilityIndex)) {
+            sectionIndicies[baseSectionId + workId.y++].y = translucentVisibilityIndex & 0xFFu;
+        }
+
         if ((visibilityData & 3u) == 1) {
             sectionIndicies[baseSectionId + workId.z++].z = visibilityIndex & 0xFFu;
         }
