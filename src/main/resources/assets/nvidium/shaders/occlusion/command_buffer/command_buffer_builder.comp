@@ -51,11 +51,11 @@ void main() {
         return;
     }
 
-    uint regionId = regionIndicies[gl_WorkGroupID.x];
+    uint baseSectionId = regionIndicies[gl_WorkGroupID.x] << 8;
 
     uvec3 renderCounts = uvec3(0);
     for (uint i = 0; i < 8; i++) {
-        uint visibilityIndex = (regionId << 8) + gl_LocalInvocationID.x * 8 + i;
+        uint visibilityIndex = baseSectionId + gl_LocalInvocationID.x * 8 + i;
         uint visibilityData = sectionVisibility[visibilityIndex];
         renderCounts += uvec3(
             uint((visibilityData & 1u) == 1),
@@ -68,24 +68,24 @@ void main() {
     uvec3 totalSectionCount = subgroupAdd(renderCounts);
 
     for (uint i = 0; i < 8; i++) {
-        uint visibilityIndex = (regionId << 8) + gl_LocalInvocationID.x * 8 + i;
+        uint visibilityIndex = baseSectionId + gl_LocalInvocationID.x * 8 + i;
         uint visibilityData = sectionVisibility[visibilityIndex];
 
         if ((visibilityData & 1u) == 1) {
-            sectionIndicies[(regionId << 8) + workId.x++].x = visibilityIndex & 0xFFu;
+            sectionIndicies[baseSectionId + workId.x++].x = visibilityIndex & 0xFFu;
 
             if (hasTranslucentData(visibilityIndex)) {
-                sectionIndicies[(regionId << 8) + workId.y++].y = visibilityIndex & 0xFFu;
+                sectionIndicies[baseSectionId + workId.y++].y = visibilityIndex & 0xFFu;
             }
         }
         if ((visibilityData & 3u) == 1) {
-            sectionIndicies[(regionId << 8) + workId.z++].z = visibilityIndex & 0xFFu;
+            sectionIndicies[baseSectionId + workId.z++].z = visibilityIndex & 0xFFu;
         }
     }
 
     if (subgroupElect()) {
-        terrainCommandBuffer[gl_WorkGroupID.x].x = totalSectionCount.x;
-        translucencyCommandBuffer[(uint(regionCount) - gl_WorkGroupID.x) - 1].x = totalSectionCount.y;
-        temporalCommandBuffer[gl_WorkGroupID.x].x = totalSectionCount.z;
+        terrainCommandBuffer[gl_WorkGroupID.x] = uvec4(totalSectionCount.x, 1, 1, baseSectionId);
+        translucencyCommandBuffer[(uint(regionCount) - gl_WorkGroupID.x) - 1] = uvec4(totalSectionCount.y, 1, 1, baseSectionId);
+        temporalCommandBuffer[gl_WorkGroupID.x] = uvec4(totalSectionCount.z, 1, 1, baseSectionId);
     }
 }
