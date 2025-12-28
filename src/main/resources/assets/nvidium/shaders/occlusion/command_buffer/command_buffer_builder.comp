@@ -48,6 +48,9 @@ bool hasTranslucentData(uint sectionId) {
 
 void main() {
     if (regionVisibility[gl_WorkGroupID.x] == 0) {
+        terrainCommandBuffer[gl_WorkGroupID.x] = uvec4(0);
+        translucencyCommandBuffer[(uint(regionCount) - gl_WorkGroupID.x) - 1] = uvec4(0);
+        temporalCommandBuffer[gl_WorkGroupID.x] = uvec4(0);
         return;
     }
 
