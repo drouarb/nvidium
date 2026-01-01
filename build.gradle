@@ -4,20 +4,31 @@ plugins {
 }
 
 def gitCommitHash = { ->
-    def stdout = new ByteArrayOutputStream()
-    exec {
-        commandLine 'git', 'rev-parse', '--short', 'HEAD'
-        standardOutput = stdout
+    try {
+        ExecOutput result = providers.exec {
+            commandLine = ['git', 'rev-parse', '--short', 'HEAD']
+            ignoreExitValue = true
+        }
+
+        if (result.getResult().get().getExitValue() != 0) {
+            return "<UnknownCommit>";
+        } else {
+            return result.standardOutput.asText.get().strip();
+        }
+    } catch (Exception e) {
+        e.printStackTrace()
+        return "<UnknownCommit>";
     }
-    return stdout.toString().trim()
 }
 def buildtime = System.currentTimeSeconds()
 
 version = project.mod_version
 group = project.maven_group
 
-sourceCompatibility = JavaVersion.VERSION_21
-targetCompatibility = JavaVersion.VERSION_21
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
 
 apply plugin: "fabric-loom"
 
@@ -30,13 +41,17 @@ loom {
     }
 }
 
+base {
+    archivesName = "nvidium"
+}
 
 processResources {
-    inputs.properties("version": project.version, "commit": gitCommitHash, "buildtime":buildtime)
+    def version = project.version
 
-    archivesBaseName = "nvidium"
+    inputs.properties("version": version, "commit": gitCommitHash, "buildtime": buildtime)
+
     filesMatching("fabric.mod.json") {
-        expand "commit": gitCommitHash, "version": project.version, "buildtime": buildtime
+        expand "commit": gitCommitHash, "version": version, "buildtime": buildtime
     }
 }
 
