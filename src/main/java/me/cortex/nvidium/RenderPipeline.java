@@ -60,6 +60,7 @@ public class RenderPipeline {
     private TemporalTerrainRasterizer temporalRasterizer;
     private TranslucentTerrainRasterizer translucencyTerrainRasterizer;
     private SortRegionSectionPhase regionSectionSorter;
+    private CmdBufferBuilder cmdBufferBuilder;
 
     private final IDeviceMappedBuffer sceneUniform;
     private static final int SCENE_SIZE = (int) alignUp(
@@ -72,8 +73,10 @@ public class RenderPipeline {
                     8 +     // Section   *sectionData
                     8 +     // uint8_t   *regionVisibility
                     8 +     // uint8_t   *sectionVisibility
+                    8 +     // uint      *sectionIndices
                     8 +     // uvec2     *terrainCommandBuffer
                     8 +     // uvec2     *translucencyCommandBuffer
+                    8 +     // uvec2     *temporalCommandBuffer
                     8 +     // uint16_t  *sortingRegionList
                     8 +     // Vertex    *terrainData
                     8 +     // uint      *translucencyIndexData TODO
@@ -93,8 +96,10 @@ public class RenderPipeline {
 
     private final IDeviceMappedBuffer regionVisibility;
     private final IDeviceMappedBuffer sectionVisibility;
+    private final IDeviceMappedBuffer sectionIndices;
     private final IDeviceMappedBuffer terrainCommandBuffer;
     private final IDeviceMappedBuffer translucencyCommandBuffer;
+    private final IDeviceMappedBuffer temporalCommandBuffer;
     private final IDeviceMappedBuffer regionSortingList;
     private final IDeviceMappedBuffer statisticsBuffer;
     private final IDeviceMappedBuffer transformationArray;
@@ -131,14 +136,17 @@ public class RenderPipeline {
         temporalRasterizer = new TemporalTerrainRasterizer();
         translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
         regionSectionSorter = new SortRegionSectionPhase();
+        cmdBufferBuilder = new CmdBufferBuilder();
 
         int maxRegions = sectionManager.getRegionManager().maxRegions();
 
         sceneUniform = device.createDeviceOnlyMappedBuffer(SCENE_SIZE + maxRegions*2L);
         regionVisibility = device.createDeviceOnlyMappedBuffer(maxRegions);
         sectionVisibility = device.createDeviceOnlyMappedBuffer(maxRegions * 256L);
+        sectionIndices = device.createDeviceOnlyMappedBuffer(maxRegions * 256L * 3L * 4L);
         terrainCommandBuffer = device.createDeviceOnlyMappedBuffer(maxRegions*8L);
         translucencyCommandBuffer = device.createDeviceOnlyMappedBuffer(maxRegions*8L);
+        temporalCommandBuffer = device.createDeviceOnlyMappedBuffer(maxRegions*8L);
         regionSortingList = device.createDeviceOnlyMappedBuffer(maxRegions*2L);
         this.transformationArray = device.createDeviceOnlyMappedBuffer(RegionManager.MAX_TRANSFORMATION_COUNT * (4*4*4));
         this.originOffsetArray = device.createDeviceOnlyMappedBuffer(RegionManager.MAX_TRANSFORMATION_COUNT * 8);
@@ -316,9 +324,13 @@ public class RenderPipeline {
             addr += 8;
             MemoryUtil.memPutLong(addr, sectionVisibility.getDeviceAddress());
             addr += 8;
+            MemoryUtil.memPutLong(addr, sectionIndices.getDeviceAddress());
+            addr += 8;
             MemoryUtil.memPutLong(addr, terrainCommandBuffer.getDeviceAddress());
             addr += 8;
             MemoryUtil.memPutLong(addr, translucencyCommandBuffer.getDeviceAddress());
+            addr += 8;
+            MemoryUtil.memPutLong(addr, temporalCommandBuffer.getDeviceAddress());
             addr += 8;
             MemoryUtil.memPutLong(addr, regionSortingList.getDeviceAddress());
             addr += 8;
@@ -440,6 +452,8 @@ public class RenderPipeline {
 
         //glMemoryBarrier(GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        cmdBufferBuilder.dispatch(visibleRegions);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
         prevRegionCount = visibleRegions;
 
@@ -549,8 +563,10 @@ public class RenderPipeline {
         sceneUniform.delete();
         regionVisibility.delete();
         sectionVisibility.delete();
+        sectionIndices.delete();
         terrainCommandBuffer.delete();
         translucencyCommandBuffer.delete();
+        temporalCommandBuffer.delete();
         regionSortingList.delete();
 
         terrainRasterizer.delete();
@@ -559,6 +575,7 @@ public class RenderPipeline {
         temporalRasterizer.delete();
         translucencyTerrainRasterizer.delete();
         regionSectionSorter.delete();
+        cmdBufferBuilder.delete();
         this.transformationArray.delete();
         this.originOffsetArray.delete();
 
@@ -603,6 +620,7 @@ public class RenderPipeline {
         temporalRasterizer.delete();
         translucencyTerrainRasterizer.delete();
         regionSectionSorter.delete();
+        cmdBufferBuilder.delete();
 
         terrainRasterizer = new PrimaryTerrainRasterizer();
         regionRasterizer = new RegionRasterizer();
@@ -610,5 +628,6 @@ public class RenderPipeline {
         temporalRasterizer = new TemporalTerrainRasterizer();
         translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
         regionSectionSorter = new SortRegionSectionPhase();
+        cmdBufferBuilder = new CmdBufferBuilder();
     }
 }

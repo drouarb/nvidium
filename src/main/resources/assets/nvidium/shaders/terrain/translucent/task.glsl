@@ -28,33 +28,8 @@ taskNV out Task {
     int translucencyIndex;
 };
 
-bool shouldRender(uint sectionId) {
-    //Check visibility
-    return (sectionVisibility[sectionId]&uint8_t(1)) != uint8_t(0);
-}
-
 void main() {
-    uint sectionId = gl_WorkGroupID.x;
-    #ifdef TRANSLUCENCY_SORTING_SECTIONS
-    //Compute indirection for translucency sorting
-    {
-        ivec4 header = sectionData[sectionId].header;
-        //If the section is empty, we dont care about it at all, so ignore it and return
-        if (sectionEmpty(header)) {
-            return;
-        }
-        //Compute the redirected section index
-        sectionId &= ~0xFF;
-        sectionId |= uint((header.y>>18)&0xFF);
-    }
-    #endif
-
-    if (!shouldRender(sectionId)) {
-        //Early exit if the section isnt visible
-        //TODO: also early exit if there are no translucents to render
-        gl_TaskCountNV = 0;
-        return;
-    }
+    uint sectionId = sectionIndices[gl_WorkGroupID.x].y;
 
     translucencyIndex = sectionData[sectionId].translucencyDataIdx;
 
