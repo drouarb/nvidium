@@ -1,5 +1,6 @@
 package me.cortex.nvidium;
 
+import com.mojang.blaze3d.textures.GpuSampler;
 import it.unimi.dsi.fastutil.ints.*;
 import me.cortex.nvidium.config.StatisticsLoggingLevel;
 import me.cortex.nvidium.config.TranslucencySortingLevel;
@@ -19,6 +20,7 @@ import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.impl.Compact
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.caffeinemc.mods.sodium.client.util.FogParameters;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.TextureFilteringMethod;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import org.joml.*;
 import org.lwjgl.opengl.GL11C;
@@ -83,6 +85,7 @@ public class RenderPipeline {
                     2*4 +   // vec2      environmentFog
                     2*4 +   // vec2      renderFog
                     4*2 +   // vec2      texCoordShrink
+                    4*2 +   // vec2      texelSize
                     4 +     // uint      flags
                     2 +     // uint16_t  regionCount
                     1       // uint8_t   frameId
@@ -190,7 +193,7 @@ public class RenderPipeline {
     //TODO FIXME: regions that where in frustum but are now out of frustum must have the visibility data cleared
     // this is due to funny issue of pain where the section was "visible" last frame cause it didnt get ticked
     //NOTE: can use any of the command list rendering commands to basicly draw X indirects using the same shader, thus allowing for terrain to be rendered very efficently
-    public void renderFrame(TerrainRenderPass pass, Viewport frustum, FogParameters fogParameters, ChunkRenderMatrices crm, double px, double py, double pz) {
+    public void renderFrame(TerrainRenderPass pass, Viewport frustum, FogParameters fogParameters, ChunkRenderMatrices crm, double px, double py, double pz, GpuSampler terrainSampler) {
 
         if (sectionManager.getRegionManager().regionCount() == 0) return;//Dont render anything if there is nothing to render
 
@@ -344,8 +347,14 @@ public class RenderPipeline {
             addr += 4;
             MemoryUtil.memPutFloat(addr, subTexelHeight);
             addr += 4;
+            MemoryUtil.memPutFloat(addr, 1.0f / textureAtlas.getWidth());
+            addr += 4;
+            MemoryUtil.memPutFloat(addr, 1.0f / textureAtlas.getHeight());
+            addr += 4;
             int flags = 0;
             flags |= SodiumClientMod.options().performance.useBlockFaceCulling?1:0;
+            if (Minecraft.getInstance().options.textureFiltering().get() == TextureFilteringMethod.RGSS)
+                flags |= 2;
             MemoryUtil.memPutInt(addr, flags);//Flags
             addr += 4;
             MemoryUtil.memPutShort(addr, (short) visibleRegions);
@@ -387,7 +396,7 @@ public class RenderPipeline {
 
         if (prevRegionCount != 0) {
             glEnable(GL_DEPTH_TEST);
-            terrainRasterizer.raster(pass, prevRegionCount, terrainCommandBuffer.getDeviceAddress(), primaryTiming);
+            terrainRasterizer.raster(pass, prevRegionCount, terrainCommandBuffer.getDeviceAddress(), terrainSampler, primaryTiming);
             glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
         }
 
@@ -437,7 +446,7 @@ public class RenderPipeline {
         //Do temporal rasterization
         if (Nvidium.config.enable_temporal_coherence) {
             glMemoryBarrier(GL_COMMAND_BARRIER_BIT);
-            temporalRasterizer.raster(pass, visibleRegions, terrainCommandBuffer.getDeviceAddress());
+            temporalRasterizer.raster(pass, visibleRegions, terrainCommandBuffer.getDeviceAddress(), terrainSampler);
         }
 
 
@@ -492,7 +501,7 @@ public class RenderPipeline {
 
     //Translucency is rendered in a very cursed and incorrect way
     // it hijacks the unassigned indirect command dispatch and uses that to dispatch the translucent chunks as well
-    public void renderTranslucent(TerrainRenderPass pass) {
+    public void renderTranslucent(TerrainRenderPass pass, GpuSampler terrainSampler) {
         glEnableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
         glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
         glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
@@ -503,7 +512,7 @@ public class RenderPipeline {
         //Translucency sorting
         {
             glEnable(GL_DEPTH_TEST);
-            translucencyTerrainRasterizer.raster(pass, prevRegionCount, translucencyCommandBuffer.getDeviceAddress(), translucentTiming);
+            translucencyTerrainRasterizer.raster(pass, prevRegionCount, translucencyCommandBuffer.getDeviceAddress(), terrainSampler, translucentTiming);
         }
 
         glDisableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);

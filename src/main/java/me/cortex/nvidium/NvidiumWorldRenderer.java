@@ -1,5 +1,6 @@
 package me.cortex.nvidium;
 
+import com.mojang.blaze3d.textures.GpuSampler;
 import me.cortex.nvidium.config.TranslucencySortingLevel;
 import me.cortex.nvidium.gl.RenderDevice;
 import me.cortex.nvidium.managers.AsyncOcclusionTracker;
@@ -80,8 +81,8 @@ public class NvidiumWorldRenderer {
         renderPipeline.reloadShaders();
     }
 
-    public void renderFrame(TerrainRenderPass pass, Viewport viewport, FogParameters fogParameters, ChunkRenderMatrices matrices, double x, double y, double z) {
-        renderPipeline.renderFrame(pass, viewport, fogParameters, matrices, x, y, z);
+    public void renderFrame(TerrainRenderPass pass, Viewport viewport, FogParameters fogParameters, ChunkRenderMatrices matrices, double x, double y, double z, GpuSampler terrainSampler) {
+        renderPipeline.renderFrame(pass, viewport, fogParameters, matrices, x, y, z, terrainSampler);
 
         while (sectionManager.terrainAreana.getUsedMB() > (max_geometry_memory - 100)) {
             renderPipeline.removeARegion();
@@ -93,8 +94,8 @@ public class NvidiumWorldRenderer {
         }
     }
 
-    public void renderTranslucent(TerrainRenderPass pass) {
-        this.renderPipeline.renderTranslucent(pass);
+    public void renderTranslucent(TerrainRenderPass pass, GpuSampler terrainSampler) {
+        this.renderPipeline.renderTranslucent(pass, terrainSampler);
     }
 
     public void deleteSection(RenderSection section) {

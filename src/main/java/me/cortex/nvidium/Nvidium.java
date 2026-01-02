@@ -3,7 +3,7 @@ package me.cortex.nvidium;
 import me.cortex.nvidium.config.NvidiumConfig;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import org.lwjgl.opengl.GL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

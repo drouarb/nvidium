@@ -18,13 +18,17 @@
   "license": "LGPL-3.0",
   "icon": "assets/nvidium/nvidium.png",
   "environment": "client",
-  "entrypoints": {},
+  "entrypoints": {
+    "sodium:config_api_user": [
+      "me.cortex.nvidium.config.ConfigGuiBuilder"
+    ]
+  },
   "mixins": [
     "nvidium.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.17.2",
-    "minecraft": ["1.21.9", "1.21.10"],
-    "sodium": ["=0.7.2", "=0.7.3"]
+    "minecraft": ["1.21.11"],
+    "sodium": ["=0.8.2"]
   }
 }

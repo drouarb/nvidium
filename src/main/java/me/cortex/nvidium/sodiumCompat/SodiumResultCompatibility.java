@@ -115,7 +115,7 @@ public class SodiumResultCompatibility {
             }
         } else if (translucentData != null) {
             //NOTE: mutates the input translucent geometry
-            var cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+            var cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().position();
 
             float cpx = (float) (cameraPos.x - (result.render.getChunkX()<<4));
             float cpy = (float) (cameraPos.y - (result.render.getChunkY()<<4));

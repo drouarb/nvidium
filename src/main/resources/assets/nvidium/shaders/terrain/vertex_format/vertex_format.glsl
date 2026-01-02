@@ -7,7 +7,7 @@
 #endif
 
 float getVertexAlphaCutoff(uint v) {
-    return (float[](0.0f, 0.1f,0.1f,1.0f))[v];
+    return (float[](0.0f,0.0001f,0.5f,1.0f))[v];
 }
 
 vec4 sampleLight(vec2 uv) {

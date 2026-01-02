@@ -176,7 +176,7 @@ public class AsyncOcclusionTracker {
     }
 
     private boolean shouldUseOcclusionCulling(Camera camera, boolean spectator) {
-        BlockPos origin = camera.getBlockPosition();
+        BlockPos origin = camera.blockPosition();
         boolean useOcclusionCulling;
         if (spectator && this.world.getBlockState(origin).isSolidRender()) {
             useOcclusionCulling = false;

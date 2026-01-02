@@ -7,6 +7,7 @@ import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.opengl.GlTexture;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.GpuSampler;
 import it.unimi.dsi.fastutil.longs.Long2ReferenceMap;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.NvidiumWorldRenderer;
@@ -104,7 +105,7 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
     }
 
     @Inject(method = "renderLayer", at = @At("HEAD"), cancellable = true)
-    public void renderLayer(ChunkRenderMatrices matrices, TerrainRenderPass pass, double x, double y, double z, FogParameters fogParameters, CallbackInfo ci) {
+    public void renderLayer(ChunkRenderMatrices matrices, TerrainRenderPass pass, double x, double y, double z, FogParameters fogParameters, GpuSampler terrainSampler, CallbackInfo ci) {
         if (Nvidium.IS_ENABLED) {
             ci.cancel();
             if (pass == DefaultTerrainRenderPasses.CUTOUT) // Early exit, cutout will be rendered with SOLID
@@ -117,9 +118,9 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
             ((GlCommandEncoderAccessor) RenderSystem.getDevice().createCommandEncoder()).sodium$setLastProgram(null);
 
             if (pass == DefaultTerrainRenderPasses.SOLID) {
-                renderer.renderFrame(pass, viewport, fogParameters, matrices, x, y, z);
+                renderer.renderFrame(pass, viewport, fogParameters, matrices, x, y, z, terrainSampler);
             } else if (pass == DefaultTerrainRenderPasses.TRANSLUCENT) {
-                renderer.renderTranslucent(pass);
+                renderer.renderTranslucent(pass, terrainSampler);
             }
         }
     }
