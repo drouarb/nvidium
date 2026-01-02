@@ -1,6 +1,11 @@
 package me.cortex.nvidium.renderers;
 
+import com.mojang.blaze3d.opengl.GlSampler;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.opengl.GlTexture;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.blaze3d.textures.GpuSampler;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import me.cortex.nvidium.gl.buffers.IDeviceMappedBuffer;
 import me.cortex.nvidium.gl.shader.Shader;
@@ -8,10 +13,8 @@ import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import me.cortex.nvidium.util.GPUTiming;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
-import org.lwjgl.opengl.GL12C;
-import org.lwjgl.opengl.GL45;
-import org.lwjgl.opengl.GL45C;
+import net.minecraft.resources.Identifier;
+import org.lwjgl.opengl.*;
 
 import static me.cortex.nvidium.RenderPipeline.GL_DRAW_INDIRECT_ADDRESS_NV;
 import static me.cortex.nvidium.gl.EXTMeshShader.glMultiDrawMeshTasksIndirectEXT;
@@ -25,35 +28,31 @@ import static org.lwjgl.opengl.NVMeshShader.glMultiDrawMeshTasksIndirectNV;
 import static org.lwjgl.opengl.NVVertexBufferUnifiedMemory.glBufferAddressRangeNV;
 
 public class TemporalTerrainRasterizer extends Phase {
-    private final int blockSampler = glGenSamplers();
-    private final int lightSampler = glGenSamplers();
     private final Shader shader = Shader.make()
-            .addSource(TASK, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/temporal_task.glsl")))
-            .addSource(MESH, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/mesh.glsl")))
-            .addSource(FRAGMENT, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "terrain/frag.frag"))).compile();
+            .addSource(TASK, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "terrain/temporal_task.glsl")))
+            .addSource(MESH, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "terrain/mesh.glsl")))
+            .addSource(FRAGMENT, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "terrain/frag.frag"))).compile();
 
     public TemporalTerrainRasterizer() {
-        GL45C.glSamplerParameteri(blockSampler, GL45C.GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
-        GL45C.glSamplerParameteri(blockSampler, GL45C.GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        GL45C.glSamplerParameteri(blockSampler, GL45C.GL_TEXTURE_MIN_LOD, 0);
-        GL45C.glSamplerParameteri(blockSampler, GL45C.GL_TEXTURE_MAX_LOD, 4);
-        GL45C.glSamplerParameteri(lightSampler, GL_TEXTURE_WRAP_T, GL12C.GL_CLAMP_TO_EDGE);
-        GL45C.glSamplerParameteri(lightSampler, GL_TEXTURE_WRAP_S, GL12C.GL_CLAMP_TO_EDGE);
-        GL45C.glSamplerParameteri(lightSampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        GL45C.glSamplerParameteri(lightSampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
 
-    public void raster(TerrainRenderPass pass, int regionCount, IDeviceMappedBuffer commandBuffer, GPUTiming timing) {
+    private static void setTexture(GpuTextureView texView, int bindingPoint, GpuSampler sampler) {
+        GlTexture tex = (GlTexture) texView.texture();
+        GlStateManager._activeTexture(GL32C.GL_TEXTURE0 + bindingPoint);
+        GlStateManager._bindTexture(tex.glId());
+        GlStateManager._texParameter(GL32C.GL_TEXTURE_2D, 33084, texView.baseMipLevel());
+        GlStateManager._texParameter(GL32C.GL_TEXTURE_2D, 33085, texView.baseMipLevel() + texView.mipLevels() - 1);
+        GL33C.glBindSampler(bindingPoint, ((GlSampler) sampler).getId());
+    }
+
+    public void raster(TerrainRenderPass pass, int regionCount, IDeviceMappedBuffer commandBuffer, GpuSampler terrainSampler, GPUTiming timing) {
         shader.bind();
 
         GpuTextureView blockTexture = pass.getAtlas();
         GpuTextureView lightTexture = Minecraft.getInstance().gameRenderer.lightTexture().getTextureView();
 
-        GL45C.glBindTextureUnit(0, ((GlTexture)blockTexture.texture()).glId());
-        GL45C.glBindSampler(0, blockSampler);
-
-        GL45C.glBindTextureUnit(1, ((GlTexture)lightTexture.texture()).glId());
-        GL45C.glBindSampler(1, lightSampler);
+        setTexture(blockTexture, 0, terrainSampler);
+        setTexture(lightTexture, 1, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
 
         // TODO Make it auto if we can't use nvidia
         //glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandBuffer.getDeviceAddress(), regionCount*8L);//Bind the command buffer
@@ -64,14 +63,11 @@ public class TemporalTerrainRasterizer extends Phase {
         timing.tick();
         //glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
 
-
         GL45C.glBindSampler(0, 0);
         GL45C.glBindSampler(1, 0);
     }
 
     public void delete() {
-        GL45.glDeleteSamplers(blockSampler);
-        GL45.glDeleteSamplers(lightSampler);
         shader.delete();
     }
 }

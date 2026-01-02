@@ -117,6 +117,7 @@ layout(std140, binding=0) uniform SceneData {
     vec2 renderFog;
 
     vec2 texCoordShrink;
+    vec2 texelSize;
 
     uint flags;
 
@@ -148,5 +149,9 @@ ivec3 unpackOriginOffsetId(uint id) {
 }
 
 bool useBlockFaceCulling() {
-    return (flags&1u) != 0u;
+    return (flags&1)!=0;
+}
+
+bool useRGSS() {
+    return (flags&2)!=0;
 }

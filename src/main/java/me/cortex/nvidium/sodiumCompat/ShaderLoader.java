@@ -5,15 +5,15 @@ import me.cortex.nvidium.config.StatisticsLoggingLevel;
 import me.cortex.nvidium.config.TranslucencySortingLevel;
 import net.caffeinemc.mods.sodium.client.gl.shader.ShaderConstants;
 import net.caffeinemc.mods.sodium.client.gl.shader.ShaderParser;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import java.util.function.Consumer;
 
 public class ShaderLoader {
-    public static String parse(ResourceLocation path) {
+    public static String parse(Identifier path) {
         return parse(path, shaderConstants -> {});
     }
 
-    public static String parse(ResourceLocation path, Consumer<ShaderConstants.Builder> constantBuilder) {
+    public static String parse(Identifier path, Consumer<ShaderConstants.Builder> constantBuilder) {
         var builder = ShaderConstants.builder();
         if (Nvidium.IS_DEBUG) {
             builder.add("DEBUG");

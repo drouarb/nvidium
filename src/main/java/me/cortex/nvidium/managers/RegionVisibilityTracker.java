@@ -4,7 +4,7 @@ import me.cortex.nvidium.gl.buffers.Buffer;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import me.cortex.nvidium.util.DownloadTaskStream;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.lwjgl.system.MemoryUtil;
 
 import static me.cortex.nvidium.gl.EXTMeshShader.glDrawMeshTasksEXT;
@@ -16,8 +16,8 @@ import static org.lwjgl.opengl.NVMeshShader.glDrawMeshTasksNV;
 
 public class RegionVisibilityTracker {
     private final Shader shader = Shader.make()
-            .addSource(MESH, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "occlusion/queries/region/mesh.glsl")))
-            .addSource(FRAGMENT, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "occlusion/queries/region/fragment.frag")))
+            .addSource(MESH, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "occlusion/queries/region/mesh.glsl")))
+            .addSource(FRAGMENT, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "occlusion/queries/region/fragment.frag")))
             .compile();
 
     private final DownloadTaskStream downStream;

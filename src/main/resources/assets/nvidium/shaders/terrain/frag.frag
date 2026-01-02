@@ -10,6 +10,7 @@
 #extension GL_NV_fragment_shader_barycentric : require
 #endif
 
+layout(binding = 0) uniform sampler2D tex_diffuse;
 layout(binding = 1) uniform sampler2D tex_light;
 
 #import <nvidium:occlusion/scene.glsl>
@@ -67,15 +68,65 @@ void applyFog(inout vec4 colour) {
     vec4 clip = (MVPInv * vec4((gl_FragCoord.xy/screenSize)-1, gl_FragCoord.z*2-1, 1));
     vec3 pos = clip.xyz/clip.w;
     vec2 v_FragDistance = getFragDistance(pos);
-    colour = _linearFog(colour, v_FragDistance, fogColour, environmentFog, renderFog);
+    colour = _linearFog(colour, v_FragDistance, fogColour, environmentFog, renderFog, 1.0);
 #else
-    colour = _linearFog(colour, IN.v_FragDistance, fogColour, environmentFog, renderFog);
+    colour = _linearFog(colour, IN.v_FragDistance, fogColour, environmentFog, renderFog, 1.0);
 #endif
 }
 #endif
 
+vec4 sampleNearest(vec2 uv, vec2 du, vec2 dv, vec2 texelScreenSize) {
+    // Convert our UV back up to texel coordinates and find out how far over we are from the center of each pixel
+    vec2 uvTexelCoords = uv / texelSize;
+    vec2 texelCenter = round(uvTexelCoords) - 0.5f;
+    vec2 texelOffset = uvTexelCoords - texelCenter;
 
-layout(binding = 0) uniform sampler2D tex_diffuse;
+    // Move our offset closer to the texel center based on texel size on screen
+    texelOffset = (texelOffset - 0.5f) * texelSize / texelScreenSize + 0.5f;
+    texelOffset = clamp(texelOffset, 0.0f, 1.0f);
+
+    vec2 uvCorrected = (texelCenter + texelOffset) * texelSize;
+    return textureGrad(tex_diffuse, uvCorrected, du, dv);
+}
+
+// Rotated Grid Super-Sampling
+vec4 sampleRGSS(vec2 uv, vec2 du, vec2 dv, vec2 texelScreenSize) {
+    float maxTexelSize = max(texelScreenSize.x, texelScreenSize.y);
+
+    float minPixelSize = min(texelSize.x, texelSize.y);
+
+    float transitionStart = minPixelSize * 1.0;
+    float transitionEnd = minPixelSize * 2.0;
+    float blendFactor = smoothstep(transitionStart, transitionEnd, maxTexelSize);
+
+    float duLength = length(du);
+    float dvLength = length(dv);
+    float minDerivative = min(duLength, dvLength);
+    float maxDerivative = max(duLength, dvLength);
+
+    float effectiveDerivative = sqrt(minDerivative * maxDerivative);
+
+    float mipLevelExact = max(0.0, log2(effectiveDerivative / minPixelSize));
+
+    const vec2 offsets[4] = vec2[](
+        vec2(0.125, 0.375),
+        vec2(-0.125, -0.375),
+        vec2(0.375, -0.125),
+        vec2(-0.375, 0.125)
+    );
+
+    vec4 rgssColor = vec4(0.0);
+    for (int i = 0; i < 4; ++i) {
+        vec2 sampleUV = uv + offsets[i] * texelSize;
+        rgssColor += textureLod(tex_diffuse, sampleUV, mipLevelExact);
+    }
+    rgssColor *= 0.25;
+
+    vec4 nearestColor = sampleNearest(uv, du, dv, texelScreenSize);
+
+    return mix(nearestColor, rgssColor, blendFactor);
+}
+
 void main() {
     uint quadId = uint(PRIMITRASH)>>1;
     bool triangle0 = uint((PRIMITRASH)&1)==0;
@@ -95,17 +146,19 @@ void main() {
         vec2 uvr = gl_BaryCoordNV.x*uv0 + gl_BaryCoordNV.y*uvp + gl_BaryCoordNV.z*uv2;
         vec2 uv = clamp(uvr, min(min(uv0, uv2),uvp)+HALF_SHIFT, max(max(uv0, uv2),uvp)-HALF_SHIFT);
 
-        if (hasMipping(V0)) {
-            //Since this is a dynamic uniform it is safe to use dF* functions
-            //Compute the partial derivatives w.r.t pre-clamping
-            colour = textureGrad(tex_diffuse, uv, dFdx(uvr), dFdy(uvr));
-        } else {
-            colour = textureLod(tex_diffuse, uv, 0);//No mipping
-        }
+        vec2 du = dFdx(uvr);
+        vec2 dv = dFdy(uvr);
     #else
+<<<<<<< HEAD
         float lodBias = hasMipping(V0)?0.0f:-4.0f;
         colour = texture(tex_diffuse, IN.uv, lodBias);
+=======
+        vec2 du = dFdx(uv);
+        vec2 dv = dFdy(uv);
+>>>>>>> bdce1ba (Minecraft 1.21.11 & Sodium 0.8.2 support)
     #endif
+        vec2 texelScreenSize = sqrt(du * du + dv * dv);
+        colour = useRGSS() ? sampleRGSS(uv, du, dv, texelScreenSize) : sampleNearest(uv, du, dv, texelScreenSize);
 
     #ifndef TRANSLUCENT_PASS
         uint alphaCutoff = rawVertexAlphaCutoff(V0);
@@ -120,6 +173,6 @@ void main() {
     #endif
 
     #ifdef RENDER_FOG
-    applyFog(colour);
+        applyFog(colour);
     #endif
 }
