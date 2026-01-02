@@ -1,0 +1,79 @@
+#version 460
+#pragma unroll
+#pragma optionNV(unroll all)
+#extension GL_ARB_shading_language_include : enable
+#extension GL_NV_gpu_shader5 : enable
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+
+#import <nvidium:occlusion/scene.glsl>
+
+layout(local_size_x = 32) in;
+
+uint getReflectedTranslucentSectionId(uint sectionId) {
+    ivec4 header = sectionData[sectionId].header;
+    if (!sectionEmpty(header)) {
+        sectionId &= ~0xFFu;
+        sectionId |= uint((header.y>>18)&0xFFu);
+    }
+    return sectionId;
+}
+
+bool hasTranslucentData(uint sectionId) {
+    return ((sectionData[sectionId].renderRanges.w>>16)&0xFFFF) > 0;
+}
+
+void main() {
+    if (regionVisibility[gl_WorkGroupID.x] == uint8_t(0)) {
+        terrainCommandBuffer[gl_WorkGroupID.x] = uvec2(0);
+        translucencyCommandBuffer[(uint(regionCount) - gl_WorkGroupID.x) - 1] = uvec2(0);
+        temporalCommandBuffer[gl_WorkGroupID.x] = uvec2(0);
+        return;
+    }
+
+    uint baseSectionId = regionIndicies[gl_WorkGroupID.x] << 8;
+
+    uvec3 renderCounts = uvec3(0);
+    for (uint i = 0; i < 8; i++) {
+        uint visibilityIndex = baseSectionId + gl_LocalInvocationID.x * 8 + i;
+        uint8_t visibilityData = sectionVisibility[visibilityIndex];
+
+        uint translucentVisibilityIndex = getReflectedTranslucentSectionId(visibilityIndex);
+        uint8_t translucentVisibilityData = sectionVisibility[translucentVisibilityIndex];
+
+        renderCounts += uvec3(
+            uint((visibilityData & 1u) == 1),
+            uint((translucentVisibilityData & 1u) == 1 && hasTranslucentData(translucentVisibilityIndex)),
+            uint((visibilityData & 3u) == 1)
+        );
+    }
+
+    uvec3 workId = subgroupExclusiveAdd(renderCounts);
+    uvec3 totalSectionCount = subgroupAdd(renderCounts);
+
+    for (uint i = 0; i < 8; i++) {
+        uint visibilityIndex = baseSectionId + gl_LocalInvocationID.x * 8 + i;
+        uint visibilityData = sectionVisibility[visibilityIndex];
+
+        if ((visibilityData & 1u) == 1) {
+            sectionIndices[baseSectionId + workId.x++].x = visibilityIndex;
+        }
+
+        uint translucentVisibilityIndex = getReflectedTranslucentSectionId(visibilityIndex);
+        uint translucentVisibilityData = sectionVisibility[translucentVisibilityIndex];
+
+        if ((translucentVisibilityData & 1u) == 1 && hasTranslucentData(translucentVisibilityIndex)) {
+            sectionIndices[baseSectionId + workId.y++].y = translucentVisibilityIndex;
+        }
+
+        if ((visibilityData & 3u) == 1) {
+            sectionIndices[baseSectionId + workId.z++].z = visibilityIndex;
+        }
+    }
+
+    if (subgroupElect()) {
+        terrainCommandBuffer[gl_WorkGroupID.x] = uvec2(totalSectionCount.x, baseSectionId);
+        translucencyCommandBuffer[(uint(regionCount) - gl_WorkGroupID.x) - 1] = uvec2(totalSectionCount.y, baseSectionId);
+        temporalCommandBuffer[gl_WorkGroupID.x] = uvec2(totalSectionCount.z, baseSectionId);
+    }
+}

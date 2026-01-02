@@ -24,13 +24,7 @@ bool shouldRenderVisible(uint sectionId) {
 #import <nvidium:terrain/task_common2.glsl>
 
 void main() {
-    uint sectionId = gl_WorkGroupID.x;
-
-    if (!shouldRenderVisible(sectionId)) {
-        //Early exit if the section isnt visible
-        gl_TaskCountNV = 0;
-        return;
-    }
+    uint sectionId = sectionIndices[gl_WorkGroupID.x].x;
 
     #ifdef STATISTICS_SECTIONS
     atomicAdd(statistics_buffer+1, 1);
