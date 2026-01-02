@@ -17,24 +17,10 @@
 //This is 1 since each task shader workgroup -> multiple meshlets. its not each globalInvocation (afaik)
 layout(local_size_x=1) in;
 
-
-
-
-bool shouldRenderVisible(uint sectionId) {
-    uint8_t data = sectionVisibility[sectionId];
-    return (data&uint8_t(3)) == uint8_t(1);//If the section was not visible last frame but is visible this frame, render it
-}
-
 #import <nvidium:terrain/task_common2.glsl>
 
 void main() {
-    uint sectionId = gl_WorkGroupID.x;
-
-    if (!shouldRenderVisible(sectionId)) {
-        //Early exit if the section isnt visible
-        gl_TaskCountNV = 0;
-        return;
-    }
+    uint sectionId = sectionIndices[gl_WorkGroupID.x].z;
 
     ivec4 header = sectionData[sectionId].header;
     ivec3 chunk = ivec3(header.xyz)>>8;
