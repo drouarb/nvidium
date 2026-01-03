@@ -20,7 +20,7 @@ layout(local_size_x=1) in;
 #import <nvidium:terrain/task_common2.glsl>
 
 void main() {
-    uint sectionId = sectionIndices[gl_WorkGroupID.x].z;
+    uint sectionId = sectionIndices[gl_WorkGroupID.x].z + (gl_WorkGroupID.x & 0xFFFFFF00);
 
     ivec4 header = sectionData[sectionId].header;
     ivec3 chunk = ivec3(header.xyz)>>8;

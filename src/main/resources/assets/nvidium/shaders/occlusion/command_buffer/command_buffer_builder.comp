@@ -56,18 +56,18 @@ void main() {
         uint visibilityData = sectionVisibility[visibilityIndex];
 
         if ((visibilityData & 1u) == 1) {
-            sectionIndices[baseSectionId + workId.x++].x = visibilityIndex;
+            sectionIndices[baseSectionId + workId.x++].x = uint8_t(visibilityIndex & 0xFF);
         }
 
         uint translucentVisibilityIndex = getReflectedTranslucentSectionId(visibilityIndex);
         uint translucentVisibilityData = sectionVisibility[translucentVisibilityIndex];
 
         if ((translucentVisibilityData & 1u) == 1 && hasTranslucentData(translucentVisibilityIndex)) {
-            sectionIndices[baseSectionId + workId.y++].y = translucentVisibilityIndex;
+            sectionIndices[baseSectionId + workId.y++].y = uint8_t(translucentVisibilityIndex & 0xFF);
         }
 
         if ((visibilityData & 3u) == 1) {
-            sectionIndices[baseSectionId + workId.z++].z = visibilityIndex;
+            sectionIndices[baseSectionId + workId.z++].z = uint8_t(visibilityIndex & 0xFF);
         }
     }
 

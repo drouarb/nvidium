@@ -29,7 +29,7 @@ taskNV out Task {
 };
 
 void main() {
-    uint sectionId = sectionIndices[gl_WorkGroupID.x].y;
+    uint sectionId = sectionIndices[gl_WorkGroupID.x].y + (gl_WorkGroupID.x & 0xFFFFFF00);
 
     translucencyIndex = sectionData[sectionId].translucencyDataIdx;
 
