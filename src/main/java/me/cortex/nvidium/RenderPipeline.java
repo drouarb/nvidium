@@ -73,7 +73,7 @@ public class RenderPipeline {
                     8 +     // Section   *sectionData
                     8 +     // uint8_t   *regionVisibility
                     8 +     // uint8_t   *sectionVisibility
-                    8 +     // uint      *sectionIndices
+                    8 +     // u8vec3    *sectionIndices
                     8 +     // uvec2     *terrainCommandBuffer
                     8 +     // uvec2     *translucencyCommandBuffer
                     8 +     // uvec2     *temporalCommandBuffer
@@ -143,7 +143,7 @@ public class RenderPipeline {
         sceneUniform = device.createDeviceOnlyMappedBuffer(SCENE_SIZE + maxRegions*2L);
         regionVisibility = device.createDeviceOnlyMappedBuffer(maxRegions);
         sectionVisibility = device.createDeviceOnlyMappedBuffer(maxRegions * 256L);
-        sectionIndices = device.createDeviceOnlyMappedBuffer(maxRegions * 256L * 3L * 4L);
+        sectionIndices = device.createDeviceOnlyMappedBuffer(maxRegions * 256L * 3L);
         terrainCommandBuffer = device.createDeviceOnlyMappedBuffer(maxRegions*8L);
         translucencyCommandBuffer = device.createDeviceOnlyMappedBuffer(maxRegions*8L);
         temporalCommandBuffer = device.createDeviceOnlyMappedBuffer(maxRegions*8L);
@@ -412,6 +412,12 @@ public class RenderPipeline {
             glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
         }
 
+        if (regionSortSize != 0) {
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+            regionSectionSorter.dispatch(regionSortSize);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        }
+
         //NOTE: For GL_REPRESENTATIVE_FRAGMENT_TEST_NV to work, depth testing must be disabled, or depthMask = false
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LEQUAL);
@@ -454,6 +460,7 @@ public class RenderPipeline {
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         cmdBufferBuilder.dispatch(visibleRegions);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        glMemoryBarrier(GL_COMMAND_BARRIER_BIT);
 
         prevRegionCount = visibleRegions;
 
@@ -474,14 +481,6 @@ public class RenderPipeline {
             glDisable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
             glDepthMask(true);
             glColorMask(true, true, true, true);
-        }
-
-
-
-        if (regionSortSize != 0) {
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-            regionSectionSorter.dispatch(regionSortSize);
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         }
 
         glDisableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);

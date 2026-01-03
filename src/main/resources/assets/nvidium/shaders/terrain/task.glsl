@@ -24,7 +24,7 @@ bool shouldRenderVisible(uint sectionId) {
 #import <nvidium:terrain/task_common2.glsl>
 
 void main() {
-    uint sectionId = sectionIndices[gl_WorkGroupID.x].x;
+    uint sectionId = sectionIndices[gl_WorkGroupID.x].x + (gl_WorkGroupID.x & 0xFFFFFF00);
 
     #ifdef STATISTICS_SECTIONS
     atomicAdd(statistics_buffer+1, 1);

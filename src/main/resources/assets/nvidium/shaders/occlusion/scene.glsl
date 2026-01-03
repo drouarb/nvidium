@@ -76,7 +76,7 @@ layout(std140, binding=0) uniform SceneData {
     //NOTE: for the following, can make it so that region visibility actually uses section visibility array
     restrict uint8_t *regionVisibility;
     restrict uint8_t *sectionVisibility;
-    restrict uvec3   *sectionIndices;
+    restrict u8vec3  *sectionIndices;
     //Terrain command buffer, the first 4 bytes are actually the count
     writeonly restrict uvec2 *terrainCommandBuffer;
     writeonly restrict uvec2 *translucencyCommandBuffer;
