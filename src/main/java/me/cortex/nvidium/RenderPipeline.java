@@ -120,9 +120,6 @@ public class RenderPipeline {
 
     private final Statistics stats;
 
-    private final GPUTiming primaryTiming = new GPUTiming();
-    private final GPUTiming translucentTiming = new GPUTiming();
-
     public RenderPipeline(RenderDevice device, UploadingBufferStream uploadStream, DownloadTaskStream downloadStream, SectionManager sectionManager) {
         this.device = device;
         this.uploadStream = uploadStream;
@@ -408,7 +405,7 @@ public class RenderPipeline {
 
         if (prevRegionCount != 0) {
             glEnable(GL_DEPTH_TEST);
-            terrainRasterizer.raster(pass, prevRegionCount, terrainCommandBuffer.getDeviceAddress(), terrainSampler, primaryTiming);
+            terrainRasterizer.raster(pass, prevRegionCount, terrainCommandBuffer.getDeviceAddress(), terrainSampler);
             glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
         }
 
@@ -467,7 +464,7 @@ public class RenderPipeline {
         //Do temporal rasterization
         if (Nvidium.config.enable_temporal_coherence) {
             glMemoryBarrier(GL_COMMAND_BARRIER_BIT);
-            temporalRasterizer.raster(pass, visibleRegions, terrainCommandBuffer.getDeviceAddress(), terrainSampler);
+            temporalRasterizer.raster(pass, visibleRegions, temporalCommandBuffer.getDeviceAddress(), terrainSampler);
         }
 
 
@@ -525,7 +522,7 @@ public class RenderPipeline {
         //Translucency sorting
         {
             glEnable(GL_DEPTH_TEST);
-            translucencyTerrainRasterizer.raster(pass, prevRegionCount, translucencyCommandBuffer.getDeviceAddress(), terrainSampler, translucentTiming);
+            translucencyTerrainRasterizer.raster(pass, prevRegionCount, translucencyCommandBuffer.getDeviceAddress(), terrainSampler);
         }
 
         glDisableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
@@ -578,9 +575,6 @@ public class RenderPipeline {
         this.transformationArray.delete();
         this.originOffsetArray.delete();
 
-        this.primaryTiming.free();
-        this.translucentTiming.free();
-
         if (statisticsBuffer != null) {
             statisticsBuffer.delete();
         }
@@ -607,8 +601,17 @@ public class RenderPipeline {
             }
             info.addAll(List.of(builder.toString().split("\n")));
         }
-        info.add("Primary frame time: " +  String.format("%.03f", primaryTiming.getAverageMs()) + "ms");
-        info.add("Translucent frame time: " +  String.format("%.03f", translucentTiming.getAverageMs()) + "ms");
+        info.add("Primary Terrain frame time: " +  String.format("%.03f", terrainRasterizer.getTiming().getAverageMs()) + "ms");
+        info.add("Translucent frame time: " +  String.format("%.03f", translucencyTerrainRasterizer.getTiming().getAverageMs()) + "ms");
+        if (Nvidium.config.enable_temporal_coherence) {
+            info.add("Temporal frame time: " +  String.format("%.03f", temporalRasterizer.getTiming().getAverageMs()) + "ms");
+        }
+        info.add("Region Raster time: " +  String.format("%.03f", regionRasterizer.getTiming().getAverageMs()) + "ms");
+        info.add("Section Raster time: " +  String.format("%.03f", sectionRasterizer.getTiming().getAverageMs()) + "ms");
+        info.add("CmdBufferBuilder time: " +  String.format("%.03f", cmdBufferBuilder.getTiming().getAverageMs()) + "ms");
+        if (Nvidium.config.translucency_sorting_level != TranslucencySortingLevel.NONE) {
+            info.add("SectionSorter time: " +  String.format("%.03f", regionSectionSorter.getTiming().getAverageMs()) + "ms");
+        }
     }
 
     public void reloadShaders() {

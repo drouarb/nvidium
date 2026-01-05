@@ -47,13 +47,17 @@ public class TemporalTerrainRasterizer extends Phase {
         setTexture(lightTexture, 1, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
 
         glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandAddr, regionCount*8L);//Bind the command buffer
+        timing.marker();
         glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
+        timing.marker();
+        timing.tick();
 
         GL45C.glBindSampler(0, 0);
         GL45C.glBindSampler(1, 0);
     }
 
     public void delete() {
+        super.delete();
         shader.delete();
     }
 }

@@ -38,7 +38,7 @@ public class PrimaryTerrainRasterizer extends Phase {
         GL33C.glBindSampler(bindingPoint, ((GlSampler) sampler).getId());
     }
 
-    public void raster(TerrainRenderPass pass, int regionCount, long commandAddr, GpuSampler terrainSampler, GPUTiming gpuTiming) {
+    public void raster(TerrainRenderPass pass, int regionCount, long commandAddr, GpuSampler terrainSampler) {
         shader.bind();
 
         GpuTextureView blockTexture = pass.getAtlas();
@@ -48,13 +48,14 @@ public class PrimaryTerrainRasterizer extends Phase {
         setTexture(lightTexture, 1, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
 
         glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandAddr, regionCount*8L);//Bind the command buffer
-        gpuTiming.marker();
+        timing.marker();
         glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
-        gpuTiming.marker();
-        gpuTiming.tick();
+        timing.marker();
+        timing.tick();
     }
 
     public void delete() {
+        super.delete();
         shader.delete();
     }
 }

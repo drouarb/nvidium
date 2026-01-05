@@ -41,7 +41,7 @@ public class TranslucentTerrainRasterizer extends Phase {
 
     //Translucency is rendered in a very cursed and incorrect way
     // it hijacks the unassigned indirect command dispatch and uses that to dispatch the translucent chunks as well
-    public void raster(TerrainRenderPass pass, int regionCount, long commandAddr, GpuSampler terrainSampler, GPUTiming gpuTiming) {
+    public void raster(TerrainRenderPass pass, int regionCount, long commandAddr, GpuSampler terrainSampler) {
         shader.bind();
 
         GpuTextureView blockTexture = pass.getAtlas();
@@ -52,15 +52,16 @@ public class TranslucentTerrainRasterizer extends Phase {
 
         //the +8*6 is to offset to the unassigned dispatch
         glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandAddr, regionCount*8L);//Bind the command buffer
-        gpuTiming.marker();
+        timing.marker();
         glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
-        gpuTiming.marker();
-        gpuTiming.tick();
+        timing.marker();
+        timing.tick();
         GL45C.glBindSampler(0, 0);
         GL45C.glBindSampler(1, 0);
     }
 
     public void delete() {
+        super.delete();
         shader.delete();
     }
 }
