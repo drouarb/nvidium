@@ -45,7 +45,7 @@ public class PrimaryTerrainRasterizer extends Phase {
     }
 
 
-    public void raster(TerrainRenderPass pass, int regionCount, IDeviceMappedBuffer commandBuffer, GpuSampler terrainSampler, GPUTiming gpuTiming) {
+    public void raster(TerrainRenderPass pass, int regionCount, IDeviceMappedBuffer commandBuffer, GpuSampler terrainSampler) {
         shader.bind();
 
         GpuTextureView blockTexture = pass.getAtlas();
@@ -57,14 +57,15 @@ public class PrimaryTerrainRasterizer extends Phase {
         // TODO Make it auto if we can't use nvidia
         //glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandBuffer.getDeviceAddress(), regionCount*8L);//Bind the command buffer
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, commandBuffer.getId());
-        gpuTiming.marker();
+        timing.marker();
         //glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
         glMultiDrawMeshTasksIndirectEXT(0, regionCount, 16);
-        gpuTiming.marker();
-        gpuTiming.tick();
+        timing.marker();
+        timing.tick();
     }
 
     public void delete() {
+        super.delete();
         shader.delete();
     }
 }

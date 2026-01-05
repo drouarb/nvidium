@@ -16,7 +16,7 @@ public class RegionRasterizer extends Phase {
                     .addSource(FRAGMENT, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "occlusion/region_raster/fragment.frag")))
                     .compile();
 
-    public void raster(int regionCount, GPUTiming timing) {
+    public void raster(int regionCount) {
         shader.bind();
         timing.marker();
         glDrawMeshTasksEXT(regionCount, 1, 1);
@@ -26,6 +26,7 @@ public class RegionRasterizer extends Phase {
     }
 
     public void delete() {
+        super.delete();
         shader.delete();
     }
 }

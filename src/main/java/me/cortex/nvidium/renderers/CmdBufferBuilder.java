@@ -2,7 +2,6 @@ package me.cortex.nvidium.renderers;
 
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
-import me.cortex.nvidium.util.GPUTiming;
 import net.minecraft.resources.Identifier;
 
 import static me.cortex.nvidium.gl.shader.ShaderType.COMPUTE;
@@ -16,7 +15,7 @@ public class CmdBufferBuilder extends Phase {
     public CmdBufferBuilder() {
     }
 
-    public void dispatch(int regionCount, GPUTiming timing) {
+    public void dispatch(int regionCount) {
         shader.bind();
         timing.marker();
         glDispatchCompute(regionCount, 1, 1);
@@ -24,7 +23,9 @@ public class CmdBufferBuilder extends Phase {
         timing.tick();
     }
 
+    @Override
     public void delete() {
+        super.delete();
         shader.delete();
     }
 }

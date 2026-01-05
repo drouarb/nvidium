@@ -45,7 +45,7 @@ public class TemporalTerrainRasterizer extends Phase {
         GL33C.glBindSampler(bindingPoint, ((GlSampler) sampler).getId());
     }
 
-    public void raster(TerrainRenderPass pass, int regionCount, IDeviceMappedBuffer commandBuffer, GpuSampler terrainSampler, GPUTiming timing) {
+    public void raster(TerrainRenderPass pass, int regionCount, IDeviceMappedBuffer commandBuffer, GpuSampler terrainSampler) {
         shader.bind();
 
         GpuTextureView blockTexture = pass.getAtlas();
@@ -68,6 +68,7 @@ public class TemporalTerrainRasterizer extends Phase {
     }
 
     public void delete() {
+        super.delete();
         shader.delete();
     }
 }
