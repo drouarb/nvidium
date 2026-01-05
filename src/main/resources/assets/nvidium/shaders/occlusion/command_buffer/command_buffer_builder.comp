@@ -33,7 +33,7 @@ void main() {
         return;
     }
 
-    uint baseSectionId = regionIndicies[gl_WorkGroupID.x] << 8;
+    uint baseSectionId = uint(regionIndicies[gl_WorkGroupID.x]) << 8;
 
     uvec3 renderCounts = uvec3(0);
     for (uint i = 0; i < 8; i++) {
