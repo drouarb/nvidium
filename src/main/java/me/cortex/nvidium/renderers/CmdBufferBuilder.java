@@ -17,10 +17,15 @@ public class CmdBufferBuilder extends Phase {
 
     public void dispatch(int regionCount) {
         shader.bind();
+        timing.marker();
         glDispatchCompute(regionCount, 1, 1);
+        timing.marker();
+        timing.tick();
     }
 
+    @Override
     public void delete() {
+        super.delete();
         shader.delete();
     }
 }
