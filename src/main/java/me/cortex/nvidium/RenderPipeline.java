@@ -223,8 +223,8 @@ public class RenderPipeline {
         double subTexelPrecision = (1 << GLRenderDevice.INSTANCE.getSubTexelPrecisionBits());
         double subTexelOffset = 1.0f / CompactChunkVertex.TEXTURE_MAX_VALUE;
 
-        float subTexelWidth = (float)(subTexelOffset - (((1.0D / textureAtlas.getWidth()) / subTexelPrecision)));
-        float subTexelHeight = (float)(subTexelOffset - (((1.0D / textureAtlas.getHeight()) / subTexelPrecision)));
+        float subTexelWidth = (float)(subTexelOffset - (((1.0D / textureAtlas.nvidium$getWidth()) / subTexelPrecision)));
+        float subTexelHeight = (float)(subTexelOffset - (((1.0D / textureAtlas.nvidium$getHeight()) / subTexelPrecision)));
 
         int visibleRegions = 0;
 
