@@ -34,9 +34,10 @@ layout(std430, binding=7) buffer translucencyCommandBufferBuffer {
     uvec4 translucencyCommandBuffer[];
 };
 
+/*
 layout(std430, binding=15) buffer temporalCommandBufferBuffer {
     uvec4 temporalCommandBuffer[];
-};
+};*/
 
 layout(std430, binding=14) buffer sectionIndiciesBuffer {
     uvec3 sectionIndicies[];
@@ -59,7 +60,7 @@ void main() {
     if (regionVisibility[gl_WorkGroupID.x] == 0) {
         terrainCommandBuffer[gl_WorkGroupID.x] = uvec4(0);
         translucencyCommandBuffer[(uint(regionCount) - gl_WorkGroupID.x) - 1] = uvec4(0);
-        temporalCommandBuffer[gl_WorkGroupID.x] = uvec4(0);
+        //temporalCommandBuffer[gl_WorkGroupID.x] = uvec4(0);
         return;
     }
 
@@ -106,6 +107,6 @@ void main() {
     if (subgroupElect()) {
         terrainCommandBuffer[gl_WorkGroupID.x] = uvec4(totalSectionCount.x, 1, 1, baseSectionId);
         translucencyCommandBuffer[(uint(regionCount) - gl_WorkGroupID.x) - 1] = uvec4(totalSectionCount.y, 1, 1, baseSectionId);
-        temporalCommandBuffer[gl_WorkGroupID.x] = uvec4(totalSectionCount.z, 1, 1, baseSectionId);
+        //temporalCommandBuffer[gl_WorkGroupID.x] = uvec4(totalSectionCount.z, 1, 1, baseSectionId);
     }
 }
