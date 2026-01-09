@@ -436,6 +436,12 @@ public class RenderPipeline {
             glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
         }
 
+        if (regionSortSize != 0) {
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+            regionSectionSorter.dispatch(regionSortSize);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        }
+
         //NOTE: For GL_REPRESENTATIVE_FRAGMENT_TEST_NV to work, depth testing must be disabled, or depthMask = false
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LEQUAL);
@@ -481,10 +487,10 @@ public class RenderPipeline {
 
         cmdBufferBuilder.dispatch(visibleRegions, cmdBufferTiming);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        glMemoryBarrier(GL_COMMAND_BARRIER_BIT);
 
         //Do temporal rasterization
         if (Nvidium.config.enable_temporal_coherence) {
-            glMemoryBarrier(GL_COMMAND_BARRIER_BIT);
             temporalRasterizer.raster(pass, visibleRegions, temporalCommandBuffer, temporalTiming);
         }
 
@@ -499,14 +505,6 @@ public class RenderPipeline {
             //glDisable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
             glDepthMask(true);
             glColorMask(true, true, true, true);
-        }
-
-
-
-        if (regionSortSize != 0) {
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-            regionSectionSorter.dispatch(regionSortSize);
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         }
 
         //glDisableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
