@@ -36,9 +36,9 @@ public class SectionManager {
     private final Long2IntOpenHashMap section2terrain = new Long2IntOpenHashMap();
     private final Long2IntOpenHashMap section2index = new Long2IntOpenHashMap();
 
+    private final int quadVertexSize;
     public final UploadingBufferStream uploadStream;
     public final BufferArena terrainAreana;
-    public final BufferArena translucencyIndexArena;
 
     private final Long2ObjectOpenHashMap<int[]> translucencyQuadCounts = new Long2ObjectOpenHashMap<int[]>();
 
@@ -52,9 +52,9 @@ public class SectionManager {
         this.device = device;
         this.uploadStream = uploadStream;
 
+        this.quadVertexSize = quadVertexSize;
+
         this.terrainAreana = new BufferArena(device, fallbackMemorySize, quadVertexSize);
-        // TODO adapt fallbackMemorySize
-        this.translucencyIndexArena = new BufferArena(device, fallbackMemorySize, 1);
         this.regionManager = new RegionManager(device, maxRegions, maxRegions * 200, uploadStream, worldRenderer::enqueueRegionSort);
 
         this.section2id.defaultReturnValue(-1);
@@ -98,23 +98,24 @@ public class SectionManager {
 
         int indexDataAddress;
         {
-            var idxBufferLength = indexBuffer.getLength() / 6;
+            // We are hijacking terrain buffer to store indices so we need to /6 because we need only one index per quad & scale our storage on terrain storage
+            var idxBufferLength = ((indexBuffer.getLength() / 6) + (quadVertexSize - 1)) / quadVertexSize;
             IntBuffer idxBuffer = indexBuffer.getDirectBuffer().asIntBuffer();
 
             indexDataAddress = this.section2index.get(sectionKey);
-            if (indexDataAddress != -1 && !this.translucencyIndexArena.canReuse(indexDataAddress, idxBufferLength)) {
+            if (indexDataAddress != -1 && !this.terrainAreana.canReuse(indexDataAddress, idxBufferLength)) {
                 this.section2index.remove(sectionKey);
-                this.translucencyIndexArena.free(indexDataAddress);
+                this.terrainAreana.free(indexDataAddress);
                 indexDataAddress = -1;
             }
 
             if (indexDataAddress == -1) {
-                indexDataAddress = this.translucencyIndexArena.allocQuads(idxBufferLength);
+                indexDataAddress = this.terrainAreana.allocQuads(idxBufferLength);
             }
 
             this.section2index.put(sectionKey, indexDataAddress);
 
-            long upload = translucencyIndexArena.upload(uploadStream, indexDataAddress);
+            long upload = terrainAreana.upload(uploadStream, indexDataAddress);
             uploadIndexBuffer(idxBuffer, quadCountData, upload);
         }
 
@@ -127,7 +128,7 @@ public class SectionManager {
 
         long metadata = regionManager.setSectionData(sectionIdx);
         metadata += 32; // Go to translucency data offset
-        MemoryUtil.memPutInt(metadata, indexDataAddress);
+        MemoryUtil.memPutInt(metadata, indexDataAddress * quadVertexSize); // Scale address since we have ints instead of ChunkVertexFormat
     }
 
     public void uploadChunkBuildResult(ChunkBuildOutput result) {
@@ -218,13 +219,15 @@ public class SectionManager {
         // Reinject or free index data
         if (Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.SODIUM) {
             if (result.isReusingUploadedIndexData()) {
-                MemoryUtil.memPutInt(metadata, this.section2index.get(sectionKey));
+                int trIdx = this.section2index.get(sectionKey);
+                // Don't forget to scale and don't scale -1 (no data)
+                MemoryUtil.memPutInt(metadata, trIdx * (trIdx != -1 ? quadVertexSize : 1));
             } else {
                 MemoryUtil.memPutInt(metadata, -1);
 
                 int idxIndex = this.section2index.remove(sectionKey);
                 if (idxIndex != -1) {
-                    this.translucencyIndexArena.free(idxIndex);
+                    this.terrainAreana.free(idxIndex);
                 }
             }
         }
@@ -266,7 +269,7 @@ public class SectionManager {
             }
             int indexIdx = this.section2index.remove(sectionKey);
             if (indexIdx != -1) {
-                this.translucencyIndexArena.free(indexIdx);
+                this.terrainAreana.free(indexIdx);
             }
             this.translucencyQuadCounts.remove(sectionKey);
             //Clear the segment
@@ -277,7 +280,6 @@ public class SectionManager {
     public void destroy() {
         this.regionManager.destroy();
         this.terrainAreana.delete();
-        this.translucencyIndexArena.delete();
     }
 
     public void commitChanges() {
