@@ -148,10 +148,10 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
         }
     }
 
-    @Redirect(method = "processChunkBuildResults(Ljava/util/ArrayList;)Z", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/lists/SectionCollector;visit(Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;)V"))
-    public void processChunkBuildResultsVisit(SectionCollector instance, RenderSection renderList) {
+    @Redirect(method = "processChunkBuildResults(Ljava/util/ArrayList;)Z", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/lists/SectionCollector;visitWithFlags(Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;I)V"))
+    public void processChunkBuildResultsVisit(SectionCollector instance, RenderSection section, int flags) {
         if  (Nvidium.IS_ENABLED && !Nvidium.config.async_bfs) {
-            instance.visit(renderList);
+            instance.visitWithFlags(section, flags);
         }
     }
 

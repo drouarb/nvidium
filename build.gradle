@@ -71,8 +71,8 @@ repositories {
         url = 'https://maven.parchmentmc.org'
     }
     maven {
-        name "CaffeineMC"
-        url "https://maven.caffeinemc.net/releases" // or /snapshots
+        name = "CaffeineMC"
+        url = "https://maven.caffeinemc.net/releases" // or /snapshots
     }
 }
 
@@ -93,7 +93,7 @@ dependencies {
 
     modImplementation(fabricApi.module("fabric-resource-loader-v0", project.fabric_version))
 
-    modImplementation "net.caffeinemc:sodium-fabric:0.8.4+mc1.21.11"
+    modImplementation "net.caffeinemc:sodium-fabric:0.8.6+mc1.21.11"
     modImplementation "net.caffeinemc:sodium-fabric-api:0.8.2+mc1.21.11"
 
     //modImplementation "maven.modrinth:c2me-fabric:0.2.0+alpha.10.49+1.19.4"

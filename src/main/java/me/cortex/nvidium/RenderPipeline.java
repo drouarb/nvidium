@@ -204,8 +204,7 @@ public class RenderPipeline {
     //TODO FIXME: regions that where in frustum but are now out of frustum must have the visibility data cleared
     // this is due to funny issue of pain where the section was "visible" last frame cause it didnt get ticked
     //NOTE: can use any of the command list rendering commands to basicly draw X indirects using the same shader, thus allowing for terrain to be rendered very efficently
-    public void renderFrame(TerrainRenderPass pass, Viewport frustum, FogParameters fogParameters, ChunkRenderMatrices crm, double px, double py, double pz, GpuSampler terrainSampler) {
-
+    public void renderFrame(TerrainRenderPass pass, Viewport viewport, FogParameters fogParameters, ChunkRenderMatrices crm, double px, double py, double pz, GpuSampler terrainSampler) {
         if (sectionManager.getRegionManager().regionCount() == 0) return;//Dont render anything if there is nothing to render
 
         final int DEBUG_RENDER_LEVEL = 0;//0: no debug, 1: region debug, 2: section debug
@@ -258,7 +257,7 @@ public class RenderPipeline {
                     continue;
                 }
 
-                if (rm.isRegionVisible(frustum, i)) {
+                if (rm.isRegionVisible(viewport, i)) {
                     //Note, its sorted like this because of overdraw, also the translucency command buffer is written to
                     // in a reverse order to this in the section_raster/task.glsl shader
                     regions.add(((rm.distance(i, chunkPos.x, chunkPos.y, chunkPos.z))<<16)|i);
