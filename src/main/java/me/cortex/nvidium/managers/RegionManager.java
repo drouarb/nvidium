@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.gl.RenderDevice;
 import me.cortex.nvidium.gl.buffers.IDeviceMappedBuffer;
+import me.cortex.nvidium.mixin.sodium.ViewportAccessor;
 import me.cortex.nvidium.util.IdProvider;
 import me.cortex.nvidium.util.UploadingBufferStream;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
@@ -18,7 +19,7 @@ import java.util.function.Consumer;
 //8x4x8
 public class RegionManager {
     public static final int MAX_TRANSFORMATION_SIZE_BITS = 10;
-    public static final int MAX_TRANSFORMATION_COUNT = (1<<MAX_TRANSFORMATION_SIZE_BITS);
+    public static final int MAX_TRANSFORMATION_COUNT = (1 << MAX_TRANSFORMATION_SIZE_BITS);
 
     private static final boolean SAFETY_CHECKS = Nvidium.IS_DEBUG;
     public static final int META_SIZE = 16;
@@ -102,9 +103,9 @@ public class RegionManager {
         int lastIdx = 0;
         for (int i = 0; i < 256; i++) {
             if (region.pos2id[i] == -1) continue;//Skip over empty sections
-            int x = i&7;
-            int y = i>>>6;
-            int z = (i>>>3)&7;
+            int x = i & 7;
+            int y = i >>> 6;
+            int z = (i >>> 3) & 7;
             minX = Math.min(minX, x);
             minY = Math.min(minY, y);
             minZ = Math.min(minZ, z);
@@ -115,20 +116,20 @@ public class RegionManager {
         }
 
 
-        long size = (long)(maxY-minY)<<62 | (long)(maxX-minX)<<59 | (long)(maxZ-minZ)<<56;
-        long count = (long)(lastIdx)<<48;
-        long x = ((((long) region.rx <<3)+minX)&((1<<24)-1))<<24;
-        long y = ((((long) region.ry <<2)+minY)&((1<<24)-1))<<0;//Can shrink y from needing to be 24 bits large if bits are needed for other data
-        long z = ((((long) region.rz <<3)+minZ)&((1<<24)-1))<<(64-24);
-        long transformationId = (((long)region.transformationId)<<(64-24-MAX_TRANSFORMATION_SIZE_BITS));
-        MemoryUtil.memPutLong(upload, size|count|x|y);
-        MemoryUtil.memPutLong(upload+8, z | transformationId);
+        long size = (long) (maxY - minY) << 62 | (long) (maxX - minX) << 59 | (long) (maxZ - minZ) << 56;
+        long count = (long) (lastIdx) << 48;
+        long x = ((((long) region.rx << 3) + minX) & ((1 << 24) - 1)) << 24;
+        long y = ((((long) region.ry << 2) + minY) & ((1 << 24) - 1)) << 0;//Can shrink y from needing to be 24 bits large if bits are needed for other data
+        long z = ((((long) region.rz << 3) + minZ) & ((1 << 24) - 1)) << (64 - 24);
+        long transformationId = (((long) region.transformationId) << (64 - 24 - MAX_TRANSFORMATION_SIZE_BITS));
+        MemoryUtil.memPutLong(upload, size | count | x | y);
+        MemoryUtil.memPutLong(upload + 8, z | transformationId);
     }
 
     public int getSectionRefId(int section) {
         var region = this.regions[section >>> 8];
-        int id = region.pos2id[section&0xFF];
-        if (id<0 || id>=256) {
+        int id = region.pos2id[section & 0xFF];
+        if (id < 0 || id >= 256) {
             throw new IllegalStateException();
         }
         return id;
@@ -141,7 +142,7 @@ public class RegionManager {
         var region = this.regions[sectionId >>> 8];
         sectionId &= 0xFF;
         sectionId = region.pos2id[sectionId];
-        if (sectionId<0 || sectionId>=256) {
+        if (sectionId < 0 || sectionId >= 256) {
             throw new IllegalStateException();
         }
         this.markDirty(region);
@@ -190,13 +191,12 @@ public class RegionManager {
 
             long ptr = region.sectionData + (long) sectionId * SectionManager.SECTION_SIZE + 4;
             int data = MemoryUtil.memGetInt(ptr);
-            data &= ~(0xFF<<18);
-            data |= sectionId<<18;
+            data &= ~(0xFF << 18);
+            data |= sectionId << 18;
             MemoryUtil.memPutInt(ptr, data);
 
             region.verifyIntegrity();
         }
-
 
 
         if (region.count == 0) {
@@ -214,12 +214,12 @@ public class RegionManager {
     }
 
     public int allocateSection(int sectionX, int sectionY, int sectionZ) {
-        long regionKey = SectionPos.asLong(sectionX>>3, sectionY>>2, sectionZ>>3);
+        long regionKey = SectionPos.asLong(sectionX >> 3, sectionY >> 2, sectionZ >> 3);
         int regionId = this.regionMap.computeIfAbsent(regionKey, k -> this.idProvider.provide());
 
         //The region doesnt exist so we must create a new one
         if (this.regions[regionId] == null) {
-            this.regions[regionId] = new Region(regionId, sectionX>>3, sectionY>>2, sectionZ>>3);
+            this.regions[regionId] = new Region(regionId, sectionX >> 3, sectionY >> 2, sectionZ >> 3);
             this.regions[regionId].transformationId = this.regionTransformationIdMapping.get(regionKey);
         }
         var region = this.regions[regionId];
@@ -264,39 +264,48 @@ public class RegionManager {
         return this.regions[regionId] != null;
     }
 
-    public boolean isRegionVisible(Viewport frustum, int regionId) {
+    public boolean isRegionVisible(Viewport viewport, int regionId) {
         var region = this.regions[regionId];
         if (region == null) {
             return false;
         } else {
-            return frustum.isBoxVisible((region.rx<<7)+(1<<6),(region.ry<<6)+(1<<5), (region.rz<<7)+(1<<6), 1<<6, 1<<5, 1<<6);
+            var vp = ((ViewportAccessor) (Object) viewport);
+
+            return vp.nvidium$getFrustum().testAab(
+                    ((region.rx << 7) - vp.nvidium$getTransform().intX) - vp.nvidium$getTransform().fracX,
+                    ((region.ry << 6) - vp.nvidium$getTransform().intY) - vp.nvidium$getTransform().fracY,
+                    ((region.rz << 7) - vp.nvidium$getTransform().intZ) - vp.nvidium$getTransform().fracZ,
+                    ((region.rx+1 << 7) - vp.nvidium$getTransform().intX) - vp.nvidium$getTransform().fracX,
+                    ((region.ry+1 << 6) - vp.nvidium$getTransform().intY) - vp.nvidium$getTransform().fracY,
+                    ((region.rz+1 << 7) - vp.nvidium$getTransform().intZ) - vp.nvidium$getTransform().fracZ
+            );
         }
     }
 
     public int distance(int regionId, int camChunkX, int camChunkY, int camChunkZ) {
         var region = this.regions[regionId];
-        return  (Math.abs((region.rx<<3)+4-camChunkX)+
-                Math.abs((region.ry<<2)+2-camChunkY)+
-                Math.abs((region.rz<<3)+4-camChunkZ)+
-                Math.abs((region.rx<<3)+3-camChunkX)+
-                Math.abs((region.ry<<2)+1-camChunkY)+
-                Math.abs((region.rz<<3)+3-camChunkZ))>>1;
+        return (Math.abs((region.rx << 3) + 4 - camChunkX) +
+                Math.abs((region.ry << 2) + 2 - camChunkY) +
+                Math.abs((region.rz << 3) + 4 - camChunkZ) +
+                Math.abs((region.rx << 3) + 3 - camChunkX) +
+                Math.abs((region.ry << 2) + 1 - camChunkY) +
+                Math.abs((region.rz << 3) + 3 - camChunkZ)) >> 1;
     }
 
     public boolean withinSquare(int dist, int regionId, int camChunkX, int camChunkY, int camChunkZ) {
         var region = this.regions[regionId];
-        return  Math.abs((region.rx<<3)+4-camChunkX)<=dist &&
-                Math.abs((region.ry<<2)+2-camChunkY)<=dist &&
-                Math.abs((region.rz<<3)+4-camChunkZ)<=dist;
+        return Math.abs((region.rx << 3) + 4 - camChunkX) <= dist &&
+                Math.abs((region.ry << 2) + 2 - camChunkY) <= dist &&
+                Math.abs((region.rz << 3) + 4 - camChunkZ) <= dist;
     }
 
     public boolean isRegionInACameraAxis(int regionId, double camX, double camY, double camZ) {
         var region = this.regions[regionId];
         //TODO: also account for region area instead of entire region
-        return (region.rx<<7 <= camX && camX <= ((region.rx+1)<<7))||
-               (region.ry<<6 <= camY && camY <= ((region.ry+1)<<6))||
-               (region.rz<<7 <= camZ && camZ <= ((region.rz+1)<<7))
-                ;
+        return (region.rx << 7 <= camX && camX <= ((region.rx + 1) << 7)) ||
+               (region.ry << 6 <= camY && camY <= ((region.ry + 1) << 6)) ||
+               (region.rz << 7 <= camZ && camZ <= ((region.rz + 1) << 7))
+               ;
     }
 
     public long getRegionBufferAddress() {
@@ -351,7 +360,7 @@ public class RegionManager {
 
         //Contains also all the metadata about the sections within, then on commit, upload the entire regions metadata
         // this should :tm: _drastically_ improve performance when mass edits are done to the world and the section metadata
-        private final long sectionData = MemoryUtil.nmemAlloc(8*4*8*SectionManager.SECTION_SIZE);
+        private final long sectionData = MemoryUtil.nmemAlloc(8 * 4 * 8 * SectionManager.SECTION_SIZE);
 
         private Region(int id, int rx, int ry, int rz) {
             Arrays.fill(this.pos2id, -1);
