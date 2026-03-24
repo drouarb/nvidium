@@ -1,5 +1,6 @@
 package me.cortex.nvidium;
 
+import me.cortex.nvidium.config.TranslucencySortingLevel;
 import me.cortex.nvidium.gl.RenderDevice;
 import me.cortex.nvidium.managers.AsyncOcclusionTracker;
 import me.cortex.nvidium.managers.SectionManager;
@@ -102,7 +103,9 @@ public class NvidiumWorldRenderer {
         if (buildOutput instanceof ChunkBuildOutput chunkBuildOutput) {
             this.sectionManager.uploadChunkBuildResult(chunkBuildOutput);
         }
-        if (buildOutput instanceof ChunkSortOutput chunkSortOutput) {
+        if (buildOutput instanceof ChunkSortOutput chunkSortOutput &&
+                !chunkSortOutput.isReusingUploadedIndexData() &&
+                Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.SODIUM) {
             this.sectionManager.uploadChunkSort(chunkSortOutput);
         }
     }
@@ -117,8 +120,8 @@ public class NvidiumWorldRenderer {
          */
         debugInfo.add("Mem" + (Nvidium.SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER?"":" (fallback)") + ": " +
                 (Nvidium.SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER?
-                        this.sectionManager.terrainAreana.getAllocatedMB() + "+" + this.sectionManager.translucencyIndexArena.getAllocatedMB() :
-                        this.sectionManager.terrainAreana.getUsedMB() + "+" + this.sectionManager.translucencyIndexArena.getUsedMB())
+                        this.sectionManager.terrainAreana.getAllocatedMB() :
+                        this.sectionManager.terrainAreana.getUsedMB())
                 + "/"+ this.max_geometry_memory + String.format(", F: %.2f", sectionManager.terrainAreana.getFragmentation()*100));
         debugInfo.add("Regions: " + sectionManager.getRegionManager().regionCount() + "/" + sectionManager.getRegionManager().maxRegions());
         if (this.asyncChunkTracker != null) {

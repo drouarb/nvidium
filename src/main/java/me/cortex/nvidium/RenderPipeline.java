@@ -40,6 +40,7 @@ import static org.lwjgl.opengl.GL30C.GL_RED_INTEGER;
 import static org.lwjgl.opengl.GL42.*;
 import static org.lwjgl.opengl.GL43C.GL_SHADER_STORAGE_BARRIER_BIT;
 import static org.lwjgl.opengl.NVRepresentativeFragmentTest.GL_REPRESENTATIVE_FRAGMENT_TEST_NV;
+import static org.lwjgl.opengl.NVShaderBufferStore.GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV;
 import static org.lwjgl.opengl.NVUniformBufferUnifiedMemory.GL_UNIFORM_BUFFER_ADDRESS_NV;
 import static org.lwjgl.opengl.NVUniformBufferUnifiedMemory.GL_UNIFORM_BUFFER_UNIFIED_NV;
 import static org.lwjgl.opengl.NVVertexBufferUnifiedMemory.*;
@@ -62,6 +63,7 @@ public class RenderPipeline {
     private TemporalTerrainRasterizer temporalRasterizer;
     private TranslucentTerrainRasterizer translucencyTerrainRasterizer;
     private SortRegionSectionPhase regionSectionSorter;
+    private CmdBufferBuilder cmdBufferBuilder;
 
     private final IDeviceMappedBuffer sceneUniform;
     private static final int SCENE_SIZE = (int) alignUp(
@@ -75,8 +77,10 @@ public class RenderPipeline {
                     8 +     // Section   *sectionData
                     8 +     // uint8_t   *regionVisibility
                     8 +     // uint8_t   *sectionVisibility
+                    8 +     // u8vec3    *sectionIndices
                     8 +     // uvec2     *terrainCommandBuffer
                     8 +     // uvec2     *translucencyCommandBuffer
+                    8 +     // uvec2     *temporalCommandBuffer
                     8 +     // uint16_t  *sortingRegionList
                     8 +     // Vertex    *terrainData
                     8 +     // uint      *translucencyIndexData TODO
@@ -95,8 +99,10 @@ public class RenderPipeline {
 
     private final IDeviceMappedBuffer regionVisibility;
     private final IDeviceMappedBuffer sectionVisibility;
+    private final IDeviceMappedBuffer sectionIndices;
     private final IDeviceMappedBuffer terrainCommandBuffer;
     private final IDeviceMappedBuffer translucencyCommandBuffer;
+    private final IDeviceMappedBuffer temporalCommandBuffer;
     private final IDeviceMappedBuffer regionSortingList;
     private final IDeviceMappedBuffer statisticsBuffer;
     private final IDeviceMappedBuffer transformationArray;
@@ -132,14 +138,17 @@ public class RenderPipeline {
         temporalRasterizer = new TemporalTerrainRasterizer();
         translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
         regionSectionSorter = new SortRegionSectionPhase();
+        cmdBufferBuilder = new CmdBufferBuilder();
 
         int maxRegions = sectionManager.getRegionManager().maxRegions();
 
         sceneUniform = device.createDeviceOnlyMappedBuffer(SCENE_SIZE + maxRegions*2L);
         regionVisibility = device.createDeviceOnlyMappedBuffer(maxRegions);
         sectionVisibility = device.createDeviceOnlyMappedBuffer(maxRegions * 256L);
+        sectionIndices = device.createDeviceOnlyMappedBuffer(maxRegions * 256L * 3L);
         terrainCommandBuffer = device.createDeviceOnlyMappedBuffer(maxRegions*8L);
         translucencyCommandBuffer = device.createDeviceOnlyMappedBuffer(maxRegions*8L);
+        temporalCommandBuffer = device.createDeviceOnlyMappedBuffer(maxRegions*8L);
         regionSortingList = device.createDeviceOnlyMappedBuffer(maxRegions*2L);
         this.transformationArray = device.createDeviceOnlyMappedBuffer(RegionManager.MAX_TRANSFORMATION_COUNT * (4*4*4));
         this.originOffsetArray = device.createDeviceOnlyMappedBuffer(RegionManager.MAX_TRANSFORMATION_COUNT * 8);
@@ -194,7 +203,6 @@ public class RenderPipeline {
     //TODO FIXME: regions that where in frustum but are now out of frustum must have the visibility data cleared
     // this is due to funny issue of pain where the section was "visible" last frame cause it didnt get ticked
     public void renderFrame(Viewport frustum, ChunkRenderMatrices crm, double px, double py, double pz) {//NOTE: can use any of the command list rendering commands to basicly draw X indirects using the same shader, thus allowing for terrain to be rendered very efficently
-
         if (sectionManager.getRegionManager().regionCount() == 0) return;//Dont render anything if there is nothing to render
 
         final int DEBUG_RENDER_LEVEL = 0;//0: no debug, 1: region debug, 2: section debug
@@ -272,7 +280,10 @@ public class RenderPipeline {
             }
 
             regionMap = new short[regions.size()];
-            if (visibleRegions == 0) return;
+            if (visibleRegions == 0) {
+                prevRegionCount = 0;
+                return;
+            }
             long addr = uploadStream.upload(sceneUniform, SCENE_SIZE, visibleRegions*2);
             queryAddr = addr;//This is ungodly hacky
             int j = 0;
@@ -319,15 +330,19 @@ public class RenderPipeline {
             addr += 8;
             MemoryUtil.memPutLong(addr, sectionVisibility.getDeviceAddress());
             addr += 8;
+            MemoryUtil.memPutLong(addr, sectionIndices.getDeviceAddress());
+            addr += 8;
             MemoryUtil.memPutLong(addr, terrainCommandBuffer.getDeviceAddress());
             addr += 8;
             MemoryUtil.memPutLong(addr, translucencyCommandBuffer.getDeviceAddress());
+            addr += 8;
+            MemoryUtil.memPutLong(addr, temporalCommandBuffer.getDeviceAddress());
             addr += 8;
             MemoryUtil.memPutLong(addr, regionSortingList.getDeviceAddress());
             addr += 8;
             MemoryUtil.memPutLong(addr, sectionManager.terrainAreana.buffer.getDeviceAddress());
             addr += 8;
-            MemoryUtil.memPutLong(addr, sectionManager.translucencyIndexArena.buffer.getDeviceAddress());
+            MemoryUtil.memPutLong(addr, sectionManager.terrainAreana.buffer.getDeviceAddress());
             addr += 8;
             MemoryUtil.memPutLong(addr, this.transformationArray.getDeviceAddress());
             addr += 8;
@@ -397,6 +412,12 @@ public class RenderPipeline {
             glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
         }
 
+        if (regionSortSize != 0) {
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+            regionSectionSorter.dispatch(regionSortSize);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        }
+
         //NOTE: For GL_REPRESENTATIVE_FRAGMENT_TEST_NV to work, depth testing must be disabled, or depthMask = false
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LEQUAL);
@@ -437,6 +458,9 @@ public class RenderPipeline {
 
         //glMemoryBarrier(GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        cmdBufferBuilder.dispatch(visibleRegions);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        glMemoryBarrier(GL_COMMAND_BARRIER_BIT);
 
         prevRegionCount = visibleRegions;
 
@@ -457,14 +481,6 @@ public class RenderPipeline {
             glDisable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
             glDepthMask(true);
             glColorMask(true, true, true, true);
-        }
-
-
-
-        if (regionSortSize != 0) {
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-            regionSectionSorter.dispatch(regionSortSize);
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         }
 
         glDisableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
@@ -553,8 +569,10 @@ public class RenderPipeline {
         sceneUniform.delete();
         regionVisibility.delete();
         sectionVisibility.delete();
+        sectionIndices.delete();
         terrainCommandBuffer.delete();
         translucencyCommandBuffer.delete();
+        temporalCommandBuffer.delete();
         regionSortingList.delete();
 
         terrainRasterizer.delete();
@@ -563,6 +581,7 @@ public class RenderPipeline {
         temporalRasterizer.delete();
         translucencyTerrainRasterizer.delete();
         regionSectionSorter.delete();
+        cmdBufferBuilder.delete();
         this.transformationArray.delete();
         this.originOffsetArray.delete();
 
@@ -604,6 +623,7 @@ public class RenderPipeline {
         temporalRasterizer.delete();
         translucencyTerrainRasterizer.delete();
         regionSectionSorter.delete();
+        cmdBufferBuilder.delete();
 
         terrainRasterizer = new PrimaryTerrainRasterizer();
         regionRasterizer = new RegionRasterizer();
@@ -611,5 +631,6 @@ public class RenderPipeline {
         temporalRasterizer = new TemporalTerrainRasterizer();
         translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
         regionSectionSorter = new SortRegionSectionPhase();
+        cmdBufferBuilder = new CmdBufferBuilder();
     }
 }

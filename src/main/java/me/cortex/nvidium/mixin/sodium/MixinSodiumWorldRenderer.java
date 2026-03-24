@@ -51,6 +51,15 @@ public abstract class MixinSodiumWorldRenderer implements INvidiumWorldRendererG
                     renderBlockEntity(matrices, bufferBuilders, blockBreakingProgressions, tickDelta, immediate, x, y, z, blockEntityRenderer, entity, player, isGlowing);
                 }
             }
+
+            var sectionsWithGlobalEntities = renderSectionManager.getSectionsWithGlobalEntities();
+            for (var section : sectionsWithGlobalEntities) {
+                if (section.isDisposed() || section.getGlobalBlockEntities() == null)
+                    continue;
+                for (var entity : section.getGlobalBlockEntities()) {
+                    renderBlockEntity(matrices, bufferBuilders, blockBreakingProgressions, tickDelta, immediate, x, y, z, blockEntityRenderer, entity, player, isGlowing);
+                }
+            }
         }
     }
 
