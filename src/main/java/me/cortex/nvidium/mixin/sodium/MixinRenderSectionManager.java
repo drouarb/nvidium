@@ -25,7 +25,9 @@ import net.caffeinemc.mods.sodium.client.render.chunk.translucent_sorting.SortBe
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkVertexType;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.caffeinemc.mods.sodium.client.util.FogParameters;
+import net.caffeinemc.mods.sodium.mixin.core.CommandEncoderAccessor;
 import net.caffeinemc.mods.sodium.mixin.core.GlCommandEncoderAccessor;
+import net.caffeinemc.mods.sodium.mixin.core.GpuDeviceAccessor;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -113,9 +115,9 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
 
             RenderTarget target = pass.getTarget();
             GlStateManager._viewport(0, 0, target.getColorTexture().getWidth(0), target.getColorTexture().getHeight(0));
-            GlStateManager._glBindFramebuffer(GlConst.GL_FRAMEBUFFER, ((GlTexture) target.getColorTexture()).getFbo(((GlDevice) RenderSystem.getDevice()).directStateAccess(), target.getDepthTexture()));
-            ((GlCommandEncoderAccessor) RenderSystem.getDevice().createCommandEncoder()).sodium$applyPipelineState(pass.getPipeline());
-            ((GlCommandEncoderAccessor) RenderSystem.getDevice().createCommandEncoder()).sodium$setLastProgram(null);
+            GlStateManager._glBindFramebuffer(GlConst.GL_FRAMEBUFFER, ((GlTexture) target.getColorTexture()).getFbo(((GlDevice) ((GpuDeviceAccessor) RenderSystem.getDevice()).sodium$getBackend()).directStateAccess(), target.getDepthTexture()));
+            ((GlCommandEncoderAccessor) ((CommandEncoderAccessor) RenderSystem.getDevice().createCommandEncoder()).sodium$getBackend()).sodium$applyPipelineState(pass.getPipeline());
+            ((GlCommandEncoderAccessor) ((CommandEncoderAccessor) RenderSystem.getDevice().createCommandEncoder()).sodium$getBackend()).sodium$setLastProgram(null);
 
             if (pass == DefaultTerrainRenderPasses.SOLID) {
                 renderer.renderFrame(pass, viewport, fogParameters, matrices, x, y, z, terrainSampler);

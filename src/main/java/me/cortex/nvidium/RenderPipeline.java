@@ -234,8 +234,8 @@ public class RenderPipeline {
         double subTexelPrecision = (1 << GLRenderDevice.INSTANCE.getSubTexelPrecisionBits());
         double subTexelOffset = 1.0f / CompactChunkVertex.TEXTURE_MAX_VALUE;
 
-        float subTexelWidth = (float)(subTexelOffset - (((1.0D / textureAtlas.getWidth()) / subTexelPrecision)));
-        float subTexelHeight = (float)(subTexelOffset - (((1.0D / textureAtlas.getHeight()) / subTexelPrecision)));
+        float subTexelWidth = (float)(subTexelOffset - (((1.0D / textureAtlas.nvidium$getWidth()) / subTexelPrecision)));
+        float subTexelHeight = (float)(subTexelOffset - (((1.0D / textureAtlas.nvidium$getHeight()) / subTexelPrecision)));
 
         int visibleRegions = 0;
 
@@ -357,9 +357,9 @@ public class RenderPipeline {
             addr += 4;
             MemoryUtil.memPutFloat(addr, subTexelHeight);
             addr += 4;
-            MemoryUtil.memPutFloat(addr, 1.0f / textureAtlas.getWidth());
+            MemoryUtil.memPutFloat(addr, 1.0f / textureAtlas.nvidium$getWidth());
             addr += 4;
-            MemoryUtil.memPutFloat(addr, 1.0f / textureAtlas.getHeight());
+            MemoryUtil.memPutFloat(addr, 1.0f / textureAtlas.nvidium$getHeight());
             addr += 4;
             int flags = 0;
             flags |= SodiumClientMod.options().performance.useBlockFaceCulling?1:0;
