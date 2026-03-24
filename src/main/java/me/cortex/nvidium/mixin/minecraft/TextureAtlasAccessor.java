@@ -2,13 +2,13 @@ package me.cortex.nvidium.mixin.minecraft;
 
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.gen.Accessor;
+import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(TextureAtlas.class)
 public interface TextureAtlasAccessor {
-    @Accessor
-    int getWidth();
+    @Invoker("getWidth")
+    int nvidium$getWidth();
 
-    @Accessor
-    int getHeight();
+    @Invoker("getHeight")
+    int nvidium$getHeight();
 }

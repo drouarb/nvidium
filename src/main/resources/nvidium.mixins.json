@@ -4,7 +4,7 @@
   "compatibilityLevel": "JAVA_17",
   "client": [
     "minecraft.MixinFogRenderer",
-    "minecraft.MixinGameRenderer",
+    "minecraft.MixinCamera",
     "minecraft.MixinGlDevice",
     "minecraft.TextureAtlasAccessor",
     "sodium.MixinChunkBuilderMeshingTask",

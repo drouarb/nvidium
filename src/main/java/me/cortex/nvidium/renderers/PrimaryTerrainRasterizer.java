@@ -42,7 +42,7 @@ public class PrimaryTerrainRasterizer extends Phase {
         shader.bind();
 
         GpuTextureView blockTexture = pass.getAtlas();
-        GpuTextureView lightTexture = Minecraft.getInstance().gameRenderer.lightTexture().getTextureView();
+        GpuTextureView lightTexture = Minecraft.getInstance().gameRenderer.lightmap();
 
         setTexture(blockTexture, 0, terrainSampler);
         setTexture(lightTexture, 1, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
