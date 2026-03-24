@@ -45,7 +45,7 @@ void emitParital(int visIndex) {
 
 //TODO: Check if the section can be culled via fog
 void main() {
-    int visibilityIndex = (int)(_visOutBase|gl_WorkGroupID.x);
+    int visibilityIndex = int(_visOutBase|gl_WorkGroupID.x);
 
     uint8_t lastData = sectionVisibility[visibilityIndex];
     // this is almost 100% guarenteed not needed afaik

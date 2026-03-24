@@ -6,7 +6,6 @@ import com.mojang.blaze3d.textures.GpuTexture;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import net.caffeinemc.mods.sodium.client.util.TextureUtil;
-import me.cortex.nvidium.util.FrameTimeProfiler;
 import net.minecraft.resources.ResourceLocation;
 import org.lwjgl.opengl.GL12C;
 import org.lwjgl.opengl.GL32C;
@@ -46,7 +45,7 @@ public class PrimaryTerrainRasterizer extends Phase {
         tex.flushModeChanges();
     }
 
-    public void raster(int regionCount, long commandAddr, FrameTimeProfiler frameTimeProfiler) {
+    public void raster(int regionCount, long commandAddr) {
         shader.bind();
 
         GpuTexture blockTexture = TextureUtil.getBlockTextureId();
@@ -58,14 +57,14 @@ public class PrimaryTerrainRasterizer extends Phase {
         setTexture(lightTexture, 1);
 
         glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandAddr, regionCount*8L);//Bind the command buffer
-        frameTimeProfiler.startQuery();
+        timing.marker();
         glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
-        frameTimeProfiler.endQuery();
-        GL45C.glBindSampler(0, 0);
-        GL45C.glBindSampler(1, 0);
+        timing.marker();
+        timing.tick();
     }
 
     public void delete() {
+        super.delete();
         GL45.glDeleteSamplers(blockSampler);
         GL45.glDeleteSamplers(lightSampler);
         shader.delete();

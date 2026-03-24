@@ -21,16 +21,10 @@ bool shouldRenderVisible(uint sectionId) {
     return (sectionVisibility[sectionId]&uint8_t(1)) != uint8_t(0);
 }
 
-#import <nvidium:terrain/task_common.glsl>
+#import <nvidium:terrain/task_common2.glsl>
 
 void main() {
-    uint sectionId = gl_WorkGroupID.x;
-
-    if (!shouldRenderVisible(sectionId)) {
-        //Early exit if the section isnt visible
-        gl_TaskCountNV = 0;
-        return;
-    }
+    uint sectionId = sectionIndices[gl_WorkGroupID.x].x + (gl_WorkGroupID.x & 0xFFFFFF00);
 
     #ifdef STATISTICS_SECTIONS
     atomicAdd(statistics_buffer+1, 1);
@@ -46,9 +40,7 @@ void main() {
     chunk -= unpackOriginOffsetId(transformationId);
 
     origin = vec3(chunk<<4);
-    baseOffset = (uint)header.w;
-
-    populateTasks(chunk, uvec4(sectionData[sectionId].renderRanges));
+    populateTasks(chunk, uint(header.w), uvec4(sectionData[sectionId].renderRanges));
 
 
     #ifdef STATISTICS_QUADS

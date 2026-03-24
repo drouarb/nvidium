@@ -4,25 +4,26 @@ import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import net.minecraft.resources.ResourceLocation;
 
-import static me.cortex.nvidium.gl.shader.ShaderType.*;
+import static me.cortex.nvidium.gl.shader.ShaderType.COMPUTE;
 import static org.lwjgl.opengl.GL43C.glDispatchCompute;
 
-public class SortRegionSectionPhase extends Phase {
+public class CmdBufferBuilder extends Phase {
     private final Shader shader = Shader.make()
-            .addSource(COMPUTE, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "sorting/region_section_sorter.comp")))
+            .addSource(COMPUTE, ShaderLoader.parse(ResourceLocation.fromNamespaceAndPath("nvidium", "occlusion/command_buffer/command_buffer_builder.comp")))
             .compile();
 
-    public SortRegionSectionPhase() {
+    public CmdBufferBuilder() {
     }
 
-    public void dispatch(int sortingRegionCount) {
+    public void dispatch(int regionCount) {
         shader.bind();
         timing.marker();
-        glDispatchCompute(sortingRegionCount, 1, 1);
+        glDispatchCompute(regionCount, 1, 1);
         timing.marker();
         timing.tick();
     }
 
+    @Override
     public void delete() {
         super.delete();
         shader.delete();

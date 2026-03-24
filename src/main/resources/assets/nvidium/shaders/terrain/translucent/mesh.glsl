@@ -121,12 +121,12 @@ void swapQuads(uint idxA, uint idxB) {
 void performTranslucencySort() {
     uint baseQuadPtr = floatBitsToUint(originAndBaseData.w) + (gl_WorkGroupID.x<<5);
 
-    float depth = dot(depthPos, depthPos) * ((1/4f)*(1/4f));
+    float depth = dot(depthPos, depthPos) * ((1/4.0f)*(1/4.0f));
     depthBuffers[gl_LocalInvocationID.x] = depth;
 
     if (gl_GlobalInvocationID.x < jiggle) {
         //If we are in the jiggle index dont attempt to swap else we start rendering garbage data
-        depthBuffers[gl_LocalInvocationID.x] = -9999f;
+        depthBuffers[gl_LocalInvocationID.x] = -9999.0f;
     }
 
     groupMemoryBarrier();
@@ -151,7 +151,7 @@ void performTranslucencySort() {
 //TODO: extra per quad culling
 void main() {
     #ifdef TRANSLUCENCY_SORTING_QUADS
-    depthBuffers[gl_LocalInvocationID.x] = -99999999f;
+    depthBuffers[gl_LocalInvocationID.x] = -99999999.0f;
     #endif
     if ((gl_GlobalInvocationID.x)>=quadCount) { //If its over the quad count, dont render
         return;
