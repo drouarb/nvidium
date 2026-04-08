@@ -87,11 +87,10 @@ void main() {
         colour = texture(tex_diffuse, uv, lodBias);
     #endif
 
-    #ifndef TRANSLUCENT_PASS
-        uint alphaCutoff = rawVertexAlphaCutoff(V0);
-        if (colour.a < getVertexAlphaCutoff(alphaCutoff)) discard;
-        colour.a = 1;
-    #endif
+    uint alphaCutoff = rawVertexAlphaCutoff(V0);
+    if (colour.a < getVertexAlphaCutoff(alphaCutoff)) {
+        discard;
+    }
 
     #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
         computeOutputColour(colour.rgb);
