@@ -206,7 +206,7 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
                     SortBehavior.DYNAMIC_DEFER_NEARBY_ZERO_FRAMES.getDeferMode().getImportantRebuildQueueType()
             );
             var queue = taskLists.get(queueType);
-            if (isSectionVisibleBfs(section) && !queue.contains(section)) {
+            if (isSectionVisibleBfs(section) && !queue.contains(section) && section.getRunningJob() == null) {
                 ((IRenderSectionExtension)section).isSubmittedRebuild(true);
                 taskLists.get(queueType).add(section);
             }
