@@ -34,8 +34,8 @@ struct Region {
 
 struct UploadControl {
     uint uploadStart;
-    uint count;
-    uint outputIdx;
+    uint vtxCount;
+    uint vtxOutputIdx;
 };
 
 struct HashMapData {

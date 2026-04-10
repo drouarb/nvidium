@@ -178,8 +178,11 @@ public class SectionManager {
             }
 
             if (terrainAddress == -1) {
-                this.funnyArena.allocQuads(output.quads());
+                var funnyAddress = this.funnyArena.allocQuads(output.quads());
                 terrainAddress = this.terrainAreana.allocQuads(output.quads());
+                if (terrainAddress != funnyAddress) {
+                    throw new IllegalStateException("TerrainAddress: "  + terrainAddress + ", FunnyAddress: " + funnyAddress);
+                }
             }
 
             if (terrainAddress == SegmentedManager.SIZE_LIMIT) {

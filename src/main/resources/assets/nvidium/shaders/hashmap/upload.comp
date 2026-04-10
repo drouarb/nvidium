@@ -1,5 +1,6 @@
 #version 460
-#pragma optimize(off)
+//#pragma optimize(off)
+#pragma debug(on)
 #extension GL_NV_gpu_shader5 : enable
 #extension GL_NV_shader_buffer_load : require
 #extension GL_KHR_shader_subgroup_ballot : require
@@ -39,9 +40,6 @@ bool insertIntoPool(inout uvec3 data, uint key, uint slotIdx) {
     pool[slotIdx].x = data.x;
     pool[slotIdx].y = data.y;
     pool[slotIdx].z = data.z;
-
-    memoryBarrierBuffer();
-
     pool[slotIdx].key = key;
     return true;
 }
@@ -65,7 +63,7 @@ uint poolInject(inout uvec3 data) {
         uvec4 matchBallot = subgroupBallot(match);
         if (!all(equal(matchBallot, uvec4(0)))) {
             if (subgroupElect())
-                atomicAdd(statistics_buffer+4, i+1);
+                atomicAdd(statistics_buffer+4, 1);
             // TODO FIX COUNT
             /*
             if (match) {
@@ -93,7 +91,7 @@ uint poolInject(inout uvec3 data) {
 
             if (subgroupAny(inserted)) {
                 if (subgroupElect())
-                    atomicAdd(statistics_buffer+5, i+1);
+                    atomicAdd(statistics_buffer+5, 1);
                 return subgroupAdd(inserted ? slotIdx : 0);
             }
         } else {
@@ -106,15 +104,23 @@ uint poolInject(inout uvec3 data) {
 
 void main() {
     UploadControl control = controlBuffer[gl_WorkGroupID.x];
-    for (int i = 0; i < control.count; i++) {
+    for (int i = 0; i < control.vtxCount; i++) {
         Vertex v = uploadBuffer[control.uploadStart + i];
 
         uvec3 vtx = uvec3(v.hi, v.lo, 0);
         uint vtxIdx = poolInject(vtx);
-        vertexIndices[control.outputIdx + i] = vtxIdx;
+        if (subgroupElect()) {
+            vertexIndices[control.vtxOutputIdx + i] = vtxIdx;
+        }
 
-        uvec3 attr = uvec3(v.color, (v.u << 16) | v.v, v.blockLight << 24 | v.skyLight << 16 | v.material << 8 | v.section);
+        uvec3 attr = uvec3(
+            v.color,
+            (v.u << 16) | v.v,
+            v.blockLight << 24 | v.skyLight << 16 | v.material << 8 | v.section
+        );
         uint attrIdx = poolInject(attr);
-        attributeIndices[control.outputIdx + i] = attrIdx;
+        if (subgroupElect()) {
+            attributeIndices[control.vtxOutputIdx + i] = attrIdx;
+        }
     }
 }

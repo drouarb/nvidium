@@ -35,7 +35,7 @@ public class FunnyBufferArena {
 
     private final long POOL_SIZE = 50_000_000;
     private final long CONTROL_SIZE = 12;
-    private final long MAX_VTX = 20_000_000;
+    private final long MAX_VTX = 100_000_000;
     private final long UPLOAD_ARENA_SIZE = 1_000_000; // MAX QUAD TO UPLOAD
     private final long HASHMAP_DATA_SIZE = 20; // 8 structure + 12 data
 
@@ -73,24 +73,26 @@ public class FunnyBufferArena {
     }
 
     public long upload(int addr) {
-        var size = segments.getSize(addr);
+        var quadCount = segments.getSize(addr);
 
-        if (size > Integer.MAX_VALUE || size == 0 || size < 0) {
+        if (quadCount > Integer.MAX_VALUE || quadCount == 0 || quadCount < 0) {
             throw new IllegalArgumentException();
         }
 
-        if (uploadIdx + segments.getSize(addr) >= UPLOAD_ARENA_SIZE) {
+        if (uploadIdx + quadCount >= UPLOAD_ARENA_SIZE) {
             throw new IllegalStateException("UPLOAD IS FULL :/");
         }
+        //if (controlIdx > 0)
+        //    this.commit();
         long upAddr = uploadIdx;
-        uploadIdx += segments.getSize(addr);
+        uploadIdx += quadCount;
 
         // Populate control buffer
         System.out.println("[" + controlIdx + "] Uploading from: " + upAddr + " size: " + segments.getSize(addr) + " to: " + addr);
         var controlAddr = controlBuffer.addr + (controlIdx++ * CONTROL_SIZE);
-        MemoryUtil.memPutInt(controlAddr + 0, (int) upAddr); // uploadStart
-        MemoryUtil.memPutInt(controlAddr + 4, (int) segments.getSize(addr)); // Count
-        MemoryUtil.memPutInt(controlAddr + 8, addr); // OutputIdx
+        MemoryUtil.memPutInt(controlAddr + 0, (int) upAddr * 4); // uploadStart
+        MemoryUtil.memPutInt(controlAddr + 4, (int) quadCount * 4); // vtxCount
+        MemoryUtil.memPutInt(controlAddr + 8, addr * 4); // OutputIdx
 
         // Return ptr to data
         return uploadBuffer.addr + (upAddr * vertexFormatSize * 4);
@@ -126,6 +128,7 @@ public class FunnyBufferArena {
         pool.delete();
         vertexIndices.delete();
         attributeIndices.delete();
+        uploader.delete();
     }
 
     public boolean canReuse(int addr, int quads) {
