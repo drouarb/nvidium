@@ -125,6 +125,8 @@ public class RenderPipeline {
         public int sectionCount;
         public int quadCount;
         public int cullCount;
+        public int match;
+        public int insert;
     }
 
     private final Statistics stats;
@@ -160,7 +162,7 @@ public class RenderPipeline {
         regionVisibilityTracker = new BitSet(maxRegions);
         regionVisibilityTracking = new RegionVisibilityTracker(downloadStream, maxRegions);
 
-        statisticsBuffer = device.createDeviceOnlyMappedBuffer(4*4);
+        statisticsBuffer = device.createDeviceOnlyMappedBuffer(6*4);
         stats = new Statistics();
 
 
@@ -356,6 +358,8 @@ public class RenderPipeline {
             // TODO WIP //////////////////////////////////////////////////////
             MemoryUtil.memPutLong(addr, sectionManager.funnyArena.pool.getDeviceAddress());
             addr += 8;
+            MemoryUtil.memPutLong(addr, sectionManager.funnyArena.pool.getDeviceAddress());
+            addr += 8;
             MemoryUtil.memPutLong(addr, sectionManager.funnyArena.vertexIndices.getDeviceAddress());
             addr += 8;
             MemoryUtil.memPutLong(addr, sectionManager.funnyArena.attributeIndices.getDeviceAddress());
@@ -365,7 +369,6 @@ public class RenderPipeline {
             MemoryUtil.memPutLong(addr, sectionManager.funnyArena.uploadBuffer.deviceAddr);
             addr += 8;
 
-            addr += 8; // pad
             // TODO WIP //////////////////////////////////////////////////////
 
             //Convert it into the expected size values and floats
@@ -563,11 +566,14 @@ public class RenderPipeline {
 
         //Download statistics
         if (Nvidium.config.statistics_level.ordinal() > StatisticsLoggingLevel.FRUSTUM.ordinal()){
-            downloadStream.download(statisticsBuffer, 0, 4*4, (addr)-> {
+            downloadStream.download(statisticsBuffer, 0, 6*4, (addr)-> {
                 stats.regionCount = MemoryUtil.memGetInt(addr);
                 stats.sectionCount = MemoryUtil.memGetInt(addr+4);
                 stats.quadCount = MemoryUtil.memGetInt(addr+8);
                 stats.cullCount = MemoryUtil.memGetInt(addr+12);
+
+                stats.match = MemoryUtil.memGetInt(addr+16);
+                stats.insert = MemoryUtil.memGetInt(addr+20);
             });
         }
 
@@ -641,6 +647,7 @@ public class RenderPipeline {
             info.add("SectionSorter time: " +  String.format("%.03f", regionSectionSorter.getTiming().getAverageMs()) + "ms");
         }
         info.add("CompUploader time: " +  String.format("%.03f", sectionManager.funnyArena.uploader.getTiming().getAverageMs()) + "ms");
+        info.add("Match: " + stats.match + " Insert: " + stats.insert);
     }
 
     public void reloadShaders() {

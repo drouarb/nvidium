@@ -1,14 +1,120 @@
 #version 460
+#pragma optimize(off)
 #extension GL_NV_gpu_shader5 : enable
 #extension GL_NV_shader_buffer_load : require
+#extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_KHR_shader_subgroup_vote : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
 
 #import <nvidium:occlusion/scene.glsl>
 
 layout(local_size_x = 32) in;
 
+uint POOL_SIZE = 50000000;
+
+// from https://gist.github.com/mpottinger/54d99732d4831d8137d178b4a6007d1a
+uint murmurHash13(uvec3 src) {
+    const uint M = 0x5bd1e995u;
+    uint h = 1190494759u;
+    src *= M; src ^= src>>24u; src *= M;
+    h *= M; h ^= src.x; h *= M; h ^= src.y; h *= M; h ^= src.z;
+    h ^= h>>13u; h *= M; h ^= h>>15u;
+    return h;
+}
+
+// 0 => EMPTY
+// 1 => RESERVED
+// 2 => TOMBSTONE
+
+bool insertIntoPool(inout uvec3 data, uint key, uint slotIdx) {
+    uint prev = atomicCompSwap(rawPool + (slotIdx * 5), 0u, 1u);
+    if (prev != 0u) {
+        prev = atomicCompSwap(rawPool + (slotIdx * 5), 2u, 1u);
+        if (prev != 2u) {
+            return false;
+        }
+    }
+
+    pool[slotIdx].count = 1u;
+    pool[slotIdx].x = data.x;
+    pool[slotIdx].y = data.y;
+    pool[slotIdx].z = data.z;
+
+    memoryBarrierBuffer();
+
+    pool[slotIdx].key = key;
+    return true;
+}
+
+uint poolInject(inout uvec3 data) {
+    uint key = murmurHash13(data);
+    if (key < 3) {
+        key += 3;
+    }
+
+    uint i = 0;
+    while (true) {
+        uint slotIdx = (key + (i * 32) + gl_SubgroupInvocationID) % POOL_SIZE;
+        bool empty = pool[slotIdx].key == 0;
+        bool match = pool[slotIdx].key == key &&
+                     pool[slotIdx].x == data.x &&
+                     pool[slotIdx].y == data.y &&
+                     pool[slotIdx].z == data.z
+        ;
+
+        uvec4 matchBallot = subgroupBallot(match);
+        if (!all(equal(matchBallot, uvec4(0)))) {
+            if (subgroupElect())
+                atomicAdd(statistics_buffer+4, i+1);
+            // TODO FIX COUNT
+            /*
+            if (match) {
+                atomicAdd((pool[slotIdx].count), 1);
+            }*/
+            uint leader = subgroupBallotFindLSB(matchBallot);
+            return subgroupBroadcast(slotIdx, leader);
+        }
+
+        if (subgroupAny(empty)) {
+            break;
+        }
+        i++;
+    }
+
+    while (true) {
+        uint slotIdx = (key + (i * 32) + gl_SubgroupInvocationID) % POOL_SIZE;
+        bool canUse = pool[slotIdx].key == 0 || pool[slotIdx].key == 2;
+        uvec4 useBallot = subgroupBallot(canUse);
+        if (!all(equal(useBallot, uvec4(0)))) {
+            bool inserted = false;
+            if (subgroupBallotFindLSB(useBallot) == gl_SubgroupInvocationID) {
+                inserted = insertIntoPool(data, key, slotIdx);
+            }
+
+            if (subgroupAny(inserted)) {
+                if (subgroupElect())
+                    atomicAdd(statistics_buffer+5, i+1);
+                return subgroupAdd(inserted ? slotIdx : 0);
+            }
+        } else {
+            i++;
+        }
+    }
+
+    return 0;
+}
+
 void main() {
-    UploadControl control = controlBuffer[0];
+    UploadControl control = controlBuffer[gl_WorkGroupID.x];
     for (int i = 0; i < control.count; i++) {
         Vertex v = uploadBuffer[control.uploadStart + i];
+
+        uvec3 vtx = uvec3(v.hi, v.lo, 0);
+        uint vtxIdx = poolInject(vtx);
+        vertexIndices[control.outputIdx + i] = vtxIdx;
+
+        uvec3 attr = uvec3(v.color, (v.u << 16) | v.v, v.blockLight << 24 | v.skyLight << 16 | v.material << 8 | v.section);
+        uint attrIdx = poolInject(attr);
+        attributeIndices[control.outputIdx + i] = attrIdx;
     }
 }

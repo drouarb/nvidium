@@ -41,7 +41,9 @@ struct UploadControl {
 struct HashMapData {
     uint key;
     uint count;
-    uvec3 payload; // 8 bytes (vtx) || 12 bytes (attribs) // TODO Nvidium VTX Format
+    uint x;
+    uint y;
+    uint z;
 };
 
 ivec3 unpackRegionSize(Region region) {
@@ -111,12 +113,11 @@ layout(std140, binding=0) uniform SceneData {
 
     // TODO WIP ////////////////////////////////////////////////////////
     HashMapData     *pool;
+    uint            *rawPool;
     uint            *vertexIndices;
     uint            *attributeIndices;
     UploadControl   *controlBuffer;
     Vertex          *uploadBuffer;
-
-    uint *pad; // UNUSED PAD TO ALIGN
     // TODO WIP ////////////////////////////////////////////////////////
 
     vec2 screenSize;

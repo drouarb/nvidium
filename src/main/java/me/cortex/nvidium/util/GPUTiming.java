@@ -21,7 +21,7 @@ public class GPUTiming {
         this.timingSet.capture(0);
     }
 
-    private void addSample(long timeNs) {
+    public void addSample(long timeNs) {
         total -= samples[index];
         samples[index] = timeNs;
         total += timeNs;

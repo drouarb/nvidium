@@ -33,6 +33,7 @@ public class FunnyBufferArena {
 
     public final CompUploader uploader = new CompUploader();
 
+    private final long POOL_SIZE = 50_000_000;
     private final long CONTROL_SIZE = 12;
     private final long MAX_VTX = 20_000_000;
     private final long UPLOAD_ARENA_SIZE = 1_000_000; // MAX QUAD TO UPLOAD
@@ -46,7 +47,7 @@ public class FunnyBufferArena {
         controlBuffer = device.createClientMappedBuffer(32_000_000); // TODO MORE THAN ENOUGH ?
         uploadBuffer = device.createClientMappedBuffer(UPLOAD_ARENA_SIZE * vertexFormatSize * 4);
 
-        pool = device.createDeviceOnlyMappedBuffer(50_000_000 * HASHMAP_DATA_SIZE); // TODO HANDLE SIZE PROPERLY
+        pool = device.createDeviceOnlyMappedBuffer(POOL_SIZE * HASHMAP_DATA_SIZE); // TODO HANDLE SIZE PROPERLY
 
         vertexIndices = device.createDeviceOnlyMappedBuffer(MAX_VTX * 4); // TODO 20M int ??
         attributeIndices = device.createDeviceOnlyMappedBuffer(MAX_VTX * 4); // TODO 20M int ??
@@ -78,6 +79,9 @@ public class FunnyBufferArena {
             throw new IllegalArgumentException();
         }
 
+        if (uploadIdx + segments.getSize(addr) >= UPLOAD_ARENA_SIZE) {
+            throw new IllegalStateException("UPLOAD IS FULL :/");
+        }
         long upAddr = uploadIdx;
         uploadIdx += segments.getSize(addr);
 
@@ -93,8 +97,11 @@ public class FunnyBufferArena {
     }
 
     public void commit() {
-        if (controlIdx == 0)
+        if (controlIdx == 0) {
+            // add a 0 if we didn't upload to see avg timing
+            uploader.getTiming().addSample(0);
             return;
+        }
         System.out.println("COMMIT " + controlIdx);
         // TODO Handle retry and wait stuffs
         System.out.println("FLUSH CONTROL " + controlIdx * CONTROL_SIZE);
@@ -104,8 +111,11 @@ public class FunnyBufferArena {
         System.out.println("DISPATCH COMPUTE UPLOAD");
         glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
         uploader.dispatch(controlIdx);
+        System.out.println("DISPATCHED");
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        System.out.println("TRIGGER FINISH");
         glFinish();
+        System.out.println("FINISHED");
         controlIdx = 0;
         uploadIdx = 0;
     }
