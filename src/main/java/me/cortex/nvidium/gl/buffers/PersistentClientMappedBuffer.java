@@ -13,11 +13,18 @@ public class PersistentClientMappedBuffer extends GlObject implements IClientMap
     public final long addr;
     public final long size;
 
+    public final long deviceAddr;
+
     public PersistentClientMappedBuffer(long size) {
         super(glCreateBuffers());
         this.size = size;
         glNamedBufferStorage(id, size, GL_MAP_PERSISTENT_BIT| (GL_CLIENT_STORAGE_BIT|GL_MAP_WRITE_BIT));
         addr = nglMapNamedBufferRange(id, 0, size, GL_MAP_PERSISTENT_BIT|(GL_MAP_UNSYNCHRONIZED_BIT|GL_MAP_FLUSH_EXPLICIT_BIT|GL_MAP_WRITE_BIT));
+
+        long[] holder = new long[1];
+        glGetNamedBufferParameterui64vNV(id, GL_BUFFER_GPU_ADDRESS_NV, holder);
+        glMakeNamedBufferResidentNV(id, GL_READ_WRITE);
+        deviceAddr = holder[0];
     }
 
     @Override
@@ -29,6 +36,7 @@ public class PersistentClientMappedBuffer extends GlObject implements IClientMap
     public void delete() {
         super.free0();
         glUnmapNamedBuffer(id);
+        glMakeNamedBufferNonResidentNV(id);
         glDeleteBuffers(id);
     }
 

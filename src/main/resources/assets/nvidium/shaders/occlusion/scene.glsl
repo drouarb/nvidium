@@ -32,6 +32,18 @@ struct Region {
     uint64_t b;
 };
 
+struct UploadControl {
+    uint uploadStart;
+    uint count;
+    uint outputIdx;
+};
+
+struct HashMapData {
+    uint key;
+    uint count;
+    uvec3 payload; // 8 bytes (vtx) || 12 bytes (attribs) // TODO Nvidium VTX Format
+};
+
 ivec3 unpackRegionSize(Region region) {
     return ivec3((region.a>>59)&7, region.a>>62, (region.a>>56)&7);
 }
@@ -96,6 +108,16 @@ layout(std140, binding=0) uniform SceneData {
     //uvec4 *terrainData;
 
     uint32_t *statistics_buffer;
+
+    // TODO WIP ////////////////////////////////////////////////////////
+    HashMapData     *pool;
+    uint            *vertexIndices;
+    uint            *attributeIndices;
+    UploadControl   *controlBuffer;
+    Vertex          *uploadBuffer;
+
+    uint *pad; // UNUSED PAD TO ALIGN
+    // TODO WIP ////////////////////////////////////////////////////////
 
     vec2 screenSize;
 

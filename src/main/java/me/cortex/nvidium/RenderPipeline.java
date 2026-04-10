@@ -84,6 +84,14 @@ public class RenderPipeline {
                     8 +     // mat4      *transformationArray
                     8 +     // uint64_t  *originArray
                     8 +     // uint32_t  *statistics_buffe
+
+                    8 +     // HashMapData    *pool
+                    8 +     // uint           *vertexIndices
+                    8 +     // uint           *attributeIndices
+                    8 +     // UploadControl  *controlBuffer
+                    8 +     // Vertex         *uploadBuffer
+                    8 +     // uint           *pad
+
                     4*2 +   // vec2      screenSize
                     4*4 +   // vec4      fogColour
                     2*4 +   // vec2      environmentFog
@@ -344,6 +352,22 @@ public class RenderPipeline {
             addr += 8;
             MemoryUtil.memPutLong(addr, statisticsBuffer == null?0:statisticsBuffer.getDeviceAddress());//Logging buffer
             addr += 8;
+
+            // TODO WIP //////////////////////////////////////////////////////
+            MemoryUtil.memPutLong(addr, sectionManager.funnyArena.pool.getDeviceAddress());
+            addr += 8;
+            MemoryUtil.memPutLong(addr, sectionManager.funnyArena.vertexIndices.getDeviceAddress());
+            addr += 8;
+            MemoryUtil.memPutLong(addr, sectionManager.funnyArena.attributeIndices.getDeviceAddress());
+            addr += 8;
+            MemoryUtil.memPutLong(addr, sectionManager.funnyArena.controlBuffer.deviceAddr);
+            addr += 8;
+            MemoryUtil.memPutLong(addr, sectionManager.funnyArena.uploadBuffer.deviceAddr);
+            addr += 8;
+
+            addr += 8; // pad
+            // TODO WIP //////////////////////////////////////////////////////
+
             //Convert it into the expected size values and floats
             MemoryUtil.memPutFloat(addr, ((float)screenWidth)/2);
             addr += 4;
@@ -405,6 +429,7 @@ public class RenderPipeline {
         glEnableClientState(GL_DRAW_INDIRECT_UNIFIED_NV);
         //Bind the uniform, it doesnt get wiped between shader changes
         glBufferAddressRangeNV(GL_UNIFORM_BUFFER_ADDRESS_NV, 0, sceneUniform.getDeviceAddress(), SCENE_SIZE);
+        sectionManager.funnyArena.commit();
 
         if (prevRegionCount != 0) {
             glEnable(GL_DEPTH_TEST);
@@ -615,6 +640,7 @@ public class RenderPipeline {
         if (Nvidium.config.translucency_sorting_level != TranslucencySortingLevel.NONE) {
             info.add("SectionSorter time: " +  String.format("%.03f", regionSectionSorter.getTiming().getAverageMs()) + "ms");
         }
+        info.add("CompUploader time: " +  String.format("%.03f", sectionManager.funnyArena.uploader.getTiming().getAverageMs()) + "ms");
     }
 
     public void reloadShaders() {

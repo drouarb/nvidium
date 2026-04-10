@@ -8,6 +8,7 @@ import me.cortex.nvidium.gl.RenderDevice;
 import me.cortex.nvidium.sodiumCompat.INvidiumWorldRendererGetter;
 import me.cortex.nvidium.sodiumCompat.IRepackagedResult;
 import me.cortex.nvidium.util.BufferArena;
+import me.cortex.nvidium.util.FunnyBufferArena;
 import me.cortex.nvidium.util.SegmentedManager;
 import me.cortex.nvidium.util.UploadingBufferStream;
 import net.caffeinemc.mods.sodium.client.model.quad.properties.ModelQuadFacing;
@@ -39,6 +40,7 @@ public class SectionManager {
     private final int quadVertexSize;
     public final UploadingBufferStream uploadStream;
     public final BufferArena terrainAreana;
+    public final FunnyBufferArena funnyArena;
 
     private final Long2ObjectOpenHashMap<int[]> translucencyQuadCounts = new Long2ObjectOpenHashMap<int[]>();
 
@@ -55,6 +57,7 @@ public class SectionManager {
         this.quadVertexSize = quadVertexSize;
 
         this.terrainAreana = new BufferArena(device, fallbackMemorySize, quadVertexSize);
+        this.funnyArena = new FunnyBufferArena(device, fallbackMemorySize, quadVertexSize);
         this.regionManager = new RegionManager(device, maxRegions, maxRegions * 200, uploadStream, worldRenderer::enqueueRegionSort);
 
         this.section2id.defaultReturnValue(-1);
@@ -77,6 +80,9 @@ public class SectionManager {
     }
 
     public void uploadChunkSort(ChunkSortOutput sortOutput) {
+        if (true)
+            return;
+
         if (sortOutput.getSorter() == null) {
             return;
         }
@@ -167,10 +173,12 @@ public class SectionManager {
             if (terrainAddress != -1 && !this.terrainAreana.canReuse(terrainAddress, output.quads())) {
                 this.section2terrain.remove(sectionKey);
                 this.terrainAreana.free(terrainAddress);
+                this.funnyArena.free(terrainAddress);
                 terrainAddress = -1;
             }
 
             if (terrainAddress == -1) {
+                this.funnyArena.allocQuads(output.quads());
                 terrainAddress = this.terrainAreana.allocQuads(output.quads());
             }
 
@@ -187,6 +195,9 @@ public class SectionManager {
             this.section2terrain.put(sectionKey, terrainAddress);
 
             long geometryUpload = terrainAreana.upload(uploadStream, terrainAddress);
+            MemoryUtil.memCopy(MemoryUtil.memAddress(output.geometry().getDirectBuffer()), geometryUpload, output.geometry().getLength());
+
+            geometryUpload = funnyArena.upload(terrainAddress);
             MemoryUtil.memCopy(MemoryUtil.memAddress(output.geometry().getDirectBuffer()), geometryUpload, output.geometry().getLength());
         }
 
@@ -271,6 +282,7 @@ public class SectionManager {
             int terrainIndex = this.section2terrain.remove(sectionKey);
             if (terrainIndex != -1) {
                 this.terrainAreana.free(terrainIndex);
+                this.funnyArena.free(terrainIndex);
             }
             int indexIdx = this.section2index.remove(sectionKey);
             if (indexIdx != -1) {
@@ -285,6 +297,7 @@ public class SectionManager {
     public void destroy() {
         this.regionManager.destroy();
         this.terrainAreana.delete();
+        this.funnyArena.delete();
     }
 
     public void commitChanges() {

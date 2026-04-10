@@ -1,0 +1,14 @@
+#version 460
+#extension GL_NV_gpu_shader5 : enable
+#extension GL_NV_shader_buffer_load : require
+
+#import <nvidium:occlusion/scene.glsl>
+
+layout(local_size_x = 32) in;
+
+void main() {
+    UploadControl control = controlBuffer[0];
+    for (int i = 0; i < control.count; i++) {
+        Vertex v = uploadBuffer[control.uploadStart + i];
+    }
+}
