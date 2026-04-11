@@ -7,7 +7,7 @@
 
 #import <nvidium:occlusion/scene.glsl>
 
-layout(local_size_x = 32) in;
+layout(local_size_x = 32, local_size_y = 4) in;
 
 uint POOL_SIZE = 50000000;
 
@@ -100,13 +100,13 @@ uint poolInject(inout uvec3 data) {
 
 void main() {
     UploadControl control = controlBuffer[gl_WorkGroupID.x];
-    for (int i = 0; i < control.quadCount * 4; i++) {
-        Vertex v = uploadBuffer[control.uploadStart + i];
+    for (int i = 0; i < control.quadCount; i++) {
+        Vertex v = uploadBuffer[control.uploadStart + i * 4 + gl_LocalInvocationID.y];
 
         uvec3 vtx = uvec3(v.hi, v.lo, 0);
         uint vtxIdx = poolInject(vtx);
         if (subgroupElect()) {
-            vertexIndices[control.vtxOutputIdx + i] = vtxIdx;
+            vertexIndices[control.vtxOutputIdx + i * 4 + gl_LocalInvocationID.y] = vtxIdx;
         }
 
         uvec3 attr = uvec3(
@@ -116,7 +116,7 @@ void main() {
         );
         uint attrIdx = poolInject(attr);
         if (subgroupElect()) {
-            attributeIndices[control.vtxOutputIdx + i] = attrIdx;
+            attributeIndices[control.vtxOutputIdx + i * 4 + gl_LocalInvocationID.y] = attrIdx;
         }
         memoryBarrierBuffer();
     }
