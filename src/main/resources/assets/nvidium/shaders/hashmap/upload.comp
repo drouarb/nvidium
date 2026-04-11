@@ -1,6 +1,4 @@
 #version 460
-//#pragma optimize(off)
-#pragma debug(on)
 #extension GL_NV_gpu_shader5 : enable
 #extension GL_NV_shader_buffer_load : require
 #extension GL_KHR_shader_subgroup_ballot : require
@@ -62,15 +60,13 @@ uint poolInject(inout uvec3 data) {
 
         uvec4 matchBallot = subgroupBallot(match);
         if (!all(equal(matchBallot, uvec4(0)))) {
-            if (subgroupElect())
-                atomicAdd(statistics_buffer+4, 1);
-            // TODO FIX COUNT
-            /*
-            if (match) {
-                atomicAdd((pool[slotIdx].count), 1);
-            }*/
             uint leader = subgroupBallotFindLSB(matchBallot);
-            return subgroupBroadcast(slotIdx, leader);
+            slotIdx = subgroupBroadcast(slotIdx, leader);
+            if (subgroupElect()) {
+                atomicAdd(statistics_buffer+4, 1);
+                atomicAdd(rawPool + (slotIdx * 5) + 1, 1);
+            }
+            return slotIdx;
         }
 
         if (subgroupAny(empty)) {
@@ -104,7 +100,7 @@ uint poolInject(inout uvec3 data) {
 
 void main() {
     UploadControl control = controlBuffer[gl_WorkGroupID.x];
-    for (int i = 0; i < control.vtxCount; i++) {
+    for (int i = 0; i < control.quadCount * 4; i++) {
         Vertex v = uploadBuffer[control.uploadStart + i];
 
         uvec3 vtx = uvec3(v.hi, v.lo, 0);
@@ -122,5 +118,6 @@ void main() {
         if (subgroupElect()) {
             attributeIndices[control.vtxOutputIdx + i] = attrIdx;
         }
+        memoryBarrierBuffer();
     }
 }

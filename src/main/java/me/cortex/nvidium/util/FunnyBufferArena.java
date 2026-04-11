@@ -91,7 +91,7 @@ public class FunnyBufferArena {
         System.out.println("[" + controlIdx + "] Uploading from: " + upAddr + " size: " + segments.getSize(addr) + " to: " + addr);
         var controlAddr = controlBuffer.addr + (controlIdx++ * CONTROL_SIZE);
         MemoryUtil.memPutInt(controlAddr + 0, (int) upAddr * 4); // uploadStart
-        MemoryUtil.memPutInt(controlAddr + 4, (int) quadCount * 4); // vtxCount
+        MemoryUtil.memPutInt(controlAddr + 4, (int) quadCount); // quadCount
         MemoryUtil.memPutInt(controlAddr + 8, addr * 4); // OutputIdx
 
         // Return ptr to data

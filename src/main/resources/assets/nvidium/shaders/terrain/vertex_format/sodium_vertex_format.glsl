@@ -9,15 +9,15 @@ const uint TEXTURE_MAX_VALUE    = TEXTURE_MAX_COORD - 1u;
 const float VERTEX_SCALE = 32.0 / float(POSITION_MAX_COORD);
 const float VERTEX_OFFSET = -8.0;
 
-uvec3 _deinterleave_u20x3(Vertex v) {
-    uvec3 hi = (uvec3(v.hi) >> uvec3(0u, 10u, 20u)) & 0x3FFu;
-    uvec3 lo = (uvec3(v.lo) >> uvec3(0u, 10u, 20u)) & 0x3FFu;
+uvec3 _deinterleave_u20x3(uint vId) {
+    uvec3 hi = (uvec3(pool[vId].x) >> uvec3(0u, 10u, 20u)) & 0x3FFu;
+    uvec3 lo = (uvec3(pool[vId].y) >> uvec3(0u, 10u, 20u)) & 0x3FFu;
 
     return (hi << 10u) | lo;
 }
 
-vec3 decodeVertexPosition(Vertex v) {
-    return (_deinterleave_u20x3(v) * VERTEX_SCALE) + VERTEX_OFFSET;
+vec3 decodeVertexPosition(uint vId) {
+    return (_deinterleave_u20x3(vId) * VERTEX_SCALE) + VERTEX_OFFSET;
 }
 
 vec2 decodeVertexRawUV(Vertex v) {

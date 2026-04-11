@@ -60,9 +60,9 @@ void emitQuadIndicies() {
 }
 
 void emitVertex(uint vertexBaseId, uint innerId) {
-    Vertex V = terrainData[vertexBaseId + innerId];
+    uint vId = vertexIndices[vertexBaseId + innerId];
     uint outId = (gl_LocalInvocationID.x<<2)+innerId;
-    vec3 pos = decodeVertexPosition(V)+originAndBaseData.xyz;
+    vec3 pos = decodeVertexPosition(vId)+originAndBaseData.xyz;
     gl_MeshVerticesNV[outId].gl_Position = MVP*vec4(pos,1.0);
 
 #ifndef USE_NV_FRAGMENT_SHADER_BARYCENTRIC

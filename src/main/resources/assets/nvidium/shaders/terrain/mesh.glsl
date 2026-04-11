@@ -72,32 +72,12 @@ uint getOffset() {
 
 mat4 transformMat;
 
-vec4 transformVertex(Vertex V) {
-    vec3 pos = decodeVertexPosition(V)+origin;
+vec4 transformVertex(uint vId) {
+    vec3 pos = decodeVertexPosition(vId)+origin;
     return MVP*(transformMat * vec4(pos,1.0));
 }
 
-uvec3 dostuff(uint hiR, uint loR) {
-    uvec3 hi = (uvec3(hiR) >> uvec3(0u, 10u, 20u)) & 0x3FFu;
-    uvec3 lo = (uvec3(loR) >> uvec3(0u, 10u, 20u)) & 0x3FFu;
-
-    return (hi << 10u) | lo;
-}
-
-vec3 dostuff2(uint hiR, uint loR) {
-    return (dostuff(hiR, loR) * VERTEX_SCALE) + VERTEX_OFFSET;
-}
-
-vec4 getVertex(uint vtxId) {
-    vec3 decodedPos = dostuff2(pool[vtxId].x, pool[vtxId].y);
-
-    vec3 pos = decodedPos+origin;
-    return MVP*(transformMat * vec4(pos,1.0));
-}
-
-//Vertex Vc;
 vec4 pVc;
-//Vertex V;
 vec4 pV;
 
 void putVertex(uint id, Vertex V) {
@@ -133,18 +113,14 @@ void main() {
     bool triangle1 = (gl_LocalInvocationIndex & uint(1)) == 1;
 
     //Load corner point, alterenated w.r.t neighbor thread
-    //Vc = terrainData[(quadId<<2)+(triangle1?2:0)];
     uint VcId = vertexIndices[(quadId<<2)+(triangle1?2:0)];
 
     //Load our unique vertex V1 or V3 depending on triangle0
-    //V = terrainData[(quadId<<2)+(triangle1?3:1)];
     uint VId = vertexIndices[(quadId<<2)+(triangle1?3:1)];
 
     //Transform common and our vertices
-    //pVc = transformVertex(Vc);
-    //pV = transformVertex(V);
-    pVc = getVertex(VcId);
-    pV = getVertex(VId);
+    pVc = transformVertex(VcId);
+    pV = transformVertex(VId);
 
     bool draw = true;
     bool peerDraw = true;

@@ -34,7 +34,7 @@ struct Region {
 
 struct UploadControl {
     uint uploadStart;
-    uint vtxCount;
+    uint quadCount;
     uint vtxOutputIdx;
 };
 
