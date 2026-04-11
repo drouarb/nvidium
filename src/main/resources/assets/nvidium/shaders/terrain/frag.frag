@@ -36,9 +36,9 @@ layout(location = 1) in Interpolants {
 };
 #endif
 
-Vertex V0;
-Vertex Vp;
-Vertex V2;
+uint V0;
+uint Vp;
+uint V2;
 #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
 void computeOutputColour(inout vec3 colour) {
     vec3 multiplier = gl_BaryCoordNV.x*computeMultiplier(V0) + gl_BaryCoordNV.y*computeMultiplier(Vp) + gl_BaryCoordNV.z*computeMultiplier(V2);
@@ -117,9 +117,9 @@ void main() {
     uint quadId = uint(gl_PrimitiveID)>>1;
     bool triangle0 = uint((gl_PrimitiveID)&1)==0;
     uvec3 TRI_INDICIES = triangle0?uvec3(0,1,2):uvec3(2,3,0);
-    V0 = terrainData[(quadId<<2)+TRI_INDICIES.x];
-    Vp = terrainData[(quadId<<2)+TRI_INDICIES.y];
-    V2 = terrainData[(quadId<<2)+TRI_INDICIES.z];
+    V0 = attributeIndices[(quadId<<2)+TRI_INDICIES.x];
+    Vp = attributeIndices[(quadId<<2)+TRI_INDICIES.y];
+    V2 = attributeIndices[(quadId<<2)+TRI_INDICIES.z];
 
     #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
         float HALF_SHIFT = (1.0f/TEXTURE_MAX_SCALE)/2.0f;

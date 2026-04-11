@@ -111,8 +111,8 @@ void main() {
 
         uvec3 attr = uvec3(
             v.color,
-            (v.u << 16) | v.v,
-            v.blockLight << 24 | v.skyLight << 16 | v.material << 8 | v.section
+            (uint(v.u) << 16) | uint(v.v),
+            uint(v.blockLight) << 24 | uint(v.skyLight) << 16 | uint(v.material) << 8 | uint(v.section)
         );
         uint attrIdx = poolInject(attr);
         if (subgroupElect()) {

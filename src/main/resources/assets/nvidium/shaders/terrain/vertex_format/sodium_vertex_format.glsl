@@ -20,31 +20,31 @@ vec3 decodeVertexPosition(uint vId) {
     return (_deinterleave_u20x3(vId) * VERTEX_SCALE) + VERTEX_OFFSET;
 }
 
-vec2 decodeVertexRawUV(Vertex v) {
-    return vec2(v.u & TEXTURE_MAX_VALUE, v.v & TEXTURE_MAX_VALUE) / float(TEXTURE_MAX_COORD);
+vec2 decodeVertexRawUV(uint aId) {
+    return vec2((pool[aId].y >> 16) & 0xFFFF & TEXTURE_MAX_VALUE, pool[aId].y & 0xFFFF & TEXTURE_MAX_VALUE) / float(TEXTURE_MAX_COORD);
 }
 
-vec2 decodeVertexUVBias(Vertex v) {
-    return mix(vec2(-1.0), vec2(1.0), bvec2(uvec2(v.u, v.v) >> TEXTURE_BITS));
+vec2 decodeVertexUVBias(uint aId) {
+    return mix(vec2(-1.0), vec2(1.0), bvec2(uvec2(pool[aId].y >> 16, pool[aId].y & 0xFFFF) >> TEXTURE_BITS));
 }
 
-vec2 decodeVertexUV(Vertex v) {
-    return (decodeVertexUVBias(v) * texCoordShrink) + decodeVertexRawUV(v);
+vec2 decodeVertexUV(uint aId) {
+    return (decodeVertexUVBias(aId) * texCoordShrink) + decodeVertexRawUV(aId);
 }
 
-vec2 decodeLightUV(Vertex v) {
-    return vec2(v.blockLight, v.skyLight)/256.0;
+vec2 decodeLightUV(uint aId) {
+    return vec2((pool[aId].z >> 24) & 0xFF, (pool[aId].z >> 16) & 0xFF)/256.0;
 }
 
-bool hasMipping(Vertex v) {
-    return bool(int(v.material) & 1);
+bool hasMipping(uint aId) {
+    return bool((pool[aId].z >> 8) & 1);
 }
 
-uint rawVertexAlphaCutoff(Vertex v) {
-    return (int(v.material) >> 1) & 3;
+uint rawVertexAlphaCutoff(uint aId) {
+    return (pool[aId].z >> 9) & 3;
 }
 
-vec4 decodeVertexColour(Vertex v) {
-    uvec3 packed_color = (uvec3(v.color) >> uvec3(0, 8, 16)) & uvec3(0xFFu);
+vec4 decodeVertexColour(uint aId) {
+    uvec3 packed_color = (uvec3(pool[aId].x) >> uvec3(0, 8, 16)) & uvec3(0xFFu);
     return vec4(vec3(packed_color) * COLOR_SCALE, 1);
 }
