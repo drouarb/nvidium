@@ -9,7 +9,7 @@
 
 layout(local_size_x = 32, local_size_y = 4) in;
 
-uint POOL_SIZE = 50000000;
+uint POOL_SIZE = 60000000;
 
 // from https://gist.github.com/mpottinger/54d99732d4831d8137d178b4a6007d1a
 uint murmurHash13(uvec3 src) {

@@ -27,8 +27,10 @@ import org.lwjgl.opengl.GL11C;
 import org.lwjgl.system.MemoryUtil;
 
 import java.lang.Math;
+import java.text.NumberFormat;
 import java.util.BitSet;
 import java.util.List;
+import java.util.Locale;
 
 import static me.cortex.nvidium.gl.buffers.PersistentSparseAddressableBuffer.alignUp;
 import static org.lwjgl.opengl.ARBDirectStateAccess.*;
@@ -647,7 +649,9 @@ public class RenderPipeline {
             info.add("SectionSorter time: " +  String.format("%.03f", regionSectionSorter.getTiming().getAverageMs()) + "ms");
         }
         info.add("CompUploader time: " +  String.format("%.03f", sectionManager.funnyArena.uploader.getTiming().getAverageMs()) + "ms");
-        info.add("Match: " + stats.match + " Insert: " + stats.insert);
+        NumberFormat fmt = NumberFormat.getCompactNumberInstance(Locale.US, NumberFormat.Style.SHORT);
+        fmt.setMaximumFractionDigits(2);
+        info.add("Match: " + fmt.format(stats.match) + " Insert: " + fmt.format(stats.insert) + " Total Quads: " + fmt.format(sectionManager.funnyArena.totalQuads));
     }
 
     public void reloadShaders() {

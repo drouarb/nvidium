@@ -26,16 +26,16 @@ public class FunnyBufferArena {
     public final PersistentClientMappedBuffer controlBuffer;
     public final PersistentClientMappedBuffer uploadBuffer;
 
-    private long totalQuads;
+    public long totalQuads;
     private final int vertexFormatSize;
 
     private final long memory_size;
 
     public final CompUploader uploader = new CompUploader();
 
-    private final long POOL_SIZE = 50_000_000;
+    private final long POOL_SIZE = 60_000_000;
     private final long CONTROL_SIZE = 12;
-    private final long MAX_VTX = 100_000_000;
+    private final long MAX_VTX = 1_000_000_000;
     private final long UPLOAD_ARENA_SIZE = 1_000_000; // MAX QUAD TO UPLOAD
     private final long HASHMAP_DATA_SIZE = 20; // 8 structure + 12 data
 
@@ -52,7 +52,7 @@ public class FunnyBufferArena {
         vertexIndices = device.createDeviceOnlyMappedBuffer(MAX_VTX * 4); // TODO 20M int ??
         attributeIndices = device.createDeviceOnlyMappedBuffer(MAX_VTX * 4); // TODO 20M int ??
 
-        this.segments.setLimit(memory / (4L * this.vertexFormatSize));
+        this.segments.setLimit(MAX_VTX / 4);
         //Reserve index 0
         this.allocQuads(1);
     }

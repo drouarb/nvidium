@@ -170,19 +170,14 @@ public class SectionManager {
         {
             //Attempt to reuse the same memory
             terrainAddress = this.section2terrain.get(sectionKey);
-            if (terrainAddress != -1 && !this.terrainAreana.canReuse(terrainAddress, output.quads())) {
+            if (terrainAddress != -1 && !this.funnyArena.canReuse(terrainAddress, output.quads())) {
                 this.section2terrain.remove(sectionKey);
-                this.terrainAreana.free(terrainAddress);
                 this.funnyArena.free(terrainAddress);
                 terrainAddress = -1;
             }
 
             if (terrainAddress == -1) {
-                var funnyAddress = this.funnyArena.allocQuads(output.quads());
-                terrainAddress = this.terrainAreana.allocQuads(output.quads());
-                if (terrainAddress != funnyAddress) {
-                    throw new IllegalStateException("TerrainAddress: "  + terrainAddress + ", FunnyAddress: " + funnyAddress);
-                }
+                terrainAddress = this.funnyArena.allocQuads(output.quads());
             }
 
             if (terrainAddress == SegmentedManager.SIZE_LIMIT) {
@@ -197,10 +192,10 @@ public class SectionManager {
 
             this.section2terrain.put(sectionKey, terrainAddress);
 
-            long geometryUpload = terrainAreana.upload(uploadStream, terrainAddress);
-            MemoryUtil.memCopy(MemoryUtil.memAddress(output.geometry().getDirectBuffer()), geometryUpload, output.geometry().getLength());
+            //long geometryUpload = terrainAreana.upload(uploadStream, terrainAddress);
+            //MemoryUtil.memCopy(MemoryUtil.memAddress(output.geometry().getDirectBuffer()), geometryUpload, output.geometry().getLength());
 
-            geometryUpload = funnyArena.upload(terrainAddress);
+            long geometryUpload = funnyArena.upload(terrainAddress);
             MemoryUtil.memCopy(MemoryUtil.memAddress(output.geometry().getDirectBuffer()), geometryUpload, output.geometry().getLength());
         }
 
@@ -284,7 +279,6 @@ public class SectionManager {
         if (sectionIdx != -1) {
             int terrainIndex = this.section2terrain.remove(sectionKey);
             if (terrainIndex != -1) {
-                this.terrainAreana.free(terrainIndex);
                 this.funnyArena.free(terrainIndex);
             }
             int indexIdx = this.section2index.remove(sectionKey);
