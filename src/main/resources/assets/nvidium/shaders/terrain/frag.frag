@@ -149,13 +149,10 @@ void main() {
         vec2 du = dFdx(uvr);
         vec2 dv = dFdy(uvr);
     #else
-<<<<<<< HEAD
         float lodBias = hasMipping(V0)?0.0f:-4.0f;
         colour = texture(tex_diffuse, IN.uv, lodBias);
-=======
         vec2 du = dFdx(uv);
         vec2 dv = dFdy(uv);
->>>>>>> bdce1ba (Minecraft 1.21.11 & Sodium 0.8.2 support)
     #endif
         vec2 texelScreenSize = sqrt(du * du + dv * dv);
         colour = useRGSS() ? sampleRGSS(uv, du, dv, texelScreenSize) : sampleNearest(uv, du, dv, texelScreenSize);
