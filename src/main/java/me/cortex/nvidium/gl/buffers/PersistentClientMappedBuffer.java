@@ -4,6 +4,7 @@ package me.cortex.nvidium.gl.buffers;
 import me.cortex.nvidium.gl.GlObject;
 
 import static org.lwjgl.opengl.ARBDirectStateAccess.*;
+import static org.lwjgl.opengl.GL30.glBindBufferBase;
 import static org.lwjgl.opengl.GL30C.*;
 import static org.lwjgl.opengl.GL44.GL_CLIENT_STORAGE_BIT;
 import static org.lwjgl.opengl.GL44.GL_MAP_PERSISTENT_BIT;
@@ -40,5 +41,9 @@ public class PersistentClientMappedBuffer extends GlObject implements IClientMap
     @Override
     public long getSize() {
         return size;
+    }
+
+    public void bind(int target, int type) {
+        glBindBufferBase(type, target, id);
     }
 }

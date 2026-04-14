@@ -15,6 +15,19 @@
 layout(binding = 1) uniform sampler2D tex_light;
 
 #import <nvidium:occlusion/scene.glsl>
+
+layout(std430, binding=20) readonly buffer poolDataBuffer {
+    HashMapData pool[];
+};
+
+layout(std430, binding=21) readonly buffer vertexIndicesBuffer {
+    uint vertexIndices[];
+};
+
+layout(std430, binding=22) readonly buffer attributeIndicesBuffer {
+    uint attributeIndices[];
+};
+
 #import <nvidium:terrain/vertex_format/vertex_format.glsl>
 
 #ifdef RENDER_FOG
@@ -41,10 +54,6 @@ layout(location = 1) out Interpolants {
 #endif
 
 layout(location = 10) perprimitiveEXT out int PRIMITRASH[]; // Emulate gl_PrimitiveID since it seems broken on zink
-
-layout(std430, binding=9) readonly buffer terrainDataBuffer {
-    Vertex terrainData[];
-};
 
 #ifdef STATISTICS_CULL
 layout(std430, binding=13) buffer statBuffer {
@@ -89,15 +98,13 @@ uint getOffset() {
     return retval+gii;
 }
 
-vec4 transformVertex(Vertex V) {
+vec4 transformVertex(uint vId) {
     mat4 transformMat = transformationArray[task.transformationId];
-    vec3 pos = decodeVertexPosition(V)+task.origin;
+    vec3 pos = decodeVertexPosition(vId)+task.origin;
     return MVP*(transformMat * vec4(pos,1.0));
 }
 
-Vertex Vc;
 vec4 pVc;
-Vertex V;
 vec4 pV;
 
 void putVertex(uint id, Vertex V) {
@@ -126,14 +133,14 @@ void main() {
             triangle1 = (gl_LocalInvocationIndex & uint(1)) == 1;
 
             //Load corner point, alterenated w.r.t neighbor thread
-            Vc = terrainData[(quadId<<2)+(triangle1?2:0)];
+            uint VcId = vertexIndices[(quadId<<2)+(triangle1?2:0)];
 
             //Load our unique vertex V1 or V3 depending on triangle0
-            V = terrainData[(quadId<<2)+(triangle1?3:1)];
+            uint VId = vertexIndices[(quadId<<2)+(triangle1?3:1)];
 
             //Transform common and our vertices
-            pVc = transformVertex(Vc);
-            pV = transformVertex(V);
+            pVc = transformVertex(VcId);
+            pV = transformVertex(VId);
 
             draw = true;
             peerDraw = true;

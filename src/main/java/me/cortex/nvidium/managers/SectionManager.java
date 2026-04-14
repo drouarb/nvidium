@@ -8,6 +8,7 @@ import me.cortex.nvidium.gl.RenderDevice;
 import me.cortex.nvidium.sodiumCompat.INvidiumWorldRendererGetter;
 import me.cortex.nvidium.sodiumCompat.IRepackagedResult;
 import me.cortex.nvidium.util.BufferArena;
+import me.cortex.nvidium.util.FunnyBufferArena;
 import me.cortex.nvidium.util.SegmentedManager;
 import me.cortex.nvidium.util.UploadingBufferStream;
 import net.caffeinemc.mods.sodium.client.model.quad.properties.ModelQuadFacing;
@@ -37,7 +38,7 @@ public class SectionManager {
     private final Long2IntOpenHashMap section2index = new Long2IntOpenHashMap();
 
     public final UploadingBufferStream uploadStream;
-    public final BufferArena terrainAreana;
+    public final FunnyBufferArena terrainAreana;
     public final BufferArena translucencyIndexArena;
 
     private final Long2ObjectOpenHashMap<int[]> translucencyQuadCounts = new Long2ObjectOpenHashMap<int[]>();
@@ -52,7 +53,7 @@ public class SectionManager {
         this.device = device;
         this.uploadStream = uploadStream;
 
-        this.terrainAreana = new BufferArena(device, fallbackMemorySize, quadVertexSize);
+        this.terrainAreana = new FunnyBufferArena(device, fallbackMemorySize, quadVertexSize);
         // TODO adapt fallbackMemorySize
         this.translucencyIndexArena = new BufferArena(device, fallbackMemorySize, 1);
         this.regionManager = new RegionManager(device, maxRegions, maxRegions * 200, uploadStream, worldRenderer::enqueueRegionSort);
@@ -174,18 +175,19 @@ public class SectionManager {
             }
 
             if (terrainAddress == SegmentedManager.SIZE_LIMIT) {
+                /*
                 Nvidium.LOGGER.error("Terrain arena critically out of memory, expect issues with chunks!! " +
                         " quad_used: " + this.terrainAreana.getUsedMB() +
                         " physically used: " + this.terrainAreana.getMemoryUsed() +
                         " limit: " + ((INvidiumWorldRendererGetter)(SodiumWorldRenderer.instance())).getRenderer().getMaxGeometryMemory());
-
+                */
                 deleteSection(sectionKey);
                 return;
             }
 
             this.section2terrain.put(sectionKey, terrainAddress);
 
-            long geometryUpload = terrainAreana.upload(uploadStream, terrainAddress);
+            long geometryUpload = terrainAreana.upload(terrainAddress);
             MemoryUtil.memCopy(MemoryUtil.memAddress(output.geometry().getDirectBuffer()), geometryUpload, output.geometry().getLength());
         }
 

@@ -14,6 +14,19 @@ layout(binding = 0) uniform sampler2D tex_diffuse;
 layout(binding = 1) uniform sampler2D tex_light;
 
 #import <nvidium:occlusion/scene.glsl>
+
+layout(std430, binding=20) readonly buffer poolDataBuffer {
+    HashMapData pool[];
+};
+
+layout(std430, binding=21) readonly buffer vertexIndicesBuffer {
+    uint vertexIndices[];
+};
+
+layout(std430, binding=22) readonly buffer attributeIndicesBuffer {
+    uint attributeIndices[];
+};
+
 #import <nvidium:terrain/vertex_format/vertex_format.glsl>
 
 #ifdef RENDER_FOG
@@ -48,9 +61,9 @@ vec3 barycoord;
 
 layout(location = 10) perprimitiveEXT in int PRIMITRASH;
 
-Vertex V0;
-Vertex Vp;
-Vertex V2;
+uint V0;
+uint Vp;
+uint V2;
 #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
 void computeOutputColour(inout vec3 colour) {
     vec3 multiplier = gl_BaryCoordNV.x*computeMultiplier(V0) + gl_BaryCoordNV.y*computeMultiplier(Vp) + gl_BaryCoordNV.z*computeMultiplier(V2);
@@ -131,9 +144,9 @@ void main() {
     uint quadId = uint(PRIMITRASH)>>1;
     bool triangle0 = uint((PRIMITRASH)&1)==0;
     uvec3 TRI_INDICIES = triangle0?uvec3(0,1,2):uvec3(2,3,0);
-    V0 = terrainData[(quadId<<2)+TRI_INDICIES.x];
-    Vp = terrainData[(quadId<<2)+TRI_INDICIES.y];
-    V2 = terrainData[(quadId<<2)+TRI_INDICIES.z];
+    V0 = attributeIndices[(quadId<<2)+TRI_INDICIES.x];
+    Vp = attributeIndices[(quadId<<2)+TRI_INDICIES.y];
+    V2 = attributeIndices[(quadId<<2)+TRI_INDICIES.z];
 
     #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
     #ifdef EMULATE_BARY
@@ -157,11 +170,9 @@ void main() {
         vec2 texelScreenSize = sqrt(du * du + dv * dv);
         colour = useRGSS() ? sampleRGSS(uv, du, dv, texelScreenSize) : sampleNearest(uv, du, dv, texelScreenSize);
 
-    #ifndef TRANSLUCENT_PASS
-        uint alphaCutoff = rawVertexAlphaCutoff(V0);
-        if (colour.a < getVertexAlphaCutoff(alphaCutoff)) discard;
-        colour.a = 1;
-    #endif
+    uint alphaCutoff = rawVertexAlphaCutoff(V0);
+    if (colour.a < getVertexAlphaCutoff(alphaCutoff))
+        discard;
 
     #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
         computeOutputColour(colour.rgb);

@@ -84,9 +84,10 @@ public class NvidiumWorldRenderer {
     public void renderFrame(TerrainRenderPass pass, Viewport viewport, FogParameters fogParameters, ChunkRenderMatrices matrices, double x, double y, double z, GpuSampler terrainSampler) {
         renderPipeline.renderFrame(pass, viewport, fogParameters, matrices, x, y, z, terrainSampler);
 
+        /*
         while (sectionManager.terrainAreana.getUsedMB() > (max_geometry_memory - 100)) {
             renderPipeline.removeARegion();
-        }
+        }*/
 
         if (Nvidium.SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER && (System.currentTimeMillis() - last_sample_time) > 60000) {
             last_sample_time = System.currentTimeMillis();
@@ -123,9 +124,9 @@ public class NvidiumWorldRenderer {
          */
         debugInfo.add("Mem" + (Nvidium.SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER?"":" (fallback)") + ": " +
                 (Nvidium.SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER?
-                        this.sectionManager.terrainAreana.getAllocatedMB() + "+" + this.sectionManager.translucencyIndexArena.getAllocatedMB() :
-                        this.sectionManager.terrainAreana.getUsedMB() + "+" + this.sectionManager.translucencyIndexArena.getUsedMB())
-                + "/"+ this.max_geometry_memory + String.format(", F: %.2f", sectionManager.terrainAreana.getFragmentation()*100));
+                        this.sectionManager.translucencyIndexArena.getAllocatedMB() + "+" + this.sectionManager.translucencyIndexArena.getAllocatedMB() :
+                        this.sectionManager.translucencyIndexArena.getUsedMB() + "+" + this.sectionManager.translucencyIndexArena.getUsedMB())
+                + "/"+ this.max_geometry_memory + String.format(", F: %.2f", sectionManager.translucencyIndexArena.getFragmentation()*100));
         debugInfo.add("Regions: " + sectionManager.getRegionManager().regionCount() + "/" + sectionManager.getRegionManager().maxRegions());
         if (this.asyncChunkTracker != null) {
             debugInfo.add("A-BFS: " + asyncChunkTracker.getIterationTime() + " Q: " + Arrays.toString(this.asyncChunkTracker.getBuildQueueSizes()));//Async BFS iteration time:, Build queue sizes:
@@ -136,7 +137,7 @@ public class NvidiumWorldRenderer {
 
     private void update_allowed_memory() {
         if (Nvidium.config.automatic_memory) {
-            max_geometry_memory = (glGetInteger(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX) / 1024) + (sectionManager==null?0:sectionManager.terrainAreana.getMemoryUsed()/(1024*1024));
+            max_geometry_memory = (glGetInteger(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX) / 1024) + (sectionManager==null?0:sectionManager.translucencyIndexArena.getMemoryUsed()/(1024*1024));
             max_geometry_memory -= 1024;//Minus 1gb of vram
             max_geometry_memory = Math.max(2048, max_geometry_memory);//Minimum 2 gb of vram
         } else {

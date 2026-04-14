@@ -12,6 +12,7 @@ import static org.lwjgl.opengl.GL11C.GL_EXTENSIONS;
 import static org.lwjgl.opengl.GL11C.glGetInteger;
 import static org.lwjgl.opengl.GL30C.GL_NUM_EXTENSIONS;
 import static org.lwjgl.opengl.GL30C.glGetStringi;
+import static org.lwjgl.opengl.KHRShaderSubgroup.GL_SUBGROUP_SIZE_KHR;
 
 public class Nvidium {
     public static final String MOD_VERSION;
@@ -47,6 +48,9 @@ public class Nvidium {
             String ext = glGetStringi(GL_EXTENSIONS, i);
             LOGGER.info(ext);
         }
+
+        int subgroupSize = glGetInteger(GL_SUBGROUP_SIZE_KHR);
+        System.out.println("Subgroup size = " + subgroupSize);
 
         supported = true;
         IS_COMPATIBLE = supported;

@@ -12,6 +12,19 @@
 layout(binding = 1) uniform sampler2D tex_light;
 
 #import <nvidium:occlusion/scene.glsl>
+
+layout(std430, binding=20) readonly buffer poolDataBuffer {
+    HashMapData pool[];
+};
+
+layout(std430, binding=21) readonly buffer vertexIndicesBuffer {
+    uint vertexIndices[];
+};
+
+layout(std430, binding=22) readonly buffer attributeIndicesBuffer {
+    uint attributeIndices[];
+};
+
 #import <nvidium:terrain/vertex_format/vertex_format.glsl>
 
 #ifdef RENDER_FOG
@@ -39,10 +52,6 @@ struct Task {
 taskPayloadSharedEXT Task task;
 
 layout(location = 10) perprimitiveEXT out int PRIMITRASH[];
-
-layout(std430, binding=9) readonly buffer terrainDataBuffer {
-    Vertex terrainData[];
-};
 
 #ifdef TRANSLUCENCY_SORTING_SODIUM
 layout(std430, binding=10) buffer translucencyIndexDataBuffer {
@@ -72,9 +81,9 @@ void emitQuadIndicies() {
 }
 
 void emitVertex(uint vertexBaseId, uint innerId) {
-    Vertex V = terrainData[vertexBaseId + innerId];
+    uint vId = vertexIndices[vertexBaseId + innerId];
     uint outId = (gl_LocalInvocationID.x<<2)+innerId;
-    vec3 pos = decodeVertexPosition(V)+task.originAndBaseData.xyz;
+    vec3 pos = decodeVertexPosition(vId)+task.originAndBaseData.xyz;
     gl_MeshVerticesEXT[outId].gl_Position = MVP*vec4(pos,1.0);
 
 #ifndef USE_NV_FRAGMENT_SHADER_BARYCENTRIC

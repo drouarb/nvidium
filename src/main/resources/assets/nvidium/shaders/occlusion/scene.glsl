@@ -4,13 +4,15 @@ struct Vertex {
     uint lo;
     uint color;
 
-    uint16_t u;
-    uint16_t v;
+    uint uv;
 
+    /*
     uint8_t blockLight;
     uint8_t skyLight;
     uint8_t material;
     uint8_t section;
+    */
+    uint data;
 };
 #else
 #define Vertex uvec4
@@ -30,6 +32,20 @@ struct Section {
 struct Region {
     uint64_t a;
     uint64_t b;
+};
+
+struct UploadControl {
+    uint uploadStart;
+    uint quadCount;
+    uint vtxOutputIdx;
+};
+
+struct HashMapData {
+    uint key;
+    uint count;
+    uint x;
+    uint y;
+    uint z;
 };
 
 ivec3 unpackRegionSize(Region region) {

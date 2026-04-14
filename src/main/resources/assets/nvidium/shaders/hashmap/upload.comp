@@ -1,0 +1,147 @@
+#version 460
+#extension GL_ARB_shading_language_include : enable
+#extension GL_ARB_gpu_shader_int64 : require
+#extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_KHR_shader_subgroup_vote : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+
+#import <nvidium:occlusion/scene.glsl>
+
+layout(local_size_x = 64, local_size_y = 4) in;
+
+layout(std430, binding=13) buffer statBuffer {
+    uint statistics_buffer[];
+};
+
+layout(std430, binding=20) buffer poolDataBuffer {
+    HashMapData pool[];
+};
+
+layout(std430, binding=21) buffer vertexIndicesBuffer {
+    uint vertexIndices[];
+};
+
+layout(std430, binding=22) buffer attributeIndicesBuffer {
+    uint attributeIndices[];
+};
+
+layout(std430, binding=23) readonly buffer controlBBuffer {
+    UploadControl controlBuffer[];
+};
+
+layout(std430, binding=24) readonly buffer uploadBBuffer {
+    Vertex uploadBuffer[];
+};
+
+layout(std430, binding=25) buffer rawPoolDataBuffer {
+    uint rawPool[];
+};
+
+uint POOL_SIZE = 60000000;
+
+// from https://gist.github.com/mpottinger/54d99732d4831d8137d178b4a6007d1a
+uint murmurHash13(uvec3 src) {
+    const uint M = 0x5bd1e995u;
+    uint h = 1190494759u;
+    src *= M; src ^= src>>24u; src *= M;
+    h *= M; h ^= src.x; h *= M; h ^= src.y; h *= M; h ^= src.z;
+    h ^= h>>13u; h *= M; h ^= h>>15u;
+    return h;
+}
+
+// 0 => EMPTY
+// 1 => RESERVED
+// 2 => TOMBSTONE
+
+bool insertIntoPool(inout uvec3 data, uint key, uint slotIdx) {
+    uint prev = atomicCompSwap(rawPool[slotIdx * 5], 0u, 1u);
+    if (prev != 0u) {
+        prev = atomicCompSwap(rawPool[slotIdx * 5], 2u, 1u);
+        if (prev != 2u) {
+            return false;
+        }
+    }
+
+    pool[slotIdx].count = 1u;
+    pool[slotIdx].x = data.x;
+    pool[slotIdx].y = data.y;
+    pool[slotIdx].z = data.z;
+    pool[slotIdx].key = key;
+    return true;
+}
+
+uint poolInject(inout uvec3 data) {
+    uint key = murmurHash13(data);
+    if (key < 3) {
+        key += 3;
+    }
+
+    uint i = 0;
+    while (true) {
+        uint slotIdx = (key + (i * 32) + gl_SubgroupInvocationID) % POOL_SIZE;
+        bool empty = pool[slotIdx].key == 0;
+        bool match = pool[slotIdx].key == key &&
+        pool[slotIdx].x == data.x &&
+        pool[slotIdx].y == data.y &&
+        pool[slotIdx].z == data.z
+        ;
+
+        uvec4 matchBallot = subgroupBallot(match);
+        if (!all(equal(matchBallot, uvec4(0)))) {
+            uint leader = subgroupBallotFindLSB(matchBallot);
+            slotIdx = subgroupBroadcast(slotIdx, leader);
+            if (subgroupElect()) {
+                atomicAdd(statistics_buffer[4], 1);
+                atomicAdd(rawPool[(slotIdx * 5) + 1], 1);
+            }
+            return slotIdx;
+        }
+
+        if (subgroupAny(empty)) {
+            break;
+        }
+        i++;
+    }
+
+    while (true) {
+        uint slotIdx = (key + (i * 32) + gl_SubgroupInvocationID) % POOL_SIZE;
+        bool canUse = pool[slotIdx].key == 0 || pool[slotIdx].key == 2;
+        uvec4 useBallot = subgroupBallot(canUse);
+        if (!all(equal(useBallot, uvec4(0)))) {
+            bool inserted = false;
+            if (subgroupBallotFindLSB(useBallot) == gl_SubgroupInvocationID) {
+                inserted = insertIntoPool(data, key, slotIdx);
+            }
+
+            if (subgroupAny(inserted)) {
+                if (subgroupElect())
+                atomicAdd(statistics_buffer[5], 1);
+                return subgroupAdd(inserted ? slotIdx : 0);
+            }
+        } else {
+            i++;
+        }
+    }
+
+    return 0;
+}
+
+void main() {
+    UploadControl control = controlBuffer[gl_WorkGroupID.x];
+    for (int i = 0; i < control.quadCount; i++) {
+        Vertex v = uploadBuffer[control.uploadStart + i * 4 + gl_LocalInvocationID.y];
+
+        uvec3 vtx = uvec3(v.hi, v.lo, 0);
+        uint vtxIdx = poolInject(vtx);
+        if (subgroupElect()) {
+            vertexIndices[control.vtxOutputIdx + i * 4 + gl_LocalInvocationID.y] = vtxIdx;
+        }
+
+        uvec3 attr = uvec3(v.color, v.uv, v.data);
+        uint attrIdx = poolInject(attr);
+        if (subgroupElect()) {
+            attributeIndices[control.vtxOutputIdx + i * 4 + gl_LocalInvocationID.y] = attrIdx;
+        }
+        memoryBarrierBuffer();
+    }
+}

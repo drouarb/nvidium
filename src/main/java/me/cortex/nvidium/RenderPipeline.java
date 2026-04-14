@@ -29,8 +29,10 @@ import org.lwjgl.opengl.GL45;
 import org.lwjgl.system.MemoryUtil;
 
 import java.lang.Math;
+import java.text.NumberFormat;
 import java.util.BitSet;
 import java.util.List;
+import java.util.Locale;
 
 import static me.cortex.nvidium.gl.buffers.PersistentSparseAddressableBuffer.alignUp;
 import static org.lwjgl.opengl.ARBDirectStateAccess.*;
@@ -118,6 +120,9 @@ public class RenderPipeline {
         public int sectionCount;
         public int quadCount;
         public int cullCount;
+
+        public int match;
+        public int insert;
     }
 
     private final Statistics stats;
@@ -157,7 +162,7 @@ public class RenderPipeline {
         regionVisibilityTracker = new BitSet(maxRegions);
         regionVisibilityTracking = new RegionVisibilityTracker(downloadStream, maxRegions);
 
-        statisticsBuffer = new DeviceOnlyMappedBuffer(4*4, GL_SHADER_STORAGE_BUFFER, "StatisticsBuffer");
+        statisticsBuffer = new DeviceOnlyMappedBuffer(4*6, GL_SHADER_STORAGE_BUFFER, "StatisticsBuffer");
         stats = new Statistics();
 
 
@@ -332,7 +337,7 @@ public class RenderPipeline {
             addr += 8;
             MemoryUtil.memPutLong(addr, regionSortingList.getDeviceAddress());
             addr += 8;
-            MemoryUtil.memPutLong(addr, sectionManager.terrainAreana.buffer.getDeviceAddress());
+            MemoryUtil.memPutLong(addr, sectionManager.translucencyIndexArena.buffer.getDeviceAddress());
             addr += 8;
             MemoryUtil.memPutLong(addr, sectionManager.translucencyIndexArena.buffer.getDeviceAddress());
             addr += 8;
@@ -389,6 +394,7 @@ public class RenderPipeline {
 
         sectionManager.commitChanges();//Commit all uploads done to the terrain and meta data
         uploadStream.commit();
+        sectionManager.terrainAreana.commit();
 
         TickableManager.TickAll();
 
@@ -421,13 +427,17 @@ public class RenderPipeline {
         translucencyCommandBuffer.bind(7);
         temporalCommandBuffer.bind(15);
         regionSortingList.bind(8);
-        sectionManager.terrainAreana.buffer.bind(9);
+        //sectionManager.terrainAreana.buffer.bind(9);
         sectionManager.translucencyIndexArena.buffer.bind(10);
 
         transformationArray.bind(11);
         originOffsetArray.bind(12);
         statisticsBuffer.bind(13);
         sectionIndices.bind(14);
+
+        sectionManager.terrainAreana.pool.bind(20);
+        sectionManager.terrainAreana.vertexIndices.bind(21);
+        sectionManager.terrainAreana.attributeIndices.bind(22);
 
         //glBufferAddressRangeNV(GL_UNIFORM_BUFFER_ADDRESS_NV, 0, sceneUniform.getDeviceAddress(), SCENE_SIZE);
 
@@ -552,10 +562,14 @@ public class RenderPipeline {
         sectionManager.getRegionManager().getSectionBuffer().bind(3);
         sectionVisibility.bind(5);
         translucencyCommandBuffer.bind(7);
-        sectionManager.terrainAreana.buffer.bind(9);
+        //sectionManager.terrainAreana.buffer.bind(9);
         sectionManager.translucencyIndexArena.buffer.bind(10);
         statisticsBuffer.bind(13);
         sectionIndices.bind(14);
+
+        sectionManager.terrainAreana.pool.bind(20);
+        sectionManager.terrainAreana.vertexIndices.bind(21);
+        sectionManager.terrainAreana.attributeIndices.bind(22);
 
         //Translucency sorting
         {
@@ -573,11 +587,14 @@ public class RenderPipeline {
 
         //Download statistics
         if (Nvidium.config.statistics_level.ordinal() > StatisticsLoggingLevel.FRUSTUM.ordinal()){
-            downloadStream.download(statisticsBuffer, 0, 4*4, (addr)-> {
+            downloadStream.download(statisticsBuffer, 0, 4*6, (addr)-> {
                 stats.regionCount = MemoryUtil.memGetInt(addr);
                 stats.sectionCount = MemoryUtil.memGetInt(addr+4);
                 stats.quadCount = MemoryUtil.memGetInt(addr+8);
                 stats.cullCount = MemoryUtil.memGetInt(addr+12);
+
+                stats.match = MemoryUtil.memGetInt(addr+16);
+                stats.insert = MemoryUtil.memGetInt(addr+20);
             });
         }
 
@@ -651,6 +668,11 @@ public class RenderPipeline {
         if (Nvidium.config.translucency_sorting_level != TranslucencySortingLevel.NONE) {
             info.add("SectionSorter time: " +  String.format("%.03f", regionSectionSorter.getTiming().getAverageMs()) + "ms");
         }
+
+        info.add("CompUploader time: " +  String.format("%.03f", sectionManager.terrainAreana.uploader.getTiming().getAverageMs()) + "ms");
+        NumberFormat fmt = NumberFormat.getCompactNumberInstance(Locale.US, NumberFormat.Style.SHORT);
+        fmt.setMaximumFractionDigits(2);
+        info.add("Match: " + fmt.format(stats.match) + " Insert: " + fmt.format(stats.insert) + " Total Quads: " + fmt.format(sectionManager.terrainAreana.totalQuads));
     }
 
     public void reloadShaders() {
