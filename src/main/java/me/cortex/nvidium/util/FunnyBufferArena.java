@@ -37,7 +37,7 @@ public class FunnyBufferArena {
 
     private final long POOL_SIZE = 60_000_000;
     private final long CONTROL_SIZE = 12;
-    private final long MAX_VTX = 1_000_000_000;
+    private final long MAX_VTX = 600_000_000;
     private final long UPLOAD_ARENA_SIZE = 1_000_000; // MAX QUAD TO UPLOAD
     private final long HASHMAP_DATA_SIZE = 20; // 8 structure + 12 data
 
