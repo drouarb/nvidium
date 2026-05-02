@@ -22,6 +22,7 @@ taskNV out Task {
     //uint64_t bitcheck[4];//TODO: MAYBE DO THIS, each bit is whether there a section at that index, doing so is faster than pulling metadata to check if a section is valid or not
     mat4 regionTransform;
     ivec3 chunkShift;
+    uint sectionCount;
 };
 
 void main() {
@@ -56,5 +57,6 @@ void main() {
 
     chunkShift = (-chunkPosition.xyz) - unpackOriginOffsetId(unpackRegionTransformId(data));
 
-    gl_TaskCountNV = count;
+    sectionCount = uint(count);
+    gl_TaskCountNV = (count + 3) / 4;
 }
