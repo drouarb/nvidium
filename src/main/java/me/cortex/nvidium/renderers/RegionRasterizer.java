@@ -17,7 +17,7 @@ public class RegionRasterizer extends Phase {
     public void raster(int regionCount) {
         shader.bind();
         timing.marker();
-        glDrawMeshTasksNV(0,regionCount);
+        glDrawMeshTasksNV(0, (regionCount + 3) / 4);
         timing.marker();
         timing.tick();
     }
