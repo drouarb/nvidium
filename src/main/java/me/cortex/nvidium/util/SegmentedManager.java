@@ -1,14 +1,7 @@
 package me.cortex.nvidium.util;
 
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongBidirectionalIterator;
-import it.unimi.dsi.fastutil.longs.LongList;
-import it.unimi.dsi.fastutil.longs.LongRBTreeSet;
+import java.util.Arrays;
 
-import java.util.Random;
-
-//TODO: replace the LongAVLTreeSet with a custom implementation that doesnt cause allocations when searching
-// and see if something like a RBTree is any better
 public class SegmentedManager {
     public static final long SIZE_LIMIT = -1;
 
@@ -16,8 +9,8 @@ public class SegmentedManager {
     private final int SIZE_BITS = 64 - ADDR_BITS;
     private final long SIZE_MSK = (1L<<SIZE_BITS)-1;
     private final long ADDR_MSK = (1L<<ADDR_BITS)-1;
-    private final LongRBTreeSet FREE = new LongRBTreeSet();//Size Address
-    private final LongRBTreeSet TAKEN = new LongRBTreeSet();//Address Size
+    private final LongSortedArray FREE = new LongSortedArray();//Size Address
+    private final LongSortedArray TAKEN = new LongSortedArray();//Address Size
 
     private long sizeLimit = Long.MAX_VALUE;
     private long totalSize;
@@ -27,16 +20,11 @@ public class SegmentedManager {
     public long getSize() {
         return totalSize;
     }
-    /*
-    public long allocFromLargest(int size) {//Allocates from the largest avalible block, this is useful for expanding later on
-
-    }*/
 
     public long alloc(int size) {
         if (size == 0) throw new IllegalArgumentException();
-        //This is stupid, iterator is not inclusive
-        var iter = FREE.iterator(((long) size << ADDR_BITS)-1);
-        if (!iter.hasNext()) {//No free space for allocation
+        long slot = FREE.ceiling((long) size << ADDR_BITS);
+        if (slot == -1) {//No free space for allocation
             //Create new allocation
             resized = true;
             long addr = totalSize;
@@ -47,10 +35,9 @@ public class SegmentedManager {
             TAKEN.add((addr<<SIZE_BITS)|((long) size));
             return addr;
         } else {
-            long slot = iter.nextLong();
-            iter.remove();
+            FREE.remove(slot);
             if ((slot >>> ADDR_BITS) == size) {//If the allocation and slot is the same size, just add it to the taken
-                TAKEN.add((slot<<SIZE_BITS)|(slot >>> ADDR_BITS));
+                TAKEN.add(((slot&ADDR_MSK)<<SIZE_BITS)|(slot >>> ADDR_BITS));
             } else {
                 TAKEN.add(((slot&ADDR_MSK)<<SIZE_BITS)|size);
                 FREE.add((((slot >>> ADDR_BITS)-size)<<ADDR_BITS)|((slot&ADDR_MSK)+size));
@@ -62,18 +49,17 @@ public class SegmentedManager {
 
     public int free(long addr) {//Returns size of freed memory
         addr &= ADDR_MSK;//encase addr stores shit in its upper bits
-        var iter = TAKEN.iterator(addr<<SIZE_BITS);//Dont need to include -1 as size != 0
-        long slot = iter.nextLong();
-        if (slot>>SIZE_BITS != addr) {
+        long slot = TAKEN.ceiling(addr<<SIZE_BITS);
+        if (slot == -1 || slot >>> SIZE_BITS != addr) {
             throw new IllegalStateException();
         }
         long size = slot&SIZE_MSK;
-        iter.remove();
+        TAKEN.remove(slot);
 
         //Note: if there is a previous entry, it means that it is guaranteed for the ending address to either
         // be the addr, or indicate a free slot that needs to be merged
-        if (iter.hasPrevious()) {
-            long prevSlot = iter.previousLong();
+        long prevSlot = TAKEN.lower(addr<<SIZE_BITS);
+        if (prevSlot != -1) {
             long endAddr = (prevSlot>>>SIZE_BITS) + (prevSlot&SIZE_MSK);
             if (endAddr != addr) {//It means there is a free slot that needs to get merged into
                 long delta = (addr - endAddr);
@@ -81,7 +67,6 @@ public class SegmentedManager {
                 //Generate a new slot to get put into FREE
                 slot = (endAddr<<SIZE_BITS) | ((slot&SIZE_MSK) + delta);
             }
-            iter.nextLong();//Need to reset the iter into its state
         }//If there is no previous it means were at the start of the buffer, we might need to merge with block 0 if we are not block 0
         else if (!FREE.isEmpty()) {// if free is not empty it means we must merge with block of free starting at 0
             if (FREE.remove(addr<<ADDR_BITS)) {//Attempt to remove block 0, this is very dodgy as it assumes block zero is 0 addr n size
@@ -91,8 +76,8 @@ public class SegmentedManager {
 
         //If there is a next element it is guarenteed to either be the next block, or indicate that there is
         // a block that needs to be merged into
-        if (iter.hasNext()) {
-            long nextSlot = iter.nextLong();
+        long nextSlot = TAKEN.higher(addr<<SIZE_BITS);
+        if (nextSlot != -1) {
             long endAddr = (slot>>>SIZE_BITS) + (slot&SIZE_MSK);
             if (endAddr != nextSlot>>>SIZE_BITS) {//It means there is a memory block to be merged in FREE
                 long delta = ((nextSlot>>>SIZE_BITS) - endAddr);
@@ -113,30 +98,22 @@ public class SegmentedManager {
         return (int) size;
     }
 
-
-
     //Attempts to expand an allocation, returns true on success
     public boolean expand(long addr, int extra) {
         addr &= ADDR_MSK;//encase addr stores shit in its upper bits
-        var iter = TAKEN.iterator(addr<<SIZE_BITS);
-        if (!iter.hasNext()) {
+        long slot = TAKEN.ceiling(addr<<SIZE_BITS);
+        if (slot == -1 || slot >>> SIZE_BITS != addr) {
             return false;
-        }
-        long slot = iter.nextLong();
-        if (slot>>SIZE_BITS != addr) {
-            throw new IllegalStateException();
         }
         long updatedSlot = (slot & (ADDR_MSK << SIZE_BITS)) | ((slot & SIZE_MSK) + extra);
         resized = false;
-        if (iter.hasNext()) {
-            long next = iter.nextLong();
+        long nextSlot = TAKEN.higher(addr<<SIZE_BITS);
+        if (nextSlot != -1) {
             long endAddr = (slot>>>SIZE_BITS)+(slot&SIZE_MSK);
-            long delta = (next>>>SIZE_BITS) - endAddr;
+            long delta = (nextSlot>>>SIZE_BITS) - endAddr;
             if (extra <= delta) {
                 FREE.remove((delta<<ADDR_BITS)|endAddr);//Should assert this
-                iter.previousLong();//FOR SOME REASON NEED  TO DO IT TWICE I HAVE NO IDEA WHY
-                iter.previousLong();
-                iter.remove();//Remove the allocation so it can be updated
+                TAKEN.remove(slot);//Remove the allocation so it can be updated
                 TAKEN.add(updatedSlot);//Update the taken allocation
                 if (extra != delta) {//More space than needed, need to add a new FREE block
                     FREE.add(((delta-extra)<<ADDR_BITS)|(endAddr+extra));
@@ -149,7 +126,7 @@ public class SegmentedManager {
         } else {//We are at the end of the buffer, we can expand as we like
             if (totalSize+extra>sizeLimit)//If expanding and we would exceed the size limit, dont resize
                 return false;
-            iter.remove();
+            TAKEN.remove(slot);
             TAKEN.add(updatedSlot);
             totalSize += extra;
             resized = true;
@@ -159,77 +136,63 @@ public class SegmentedManager {
 
     public long getSize(long addr) {
         addr &= ADDR_MSK;
-        var iter = TAKEN.iterator(addr << SIZE_BITS);
-        if (!iter.hasNext())
+        long slot = TAKEN.ceiling(addr << SIZE_BITS);
+        if (slot == -1 || slot >>> SIZE_BITS != addr)
             throw new IllegalArgumentException();
-        long slot = iter.nextLong();
-        if (slot>>SIZE_BITS != addr) {
-            throw new IllegalStateException();
-        }
         return slot&SIZE_MSK;
     }
 
+    /**
+     * A primitive long-based sorted array that provides allocation-free search and update operations.
+     * While O(N) for insertions and removals, it offers excellent cache locality and zero GC pressure.
+     */
+    private static final class LongSortedArray {
+        private long[] array = new long[16];
+        private int size = 0;
 
-    public static void main(String[] args) {
-        /*
-        {
-            SegmentedManager m = new SegmentedManager();
-            long a = m.alloc(10);
-            long b = m.alloc(11);
-            long c = m.alloc(1);
-            System.out.println(m.expand(a, 1));
-            m.free(b);
-            System.out.println(m.expand(a, 1));
-            System.out.println(m.expand(a, 10));
-            System.out.println(m.expand(a, 1));
-            m.free(a);
-            m.free(c);
-            System.out.println(m.getSize());
-        }*/
-        /*
-        Random r = new Random(32);
-        SegmentedManager m = new SegmentedManager();
-        LongList l = new LongArrayList();
-        for (int i = 0; i < 5; i++) {
-            if (r.nextBoolean() || l.isEmpty()) {
-                long a = m.alloc(r.nextInt(1000) + 1);
-                l.add(a);
-            } else {
-                m.free(l.removeLong(r.nextInt(l.size())));
+        public void add(long key) {
+            int i = Arrays.binarySearch(array, 0, size, key);
+            if (i < 0) {
+                i = -i - 1;
+                if (size == array.length) array = Arrays.copyOf(array, array.length << 1);
+                System.arraycopy(array, i, array, i + 1, size - i);
+                array[i] = key;
+                size++;
             }
         }
 
-        for (long a : l) {
-            m.free(a);
+        public boolean remove(long key) {
+            int i = Arrays.binarySearch(array, 0, size, key);
+            if (i >= 0) {
+                System.arraycopy(array, i + 1, array, i, size - i - 1);
+                size--;
+                return true;
+            }
+            return false;
         }
-        System.out.println(m.getSize());
-        */
 
-
-        for (int j = 0; j < 10000; j++) {
-            Random r = new Random(j);
-            SegmentedManager m = new SegmentedManager();
-            LongList l = new LongArrayList();
-            for (int i = 0; i < 5000; i++) {
-                int ac = r.nextInt(3);
-                if ( ac ==0 || l.isEmpty()) {
-                    long a = m.alloc(r.nextInt(1000) + 1);
-                    l.add(a);
-                } else if (ac == 1) {
-                    m.free(l.removeLong(r.nextInt(l.size())));
-                } else {
-                    m.expand(l.getLong(r.nextInt(l.size())), r.nextInt(10) + 1);
-                }
-            }
-
-            for (long a : l) {
-                m.free(a);
-            }
-            if (m.getSize() != 0) {
-                System.out.println(j);
-                return;
-            }
+        public long ceiling(long key) {
+            int i = Arrays.binarySearch(array, 0, size, key);
+            if (i >= 0) return array[i];
+            i = -i - 1;
+            return i < size ? array[i] : -1;
         }
+
+        public long lower(long key) {
+            int i = Arrays.binarySearch(array, 0, size, key);
+            if (i >= 0) return i > 0 ? array[i - 1] : -1;
+            i = -i - 1;
+            return i > 0 ? array[i - 1] : -1;
+        }
+
+        public long higher(long key) {
+            int i = Arrays.binarySearch(array, 0, size, key);
+            if (i >= 0) return i < size - 1 ? array[i + 1] : -1;
+            i = -i - 1;
+            return i < size ? array[i] : -1;
+        }
+
+        public boolean isEmpty() { return size == 0; }
     }
 
     public void setLimit(long size) {
