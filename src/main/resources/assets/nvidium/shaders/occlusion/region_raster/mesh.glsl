@@ -46,6 +46,7 @@ void main() {
     uint visibilityIndex = gl_WorkGroupID.x * 4 + batchIdx;
 
     if (visibilityIndex >= uint(regionCount)) {
+        if (tid == 0) regionVisibility[visibilityIndex] = uint8_t(0);
         gl_MeshVerticesNV[gl_LocalInvocationID.x].gl_Position = vec4(0.0);
         emitIndicies(batchIdx, 0);
         if (tid < 4) emitParital(batchIdx, 0);
