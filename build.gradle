@@ -83,21 +83,21 @@ dependencies {
         officialMojangMappings()
         parchment("org.parchmentmc.data:parchment-${project.minecraft_version}:${project.parchmentmc_mappings}@zip")
     }
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
     // Fabric API
-    implementation(fabricApi.module("fabric-api-base", project.fabric_api_version))
-    implementation(fabricApi.module("fabric-block-view-api-v2", project.fabric_api_version))
-    implementation(fabricApi.module("fabric-rendering-fluids-v1", project.fabric_api_version))
-    implementation(fabricApi.module("fabric-renderer-api-v1", project.fabric_api_version))
+    modImplementation(fabricApi.module("fabric-api-base", project.fabric_api_version))
+    modImplementation(fabricApi.module("fabric-block-view-api-v2", project.fabric_api_version))
+    modImplementation(fabricApi.module("fabric-rendering-fluids-v1", project.fabric_api_version))
+    modImplementation(fabricApi.module("fabric-renderer-api-v1", project.fabric_api_version))
 
-    implementation(fabricApi.module("fabric-resource-loader-v0", project.fabric_api_version))
+    modImplementation(fabricApi.module("fabric-resource-loader-v0", project.fabric_api_version))
 
-    implementation("net.caffeinemc:sodium-fabric:0.8.11+mc1.21.11")
-    implementation("net.caffeinemc:sodium-fabric-api:0.8.11+mc1.21.11")
+    modImplementation("net.caffeinemc:sodium-fabric:0.8.11+mc1.21.11")
+    modImplementation("net.caffeinemc:sodium-fabric-api:0.8.11+mc1.21.11")
 
     //modImplementation "maven.modrinth:c2me-fabric:0.2.0+alpha.10.49+1.19.4"
     //modImplementation "maven.modrinth:chunks-fade-in:v1.0.3-1.19.4"
     //modImplementation "maven.modrinth:immersiveportals:v2.7.3-mc1.19.4"
-    compileOnly("maven.modrinth:iris:1.10.7+1.21.11-fabric")
+    modCompileOnly("maven.modrinth:iris:1.10.7+1.21.11-fabric")
 }
