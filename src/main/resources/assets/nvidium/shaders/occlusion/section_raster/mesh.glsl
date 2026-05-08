@@ -52,9 +52,15 @@ void emitParital(uint batchIdx, int visIndex) {
 
 //TODO: Check if the section can be culled via fog
 void main() {
+    uint baseIdx = gl_WorkGroupID.x * 4;
+    if (baseIdx >= sectionCount) {
+        if (gl_LocalInvocationID.x == 0) gl_PrimitiveCountNV = 0;
+        return;
+    }
+
     uint batchIdx = gl_LocalInvocationID.x / 8;
     uint tid = gl_LocalInvocationID.x % 8;
-    uint currentSectionIdx = gl_WorkGroupID.x * 4 + batchIdx;
+    uint currentSectionIdx = baseIdx + batchIdx;
     
     if (currentSectionIdx >= sectionCount) {
         if (tid == 0) sectionVisibility[int(_visOutBase|currentSectionIdx)] = uint8_t(0);

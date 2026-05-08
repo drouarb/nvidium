@@ -41,9 +41,15 @@ void emitParital(uint batchIdx, int visIndex) {
 }
 
 void main() {
+    uint baseIdx = gl_WorkGroupID.x * 4;
+    if (baseIdx >= uint(regionCount)) {
+        if (gl_LocalInvocationID.x == 0) gl_PrimitiveCountNV = 0;
+        return;
+    }
+
     uint batchIdx = gl_LocalInvocationID.x / 8;
     uint tid = gl_LocalInvocationID.x % 8;
-    uint visibilityIndex = gl_WorkGroupID.x * 4 + batchIdx;
+    uint visibilityIndex = baseIdx + batchIdx;
 
     if (visibilityIndex >= uint(regionCount)) {
         if (tid == 0) regionVisibility[visibilityIndex] = uint8_t(0);
