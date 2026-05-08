@@ -1,4 +1,4 @@
-name: build-commit
+name: Build Commits
 
 on:
   push:
@@ -31,5 +31,5 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: Nvidium-${{ steps.ref.outputs.branch }}
+        name: Nvidium-${{ github.ref_name }}
         path: build/libs/nvidium-*.jar
