@@ -2,8 +2,7 @@ name: Build Commits
 
 on:
   push:
-    branches:
-    - "*"
+    branches: [ "*" ]
 
 jobs:
   build:
