@@ -8,11 +8,6 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[ci-skip]')"
 
     steps:
-    - name: Extract current branch name
-      shell: bash
-      run: ref="${GITHUB_REF#refs/heads/}" && echo "branch=${ref////-}" >> $GITHUB_OUTPUT
-      id: ref
-
     - name: Checkout sources
       uses: actions/checkout@v6
 
@@ -33,5 +28,5 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: Nvidium-${{ steps.ref.outputs.branch }}
+        name: Nvidium-${{ github.event.pull_request.head.ref }}
         path: build/libs/nvidium-*.jar

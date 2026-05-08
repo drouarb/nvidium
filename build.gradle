@@ -3,23 +3,23 @@ plugins {
     id 'maven-publish'
 }
 
-def gitCommitHash = { ->
+def gitCommitHash = {
     try {
-        ExecOutput result = providers.exec {
+        def result = providers.exec {
             commandLine = ['git', 'rev-parse', '--short', 'HEAD']
             ignoreExitValue = true
         }
 
-        if (result.getResult().get().getExitValue() != 0) {
-            return "<UnknownCommit>";
+        if (result.result.get().exitValue != 0) {
+            return "<UnknownCommit>"
         } else {
-            return result.standardOutput.asText.get().strip();
+            return result.standardOutput.asText.get().strip()
         }
     } catch (Exception e) {
         e.printStackTrace()
-        return "<UnknownCommit>";
+        return "<UnknownCommit>"
     }
-}
+}()
 def buildtime = System.currentTimeSeconds()
 
 version = project.mod_version
