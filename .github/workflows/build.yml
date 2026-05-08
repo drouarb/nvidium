@@ -28,8 +28,12 @@ jobs:
     - name: Execute Gradle build
       run: ./gradlew build
 
+    - name: Find JAR File
+      id: find_jar
+      run: echo "jar_path=$(ls build/libs/nvidium-*.jar)" >> $GITHUB_OUTPUT
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: Nvidium-${{ github.ref_name }}
-        path: build/libs/nvidium-*.jar
+        path: ${{ steps.find_jar.outputs.jar_path }}
+        archive: false
