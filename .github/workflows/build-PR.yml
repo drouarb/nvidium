@@ -1,4 +1,4 @@
-name: build-commit
+name: build-PR
 
 on: [ pull_request ]
 
