@@ -1,8 +1,6 @@
 name: build-commit
 
-on:
-  push:
-    branches: [ "*" ]
+on: [ pull_request ]
 
 jobs:
   build:
