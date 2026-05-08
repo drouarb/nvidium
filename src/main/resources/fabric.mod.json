@@ -7,14 +7,18 @@
     "buildtime": "${buildtime}"
   },
   "name": "Nvidium",
-  "description": "Replacement rendering engine for sodium",
+  "description": "Replacement rendering engine for Sodium",
   "authors": [
     "Cortex"
   ],
   "contributors": [
     "drouarb"
   ],
-  "contact": {},
+  "contact": {
+    "homepage": "https://github.com/drouarb/nvidium",
+    "issues": "https://github.com/drouarb/nvidium/issues",
+    "sources": "https://github.com/MCRcortex/nvidium"
+  },
   "license": "LGPL-3.0",
   "icon": "assets/nvidium/nvidium.png",
   "environment": "client",
@@ -28,8 +32,17 @@
     "nvidium.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.19.2",
-    "minecraft": ["26.1", "26.1.1", "26.1.2"],
-    "sodium": ["0.8.11"]
+    "fabricloader": ">=0.18.4",
+    "minecraft": [
+      "26.1",
+      "26.1.1",
+      "26.1.2"
+    ],
+    "sodium": [
+      "0.8.7",
+      "0.8.9",
+      "0.8.10",
+      "0.8.11"
+    ]
   }
 }
