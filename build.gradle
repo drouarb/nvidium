@@ -93,8 +93,8 @@ dependencies {
 
     modImplementation(fabricApi.module("fabric-resource-loader-v0", project.fabric_version))
 
-    modImplementation "net.caffeinemc:sodium-fabric:0.8.11+mc1.21.11"
-    modImplementation "net.caffeinemc:sodium-fabric-api:0.8.11+mc1.21.11"
+    modImplementation "net.caffeinemc:sodium-fabric:0.8.12+mc1.21.11"
+    modImplementation "net.caffeinemc:sodium-fabric-api:0.8.12+mc1.21.11"
 
     //modImplementation "maven.modrinth:c2me-fabric:0.2.0+alpha.10.49+1.19.4"
     //modImplementation "maven.modrinth:chunks-fade-in:v1.0.3-1.19.4"
