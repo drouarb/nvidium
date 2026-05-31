@@ -1,19 +1,20 @@
 package me.cortex.nvidium.managers;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.longs.Long2ReferenceMap;
 import me.cortex.nvidium.sodiumCompat.IRenderSectionExtension;
 import net.caffeinemc.mods.sodium.client.SodiumClientMod;
-import net.caffeinemc.mods.sodium.client.render.chunk.ChunkUpdateType;
+import net.caffeinemc.mods.sodium.client.render.chunk.ChunkUpdateTypes;
 import net.caffeinemc.mods.sodium.client.render.chunk.RenderSection;
 import net.caffeinemc.mods.sodium.client.render.chunk.RenderSectionFlags;
+import net.caffeinemc.mods.sodium.client.render.chunk.TaskQueueType;
+import net.caffeinemc.mods.sodium.client.render.chunk.lists.RenderSectionVisitor;
 import net.caffeinemc.mods.sodium.client.render.chunk.occlusion.OcclusionCuller;
+import net.caffeinemc.mods.sodium.client.render.chunk.translucent_sorting.SortBehavior;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
-import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,7 +39,7 @@ public class AsyncOcclusionTracker {
     private final AtomicReference<List<RenderSection>> blockEntitySectionsRef = new AtomicReference<>(new ArrayList<>());
     private final AtomicReference<TextureAtlasSprite[]> visibleAnimatedSpritesRef = new AtomicReference<>();
 
-    private final Map<ChunkUpdateType, ArrayDeque<RenderSection>> outputRebuildQueue;
+    private final Map<TaskQueueType, ArrayDeque<RenderSection>> outputRebuildQueue;
 
     private final float renderDistance;
     private volatile long iterationTimeMillis;
@@ -46,7 +47,7 @@ public class AsyncOcclusionTracker {
 
     private volatile int chunkVisibilityCount = 0;
 
-    public AsyncOcclusionTracker(int renderDistance, Long2ReferenceMap<RenderSection> sections, Level world, Map<ChunkUpdateType, ArrayDeque<RenderSection>> outputRebuildQueue) {
+    public AsyncOcclusionTracker(int renderDistance, Long2ReferenceMap<RenderSection> sections, Level world, Map<TaskQueueType, ArrayDeque<RenderSection>> outputRebuildQueue) {
         this.occlusionCuller = new OcclusionCuller(sections, world);
         this.cullThread = new Thread(this::run);
         this.cullThread.setName("Cull thread");
@@ -71,8 +72,8 @@ public class AsyncOcclusionTracker {
             List<RenderSection> blockEntitySections = new ArrayList<>();
             Set<TextureAtlasSprite> animatedSpriteSet = animateVisibleSpritesOnly?new HashSet<>():null;
             int[] visibleGeometryCounter = new int[1];
-            final OcclusionCuller.Visitor visitor = (section) -> {
-                if (section.getPendingUpdate() != null && section.getTaskCancellationToken() == null) {
+            final RenderSectionVisitor visitor = (section) -> {
+                if (section.getPendingUpdate() != 0 && section.getRunningJob() == null) {
                     if ((!((IRenderSectionExtension)section).isSubmittedRebuild()) && !((IRenderSectionExtension)section).isSeen()) {//If it is in submission queue or seen dont enqueue
                         //Set that the section has been seen
                         ((IRenderSectionExtension)section).isSeen(true);
@@ -140,10 +141,15 @@ public class AsyncOcclusionTracker {
             for (var section : bfsResult) {
                 if (section.isDisposed())
                     continue;
-                var type = section.getPendingUpdate();
-                if (type != null && section.getTaskCancellationToken() == null) {
-                    var queue = outputRebuildQueue.get(type);
-                    if (queue.size() < type.getMaximumQueueSize()) {
+                var updateType = section.getPendingUpdate();
+                if (updateType != 0 && section.getRunningJob() == null) {
+                    var queueType = ChunkUpdateTypes.getQueueType(updateType,
+                            SodiumClientMod.options().performance.chunkBuildDeferMode.getImportantRebuildQueueType(),
+                            SortBehavior.DYNAMIC_DEFER_NEARBY_ZERO_FRAMES.getDeferMode().getImportantRebuildQueueType()
+                    );
+
+                    var queue = outputRebuildQueue.get(queueType);
+                    if (queue.size() < queueType.queueSizeLimit()) {
                         ((IRenderSectionExtension) section).isSubmittedRebuild(true);
                         queue.add(section);
                     }
@@ -169,17 +175,6 @@ public class AsyncOcclusionTracker {
         return renderDistance;
     }
 
-    private float getSearchDistance2() {
-        float distance;
-        if (SodiumClientMod.options().performance.useFogOcclusion) {
-            distance = this.getEffectiveRenderDistance();
-        } else {
-            distance = this.getRenderDistance();
-        }
-
-        return distance;
-    }
-
     private boolean shouldUseOcclusionCulling(Camera camera, boolean spectator) {
         BlockPos origin = camera.getBlockPosition();
         boolean useOcclusionCulling;
@@ -190,17 +185,6 @@ public class AsyncOcclusionTracker {
         }
 
         return useOcclusionCulling;
-    }
-
-    private float getEffectiveRenderDistance() {
-        float[] color = RenderSystem.getShaderFogColor();
-        float distance = RenderSystem.getShaderFogEnd();
-        float renderDistance = this.getRenderDistance();
-        return !Mth.equal(color[3], 1.0F) ? renderDistance : Math.min(renderDistance, distance + 0.5F);
-    }
-
-    private float getRenderDistance() {
-        return (float)this.renderDistance;
     }
 
     public int getFrame() {
@@ -222,7 +206,7 @@ public class AsyncOcclusionTracker {
 
     public int[] getBuildQueueSizes() {
         var ret = new int[this.outputRebuildQueue.size()];
-        for (var type : ChunkUpdateType.values()) {
+        for (var type : TaskQueueType.values()) {
             ret[type.ordinal()] = this.outputRebuildQueue.get(type).size();
         }
         return ret;

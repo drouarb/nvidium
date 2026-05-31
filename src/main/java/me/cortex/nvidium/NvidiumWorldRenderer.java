@@ -108,7 +108,7 @@ public class NvidiumWorldRenderer {
     }
 
     public void addDebugInfo(ArrayList<String> debugInfo) {
-        debugInfo.add("Using nvidium renderer: "+ Nvidium.MOD_VERSION);
+        debugInfo.add("Using nvidium renderer: "+ Nvidium.getModVersion());
         /*
         debugInfo.add("Memory limit: " + max_geometry_memory + " mb");
         debugInfo.add("Terrain Memory MB: " +);
@@ -117,8 +117,8 @@ public class NvidiumWorldRenderer {
          */
         debugInfo.add("Mem" + (Nvidium.SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER?"":" (fallback)") + ": " +
                 (Nvidium.SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER?
-                        this.sectionManager.terrainAreana.getAllocatedMB() + "+" + this.sectionManager.translucencyIndexArena.getAllocatedMB() :
-                        this.sectionManager.terrainAreana.getUsedMB() + "+" + this.sectionManager.translucencyIndexArena.getUsedMB())
+                        this.sectionManager.terrainAreana.getAllocatedMB() :
+                        this.sectionManager.terrainAreana.getUsedMB())
                 + "/"+ this.max_geometry_memory + String.format(", F: %.2f", sectionManager.terrainAreana.getFragmentation()*100));
         debugInfo.add("Regions: " + sectionManager.getRegionManager().regionCount() + "/" + sectionManager.getRegionManager().maxRegions());
         if (this.asyncChunkTracker != null) {

@@ -1,86 +1,102 @@
 plugins {
-    id 'fabric-loom' version '1.8-SNAPSHOT'
+    id 'java'
+    id 'idea'
     id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.141'
 }
-
-def gitCommitHash = { ->
-    def stdout = new ByteArrayOutputStream()
-    exec {
-        commandLine 'git', 'rev-parse', '--short', 'HEAD'
-        standardOutput = stdout
-    }
-    return stdout.toString().trim()
-}
-def buildtime = System.currentTimeSeconds()
 
 version = project.mod_version
 group = project.maven_group
 
-sourceCompatibility = JavaVersion.VERSION_21
-targetCompatibility = JavaVersion.VERSION_21
-
-apply plugin: "fabric-loom"
-
-loom {
-    mixin.defaultRefmapName = "nvidium.refmap.json"
-    runs {
-        it.configureEach {
-            vmArgs("-Xmx8G", "-XX:+UseZGC")
-        }
-    }
+base {
+    archivesName = project.archives_base_name
 }
 
-
-processResources {
-    inputs.properties("version": project.version, "commit": gitCommitHash, "buildtime":buildtime)
-
-    archivesBaseName = "nvidium"
-    filesMatching("fabric.mod.json") {
-        expand "commit": gitCommitHash, "version": project.version, "buildtime": buildtime
-    }
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
 }
 
 repositories {
+    mavenLocal()
+    maven { url = 'https://maven.neoforged.net/releases/' }
+    maven { url = 'https://maven.caffeinemc.net/releases' }
+    maven { url = 'https://maven.su5ed.dev/releases' }
+    maven {
+        name = 'ParchmentMC'
+        url = 'https://maven.parchmentmc.org'
+    }
     exclusiveContent {
         forRepository {
             maven {
-                name = "Modrinth"
-                url = "https://api.modrinth.com/maven"
+                name = 'Modrinth'
+                url = 'https://api.modrinth.com/maven'
             }
         }
-        filter {
-            includeGroup "maven.modrinth"
+        filter { includeGroup 'maven.modrinth' }
+    }
+    mavenCentral()
+}
+
+neoForge {
+    version = project.neoforge_version
+
+    parchment {
+        minecraftVersion = project.minecraft_version
+        mappingsVersion = project.parchmentmc_mappings
+    }
+
+    runs {
+        client {
+            client()
+            ideName = 'NeoForge Client (Nvidium)'
+            gameDirectory = file('run')
+            jvmArguments.addAll('-Xmx8G')
         }
     }
-    maven {
-        name = 'ParchmentMC'
-        url = 'https://maven.parchmentmc.org/'
+
+    mods {
+        nvidium {
+            sourceSet sourceSets.main
+        }
     }
 }
 
 dependencies {
-    // To change the versions see the gradle.properties file
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings loom.layered() {
-        officialMojangMappings()
-        parchment("org.parchmentmc.data:parchment-${project.minecraft_version}:${project.parchmentmc_mappings}@zip")
+    // Sodium 0.8.12 (backported to 1.21.1). We mixin into the mod classes and call the api.
+    compileOnly "net.caffeinemc:sodium-neoforge-mod:${project.sodium_version}"
+    compileOnly "net.caffeinemc:sodium-neoforge:${project.sodium_version}"
+
+    // Make Sodium actually load inside the dev client run (compileOnly is not on the runtime
+    // classpath). The published `sodium-neoforge` jar is the COMPLETE production artifact: it
+    // jar-in-jars the boot layer (sodium_service), the mod itself (sodium-neoforge-mod) AND the
+    // forgified-fabric-api modules. FML extracts all of those at runtime.
+    //
+    // It must be added NON-TRANSITIVELY: its POM ALSO lists the forgified-fabric-api modules as
+    // Maven deps, so a transitive add would put those on the module path a second time, clashing
+    // with the jar-in-jar'd copies (JPMS "exports package ... to module" ResolutionException).
+    additionalRuntimeClasspath("net.caffeinemc:sodium-neoforge:${project.sodium_version}") {
+        transitive = false
     }
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-    // Fabric API
-    modImplementation(fabricApi.module("fabric-api-base", project.fabric_version))
-    modImplementation(fabricApi.module("fabric-block-view-api-v2", project.fabric_version))
-    modImplementation(fabricApi.module("fabric-rendering-fluids-v1", project.fabric_version))
-    modImplementation(fabricApi.module("fabric-renderer-api-v1", project.fabric_version))
-
-    modImplementation("net.fabricmc.fabric-api:fabric-rendering-data-attachment-v1:0.3.40+73761d2e3b")
-    modImplementation(fabricApi.module("fabric-resource-loader-v0", project.fabric_version))
-
-    modImplementation "maven.modrinth:sodium:mc1.21.1-0.6.13-fabric"
-
-    //modImplementation "maven.modrinth:c2me-fabric:0.2.0+alpha.10.49+1.19.4"
-    //modImplementation "maven.modrinth:chunks-fade-in:v1.0.3-1.19.4"
-    //modImplementation "maven.modrinth:immersiveportals:v2.7.3-mc1.19.4"
-    modCompileOnly "maven.modrinth:iris:1.8.8+1.21.1-fabric"
+    // Iris (optional) — only net.irisshaders.iris.api.v0.IrisApi is referenced, and only behind an
+    // IRIS_LOADED (ModList.isLoaded("iris")) guard, so nvidium runs fine with Iris absent at runtime.
+    // Built locally from the Iris NeoForge backport
+    compileOnly files("${rootDir}/../Iris/build/libs/iris-neoforge-${project.iris_version}.jar")
+    // NOTE: Iris is intentionally NOT added to the runtime classpath. A flat classpath entry would
+    // not pull in Iris's jar-in-jar deps (forgified-fabric-api, glsl-transformer, jcpp), so it would
+    // fail to load. To test nvidium + Iris coexistence, run a real NeoForge instance with the Iris
+    // production jar (and Sodium) installed as mods.
 }
 
+processResources {
+    def props = [version: project.version]
+    inputs.properties(props)
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand(props)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}

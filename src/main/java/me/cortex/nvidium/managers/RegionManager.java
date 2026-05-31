@@ -7,6 +7,7 @@ import me.cortex.nvidium.gl.RenderDevice;
 import me.cortex.nvidium.gl.buffers.IDeviceMappedBuffer;
 import me.cortex.nvidium.util.IdProvider;
 import me.cortex.nvidium.util.UploadingBufferStream;
+import me.cortex.nvidium.mixin.sodium.ViewportAccessor;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.core.SectionPos;
 import org.lwjgl.system.MemoryUtil;
@@ -264,12 +265,22 @@ public class RegionManager {
         return this.regions[regionId] != null;
     }
 
-    public boolean isRegionVisible(Viewport frustum, int regionId) {
+    public boolean isRegionVisible(Viewport viewport, int regionId) {
         var region = this.regions[regionId];
         if (region == null) {
             return false;
         } else {
-            return frustum.isBoxVisible((region.rx<<7)+(1<<6),(region.ry<<6)+(1<<5), (region.rz<<7)+(1<<6), 1<<6, 1<<5, 1<<6);
+            // Sodium 0.8's Viewport frustum is camera-relative, so offset the region AABB by the camera transform.
+            var vp = ((ViewportAccessor) (Object) viewport);
+            var t = vp.nvidium$getTransform();
+            return vp.nvidium$getFrustum().testAab(
+                    ((region.rx << 7) - t.intX) - t.fracX,
+                    ((region.ry << 6) - t.intY) - t.fracY,
+                    ((region.rz << 7) - t.intZ) - t.fracZ,
+                    (((region.rx + 1) << 7) - t.intX) - t.fracX,
+                    (((region.ry + 1) << 6) - t.intY) - t.fracY,
+                    (((region.rz + 1) << 7) - t.intZ) - t.fracZ
+            );
         }
     }
 

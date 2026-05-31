@@ -1,177 +1,202 @@
 package me.cortex.nvidium.config;
 
-import com.google.common.collect.ImmutableList;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.sodiumCompat.NvidiumOptionFlags;
+import net.caffeinemc.mods.sodium.api.config.ConfigEntryPoint;
+import net.caffeinemc.mods.sodium.api.config.StorageEventHandler;
+import net.caffeinemc.mods.sodium.api.config.option.OptionFlag;
+import net.caffeinemc.mods.sodium.api.config.option.OptionImpact;
+import net.caffeinemc.mods.sodium.api.config.structure.ConfigBuilder;
 import net.caffeinemc.mods.sodium.client.gui.options.*;
-import net.caffeinemc.mods.sodium.client.gui.options.control.ControlValueFormatter;
-import net.caffeinemc.mods.sodium.client.gui.options.control.CyclingControl;
-import net.caffeinemc.mods.sodium.client.gui.options.control.SliderControl;
-import net.caffeinemc.mods.sodium.client.gui.options.control.TickBoxControl;
+import net.caffeinemc.mods.sodium.client.gui.options.control.ControlValueFormatterImpls;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
-import java.util.ArrayList;
-import java.util.List;
+import net.minecraft.resources.ResourceLocation;
 
-public class ConfigGuiBuilder {
+public class ConfigGuiBuilder implements ConfigEntryPoint {
     private static final NvidiumConfigStore store = new NvidiumConfigStore();
-    public static void addNvidiumGui(List<OptionPage> pages) {
-        List<OptionGroup> groups = new ArrayList<>();
+    private final StorageEventHandler saveConfig = store::save;
+    private final StorageEventHandler noSave = () -> {};
 
-        groups.add(OptionGroup.createBuilder()
-                .add(OptionImpl.createBuilder(boolean.class, store)
+    @Override
+    public void registerConfigLate(ConfigBuilder builder) {
+        var nvidiumOptionPage = builder.createOptionPage()
+                .setName(Component.literal("Nvidium"));
+
+        nvidiumOptionPage.addOption(
+                builder.createBooleanOption(ResourceLocation.parse("nvidium:disable_nvidium"))
                         .setName(Component.literal("Disable nvidium"))
                         .setTooltip(Component.literal("Used to disable nvidium (DOES NOT SAVE, WILL RE-ENABLE AFTER A RE-LAUNCH)"))
-                        .setControl(TickBoxControl::new)
+                        .setDefaultValue(false)
                         .setImpact(OptionImpact.HIGH)
-                        .setBinding((opts, value) -> Nvidium.FORCE_DISABLE = value, opts -> Nvidium.FORCE_DISABLE)
+                        .setBinding((value) -> Nvidium.FORCE_DISABLE = value, () -> Nvidium.FORCE_DISABLE)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build()
-                ).build());
+                        .setStorageHandler(this.noSave)
+        );
 
         if (Nvidium.IS_COMPATIBLE && !Nvidium.IS_ENABLED && !Nvidium.FORCE_DISABLE) {
-            groups.add(OptionGroup.createBuilder()
-                    .add(OptionImpl.createBuilder(boolean.class, store)
+            nvidiumOptionPage.addOption(
+                    builder.createBooleanOption(ResourceLocation.parse("nvidium:force_disabled_nvidium"))
                             .setName(Component.literal("Nvidium disabled due to shaders being loaded"))
                             .setTooltip(Component.literal("Nvidium disabled due to shaders being loaded"))
-                            .setControl(TickBoxControl::new)
                             .setImpact(OptionImpact.VARIES)
-                            .setBinding((opts, value) -> {}, opts -> false)
-                            .setFlags()
-                            .build()
-                    ).build());
+                            .setDefaultValue(true)
+                            .setBinding((v) -> {}, () -> false)
+                            .setStorageHandler(this.noSave)
+            );
         }
-        groups.add(OptionGroup.createBuilder()
-                .add(OptionImpl.createBuilder(int.class, store)
+
+        nvidiumOptionPage.addOption(
+                builder.createIntegerOption(ResourceLocation.parse("nvidium:region_keep_distace"))
                         .setName(Component.translatable("nvidium.options.region_keep_distance.name"))
                         .setTooltip(Component.translatable("nvidium.options.region_keep_distance.tooltip"))
-                        .setControl(option ->
-                                new SliderControl(option, 32, 257, 1,
-                                        x->Component.literal(x==32||x<=Minecraft.getInstance().options.getEffectiveRenderDistance()?"Vanilla":(x==257?"Keep All":x+" chunks"))))
                         .setImpact(OptionImpact.VARIES)
-                        .setEnabled(() -> Nvidium.IS_ENABLED)
-                        .setBinding((opts, value) -> opts.region_keep_distance = value, opts -> opts.region_keep_distance)
-                        .setFlags()
-                        .build()
-                ).add(OptionImpl.createBuilder(boolean.class, store)
+                        .setEnabledProvider(c -> Nvidium.IS_ENABLED)
+                        .setBinding(v -> store.getData().region_keep_distance = v, () -> store.getData().region_keep_distance)
+                        .setRange(32, 257, 1)
+                        .setDefaultValue(32)
+                        .setValueFormatter(x -> Component.literal(x == 32 || x <= Minecraft.getInstance().options.getEffectiveRenderDistance() ? "Vanilla" : (x == 257 ? "Keep All" : x + " chunks")))
+                        .setStorageHandler(this.saveConfig)
+        );
+
+        nvidiumOptionPage.addOption(
+                builder.createBooleanOption(ResourceLocation.parse("nvidium:enable_temporal_coherence"))
                         .setName(Component.translatable("nvidium.options.enable_temporal_coherence.name"))
                         .setTooltip(Component.translatable("nvidium.options.enable_temporal_coherence.tooltip"))
-                        .setControl(TickBoxControl::new)
+                        .setDefaultValue(true)
                         .setImpact(OptionImpact.MEDIUM)
-                        .setEnabled(() -> Nvidium.IS_ENABLED)
-                        .setBinding((opts, value) -> opts.enable_temporal_coherence = value, opts -> opts.enable_temporal_coherence)
-                        .setFlags()
-                        .build()
-                ).add(OptionImpl.createBuilder(boolean.class, store)
+                        .setEnabledProvider(c -> Nvidium.IS_ENABLED)
+                        .setBinding(v -> store.getData().enable_temporal_coherence = v, () -> store.getData().enable_temporal_coherence)
+                        .setStorageHandler(this.saveConfig)
+        );
+
+        nvidiumOptionPage.addOption(
+                builder.createBooleanOption(ResourceLocation.parse("nvidium:async_bfs"))
                         .setName(Component.translatable("nvidium.options.async_bfs.name"))
                         .setTooltip(Component.translatable("nvidium.options.async_bfs.tooltip"))
-                        .setControl(TickBoxControl::new)
+                        .setDefaultValue(true)
                         .setImpact(OptionImpact.HIGH)
-                        .setEnabled(() -> Nvidium.IS_ENABLED)
-                        .setBinding((opts, value) -> opts.async_bfs = value, opts -> opts.async_bfs)
+                        .setEnabledProvider(c -> Nvidium.IS_ENABLED)
+                        .setBinding(v -> store.getData().async_bfs = v, () -> store.getData().async_bfs)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build()
-                ).add(OptionImpl.createBuilder(boolean.class, store)
+                        .setStorageHandler(this.saveConfig)
+        );
+
+        nvidiumOptionPage.addOption(
+                builder.createBooleanOption(ResourceLocation.parse("nvidium:automatic_memory_limit"))
                         .setName(Component.translatable("nvidium.options.automatic_memory_limit.name"))
                         .setTooltip(Component.translatable("nvidium.options.automatic_memory_limit.tooltip"))
-                        .setControl(TickBoxControl::new)
+                        .setDefaultValue(true)
                         .setImpact(OptionImpact.VARIES)
-                        .setEnabled(() -> Nvidium.IS_ENABLED)
-                        .setBinding((opts, value) -> opts.automatic_memory = value, opts -> opts.automatic_memory)
-                        .setFlags()
-                        .build())
-                .add(OptionImpl.createBuilder(int.class, store)
+                        .setEnabledProvider(c -> Nvidium.IS_ENABLED)
+                        .setBinding(v -> store.getData().automatic_memory = v, () -> store.getData().automatic_memory)
+                        .setStorageHandler(this.saveConfig)
+        );
+
+        nvidiumOptionPage.addOption(
+                builder.createIntegerOption(ResourceLocation.parse("nvidium:max_gpu_memory"))
                         .setName(Component.translatable("nvidium.options.max_gpu_memory.name"))
                         .setTooltip(Component.translatable("nvidium.options.max_gpu_memory.tooltip"))
-                        .setControl(option -> new SliderControl(option, 2048, 32768, 512, ControlValueFormatter.translateVariable("nvidium.options.mb")))
+                        .setDefaultValue(2048)
+                        .setRange(2048, 32768, 512)
+                        .setValueFormatter(ControlValueFormatterImpls.translateVariable("nvidium.options.mb"))
                         .setImpact(OptionImpact.VARIES)
-                        .setEnabled(() -> Nvidium.IS_ENABLED && !Nvidium.config.automatic_memory)
-                        .setBinding((opts, value) -> opts.max_geometry_memory = value, opts -> opts.max_geometry_memory)
-                        .setFlags(Nvidium.SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER?new OptionFlag[0]:new OptionFlag[]{OptionFlag.REQUIRES_RENDERER_RELOAD})
-                        .build()
-                ).add(OptionImpl.createBuilder(boolean.class, store)
+                        .setEnabledProvider(c -> Nvidium.IS_ENABLED && !c.readBooleanOption(ResourceLocation.parse("nvidium:automatic_memory_limit")), ResourceLocation.parse("nvidium:automatic_memory_limit"))
+                        .setBinding(v -> store.getData().max_geometry_memory = v, () -> store.getData().max_geometry_memory)
+                        .setFlags(Nvidium.SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER ? new OptionFlag[0] : new OptionFlag[]{OptionFlag.REQUIRES_RENDERER_RELOAD})
+                        .setStorageHandler(this.saveConfig)
+        );
+
+        nvidiumOptionPage.addOption(
+                builder.createBooleanOption(ResourceLocation.parse("nvidium:render_fog"))
                         .setName(Component.translatable("nvidium.options.render_fog.name"))
                         .setTooltip(Component.translatable("nvidium.options.render_fog.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setBinding((opts, value) -> opts.render_fog = value, opts -> opts.render_fog)
-                        .setEnabled(() -> Nvidium.IS_ENABLED)
+                        .setDefaultValue(true)
+                        .setBinding(v -> store.getData().render_fog = v, () -> store.getData().render_fog)
+                        .setEnabledProvider(c -> Nvidium.IS_ENABLED)
                         .setImpact(OptionImpact.MEDIUM)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build()
-                ).add(OptionImpl.createBuilder(boolean.class, store)
+                        .setStorageHandler(this.saveConfig)
+        );
+
+        nvidiumOptionPage.addOption(
+                builder.createBooleanOption(ResourceLocation.parse("nvidium:use_sodium_vertex_format"))
                         .setName(Component.translatable("nvidium.options.use_sodium_vertex_format.name"))
                         .setTooltip(Component.translatable("nvidium.options.use_sodium_vertex_format.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setBinding((opts, value) -> opts.use_sodium_vertex_format = value, opts -> opts.use_sodium_vertex_format)
-                        .setEnabled(() -> Nvidium.IS_ENABLED)
+                        .setDefaultValue(false)
+                        .setBinding(v -> store.getData().use_sodium_vertex_format = v, () -> store.getData().use_sodium_vertex_format)
+                        .setEnabledProvider(c -> Nvidium.IS_ENABLED)
                         .setImpact(OptionImpact.LOW)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build()
-                ).add(OptionImpl.createBuilder(boolean.class, store)
+                        .setStorageHandler(this.saveConfig)
+        );
+
+        nvidiumOptionPage.addOption(
+                builder.createBooleanOption(ResourceLocation.parse("nvidium:cull_degenerate_triangles"))
                         .setName(Component.translatable("nvidium.options.cull_degenerate_triangles.name"))
                         .setTooltip(Component.translatable("nvidium.options.cull_degenerate_triangles.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setBinding((opts, value) -> opts.cull_degenerate_triangles = value, opts -> opts.cull_degenerate_triangles)
-                        .setEnabled(() -> Nvidium.IS_ENABLED)
+                        .setDefaultValue(true)
+                        .setBinding(v -> store.getData().cull_degenerate_triangles = v, () -> store.getData().cull_degenerate_triangles)
+                        .setEnabledProvider(c -> Nvidium.IS_ENABLED)
                         .setImpact(OptionImpact.MEDIUM)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build()
-                ).add(OptionImpl.createBuilder(boolean.class, store)
+                        .setStorageHandler(this.saveConfig)
+        );
+
+        nvidiumOptionPage.addOption(
+                builder.createBooleanOption(ResourceLocation.parse("nvidium:use_nv_fragment_shader_barycentric"))
                         .setName(Component.translatable("nvidium.options.use_nv_fragment_shader_barycentric.name"))
                         .setTooltip(Component.translatable("nvidium.options.use_nv_fragment_shader_barycentric.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setBinding((opts, value) -> opts.use_nv_fragment_shader_barycentric = value, opts -> opts.use_nv_fragment_shader_barycentric)
-                        .setEnabled(() -> Nvidium.IS_ENABLED)
+                        .setDefaultValue(true)
+                        .setBinding(v -> store.getData().use_nv_fragment_shader_barycentric = v, () -> store.getData().use_nv_fragment_shader_barycentric)
+                        .setEnabledProvider(c -> Nvidium.IS_ENABLED)
                         .setImpact(OptionImpact.MEDIUM)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build()
-                ).add(OptionImpl.createBuilder(TranslucencySortingLevel.class, store)
+                        .setStorageHandler(this.saveConfig)
+        );
+
+        nvidiumOptionPage.addOption(
+                builder.createEnumOption(ResourceLocation.parse("nvidium:translucency_sorting"), TranslucencySortingLevel.class)
                         .setName(Component.translatable("nvidium.options.translucency_sorting.name"))
                         .setTooltip(Component.translatable("nvidium.options.translucency_sorting.tooltip"))
-                        .setControl(
-                                opts -> new CyclingControl<>(
-                                        opts,
-                                        TranslucencySortingLevel.class,
-                                        new Component[]{
-                                                Component.translatable("nvidium.options.translucency_sorting.none"),
-                                                Component.translatable("nvidium.options.translucency_sorting.sections"),
-                                                Component.translatable("nvidium.options.translucency_sorting.quads"),
-                                                Component.translatable("nvidium.options.translucency_sorting.sodium")
-                                        }
-                                )
-                        )
-                        .setBinding((opts, value) -> opts.translucency_sorting_level = value, opts -> opts.translucency_sorting_level)
-                        .setEnabled(() -> Nvidium.IS_ENABLED)
+                        .setDefaultValue(TranslucencySortingLevel.SODIUM)
+                        .setBinding(v -> store.getData().translucency_sorting_level = v, () -> store.getData().translucency_sorting_level)
+                        .setEnabledProvider(c -> Nvidium.IS_ENABLED)
                         .setImpact(OptionImpact.MEDIUM)
+                        .setElementNameProvider(e -> new Component[]{
+                                Component.translatable("nvidium.options.translucency_sorting.none"),
+                                Component.translatable("nvidium.options.translucency_sorting.sections"),
+                                Component.translatable("nvidium.options.translucency_sorting.quads"),
+                                Component.translatable("nvidium.options.translucency_sorting.sodium")
+                        }[e.ordinal()])
                         //Technically, only need to reload when going from NONE->SECTIONS
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build()
-                ).add(OptionImpl.createBuilder(StatisticsLoggingLevel.class, store)
+                        .setStorageHandler(this.saveConfig)
+        );
+
+        nvidiumOptionPage.addOption(
+                builder.createEnumOption(ResourceLocation.parse("nvidium:statistics_level"), StatisticsLoggingLevel.class)
                         .setName(Component.translatable("nvidium.options.statistics_level.name"))
                         .setTooltip(Component.translatable("nvidium.options.statistics_level.tooltip"))
-                        .setControl(
-                                opts -> new CyclingControl<>(
-                                        opts,
-                                        StatisticsLoggingLevel.class,
-                                        new Component[]{
-                                                Component.translatable("nvidium.options.statistics_level.none"),
-                                                Component.translatable("nvidium.options.statistics_level.frustum"),
-                                                Component.translatable("nvidium.options.statistics_level.regions"),
-                                                Component.translatable("nvidium.options.statistics_level.sections"),
-                                                Component.translatable("nvidium.options.statistics_level.quads"),
-                                                Component.translatable("nvidium.options.statistics_level.cull")
-                                        }
-                                )
-                        )
-                        .setBinding((opts, value) -> opts.statistics_level = value, opts -> opts.statistics_level)
-                        .setEnabled(() -> Nvidium.IS_ENABLED)
+                        .setDefaultValue(StatisticsLoggingLevel.NONE)
+                        .setBinding(v -> store.getData().statistics_level = v, () -> store.getData().statistics_level)
+                        .setEnabledProvider(c -> Nvidium.IS_ENABLED)
                         .setImpact(OptionImpact.LOW)
+                        .setElementNameProvider(e -> new Component[]{
+                                Component.translatable("nvidium.options.statistics_level.none"),
+                                Component.translatable("nvidium.options.statistics_level.frustum"),
+                                Component.translatable("nvidium.options.statistics_level.regions"),
+                                Component.translatable("nvidium.options.statistics_level.sections"),
+                                Component.translatable("nvidium.options.statistics_level.quads"),
+                                Component.translatable("nvidium.options.statistics_level.cull")
+                        }[e.ordinal()])
                         .setFlags(NvidiumOptionFlags.REQUIRES_SHADER_RELOAD)
-                        .build()
-                )
-                .build());
-        if (Nvidium.IS_COMPATIBLE) {
-            pages.add(new OptionPage(Component.translatable("nvidium.options.pages.nvidium"), ImmutableList.copyOf(groups)));
-        }
+                        .setStorageHandler(this.saveConfig)
+        );
+
+        builder.registerOwnModOptions()
+                .setIcon(ResourceLocation.parse("nvidium:nvidium.png"))
+                .setColorTheme(builder.createColorTheme().setBaseThemeRGB(0x47F055))
+                .addPage(nvidiumOptionPage);
     }
 }

@@ -1,18 +1,25 @@
 package me.cortex.nvidium.mixin.sodium;
 
+import com.llamalad7.mixinextras.sugar.Local;
 import it.unimi.dsi.fastutil.longs.Long2ReferenceMap;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.NvidiumWorldRenderer;
 import me.cortex.nvidium.config.TranslucencySortingLevel;
 import me.cortex.nvidium.managers.AsyncOcclusionTracker;
-import me.cortex.nvidium.sodiumCompat.*;
+import me.cortex.nvidium.sodiumCompat.INvidiumWorldRendererGetter;
+import me.cortex.nvidium.sodiumCompat.INvidiumWorldRendererSetter;
+import me.cortex.nvidium.sodiumCompat.IRenderSectionExtension;
+import me.cortex.nvidium.sodiumCompat.IrisCheck;
+import me.cortex.nvidium.sodiumCompat.NvidiumCompactChunkVertex;
 import net.caffeinemc.mods.sodium.api.texture.SpriteUtil;
 import net.caffeinemc.mods.sodium.client.SodiumClientMod;
 import net.caffeinemc.mods.sodium.client.gl.device.CommandList;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
-import net.caffeinemc.mods.sodium.client.render.chunk.ChunkUpdateType;
+import net.caffeinemc.mods.sodium.client.render.chunk.ChunkUpdateTypes;
 import net.caffeinemc.mods.sodium.client.render.chunk.RenderSection;
 import net.caffeinemc.mods.sodium.client.render.chunk.RenderSectionManager;
+import net.caffeinemc.mods.sodium.client.render.chunk.TaskQueueType;
+import net.caffeinemc.mods.sodium.client.render.chunk.lists.SectionCollector;
 import net.caffeinemc.mods.sodium.client.render.chunk.region.RenderRegionManager;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.DefaultTerrainRenderPasses;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
@@ -27,10 +34,12 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.injection.*;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -43,8 +52,7 @@ import static me.cortex.nvidium.Nvidium.LOGGER;
 public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
     @Shadow @Final private RenderRegionManager regions;
     @Shadow @Final private Long2ReferenceMap<RenderSection> sectionByPosition;
-    @Shadow private @NotNull Map<ChunkUpdateType, ArrayDeque<RenderSection>> taskLists;
-    @Shadow @Final private int renderDistance;
+    @Shadow private @NotNull Map<TaskQueueType, ArrayDeque<RenderSection>> taskLists;
     @Unique private NvidiumWorldRenderer renderer;
     @Unique private Viewport viewport;
 
@@ -52,21 +60,27 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
     private static void updateNvidiumIsEnabled() {
         Nvidium.IS_ENABLED = (!Nvidium.FORCE_DISABLE) && Nvidium.IS_COMPATIBLE && IrisCheck.checkIrisShouldDisable();
 
-        // Disable sodium translucency sorting since nvidium is doing it
+        // When nvidium is doing sodium-style translucency sorting it relies on sodium still producing the sort data
         if (Nvidium.IS_ENABLED && Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.SODIUM) {
-            LOGGER.info("Ensuring translucency sorting is enabled");
             SodiumClientMod.options().debug.terrainSortingEnabled = true;
         }
     }
 
+    @Unique
+    private static TaskQueueType queueTypeFor(int pendingUpdate) {
+        return ChunkUpdateTypes.getQueueType(pendingUpdate,
+                SodiumClientMod.options().performance.chunkBuildDeferMode.getImportantRebuildQueueType(),
+                SortBehavior.DYNAMIC_DEFER_NEARBY_ZERO_FRAMES.getDeferMode().getImportantRebuildQueueType());
+    }
+
     @Inject(method = "<init>", at = @At("TAIL"))
-    private void init(ClientLevel world, int renderDistance, CommandList commandList, CallbackInfo ci) {
+    private void init(ClientLevel level, int renderDistance, SortBehavior sortBehavior, CommandList commandList, CallbackInfo ci) {
         updateNvidiumIsEnabled();
         if (Nvidium.IS_ENABLED) {
             if (renderer != null)
                 throw new IllegalStateException("Cannot have multiple world renderers");
-            renderer = new NvidiumWorldRenderer(Nvidium.config.async_bfs?new AsyncOcclusionTracker(renderDistance, sectionByPosition, world, taskLists):null);
-            ((INvidiumWorldRendererSetter)regions).setWorldRenderer(renderer);
+            renderer = new NvidiumWorldRenderer(Nvidium.config.async_bfs ? new AsyncOcclusionTracker(renderDistance, sectionByPosition, level, taskLists) : null);
+            ((INvidiumWorldRendererSetter) regions).setWorldRenderer(renderer);
         }
     }
 
@@ -79,13 +93,12 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
         return vertexType;
     }
 
-
     @Inject(method = "destroy", at = @At("TAIL"))
     private void destroy(CallbackInfo ci) {
         if (Nvidium.IS_ENABLED) {
             if (renderer == null)
                 throw new IllegalStateException("Pipeline already destroyed");
-            ((INvidiumWorldRendererSetter)regions).setWorldRenderer(null);
+            ((INvidiumWorldRendererSetter) regions).setWorldRenderer(null);
             renderer.delete();
             renderer = null;
         }
@@ -127,7 +140,6 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
             var debugStrings = new ArrayList<String>();
             renderer.addDebugInfo(debugStrings);
             cir.setReturnValue(debugStrings);
-            cir.cancel();
         }
     }
 
@@ -137,31 +149,45 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
     }
 
     @Inject(method = "createTerrainRenderList", at = @At("HEAD"), cancellable = true)
-    private void redirectTerrainRenderList(Camera camera, Viewport viewport, int frame, boolean spectator, CallbackInfo ci) {
+    private void redirectTerrainRenderList(Camera camera, Viewport viewport, int frame, boolean spectator, CallbackInfoReturnable<Boolean> cir) {
         if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs) {
-            ci.cancel();
+            cir.setReturnValue(false);
         }
     }
 
-    @Redirect(method = "submitSectionTasks(Lnet/caffeinemc/mods/sodium/client/render/chunk/compile/executor/ChunkJobCollector;Lnet/caffeinemc/mods/sodium/client/render/chunk/ChunkUpdateType;Z)V", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;setPendingUpdate(Lnet/caffeinemc/mods/sodium/client/render/chunk/ChunkUpdateType;)V"))
-    private void injectEnqueueFalse(RenderSection instance, ChunkUpdateType type) {
-        instance.setPendingUpdate(type);
+    // With async_bfs, nvidium cancels createTerrainRenderList, so Sodium never builds a
+    // sectionCollector (it stays null, as does lastSectionCollector). The "immediate presentation"
+    // path in processChunkBuildResults would then NPE on sectionCollector.visitWithFlags(...).
+    // nvidium drives its own visibility, so skip Sodium's visit entirely in that mode.
+    @Redirect(method = "processChunkBuildResults(Ljava/util/ArrayList;)Z",
+            at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/lists/SectionCollector;visitWithFlags(Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;I)V"))
+    private void processChunkBuildResultsVisit(SectionCollector instance, RenderSection section, int flags) {
         if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs) {
-            //We need to reset the fact that its been submitted to the rebuild queue from the build queue
+            return;
+        }
+        instance.visitWithFlags(section, flags);
+    }
+
+    @Redirect(method = "submitSectionTask(Lnet/caffeinemc/mods/sodium/client/render/chunk/compile/executor/ChunkJobCollector;Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;ILnet/caffeinemc/mods/sodium/client/render/chunk/compile/estimation/UploadResourceBudget;Z)V",
+            at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;clearPendingUpdate()V"))
+    private void injectEnqueueFalse(RenderSection instance) {
+        instance.clearPendingUpdate();
+        if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs) {
+            // We need to reset the fact that it has been submitted to the rebuild queue from the build queue
             ((IRenderSectionExtension) instance).isSubmittedRebuild(false);
         }
     }
 
     @Unique
     private boolean isSectionVisibleBfs(RenderSection section) {
-        //The reason why this is done is that since the bfs search is async it could be updating the frame counter with the next frame
-        // while some sections that arnt updated/ticked yet still have the old frame id
+        // The reason why this is done is that since the bfs search is async it could be updating the frame counter with
+        // the next frame while some sections that aren't updated/ticked yet still have the old frame id
         int delta = Math.abs(section.getLastVisibleFrame() - renderer.getAsyncFrameId());
         return delta <= 1;
     }
 
-    @Inject(method = "isSectionVisible", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;getLastVisibleFrame()I", shift = At.Shift.BEFORE), cancellable = true, locals = LocalCapture.CAPTURE_FAILHARD)
-    private void redirectIsSectionVisible(int x, int y, int z, CallbackInfoReturnable<Boolean> cir, RenderSection render) {
+    @Inject(method = "isSectionVisible", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;getLastVisibleFrame()I", shift = At.Shift.BEFORE), cancellable = true)
+    private void redirectIsSectionVisible(int x, int y, int z, CallbackInfoReturnable<Boolean> cir, @Local RenderSection render) {
         if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs) {
             cir.setReturnValue(isSectionVisibleBfs(render));
         }
@@ -181,27 +207,26 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
         }
     }
 
-    @Inject(method = "scheduleRebuild", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;setPendingUpdate(Lnet/caffeinemc/mods/sodium/client/render/chunk/ChunkUpdateType;)V", shift = At.Shift.AFTER), locals = LocalCapture.CAPTURE_FAILHARD)
-    private void instantReschedule(int x, int y, int z, boolean important, CallbackInfo ci, RenderSection section, ChunkUpdateType pendingUpdate) {
+    @Inject(method = "scheduleRebuild", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSectionManager;upgradePendingUpdate(Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;I)Z", shift = At.Shift.AFTER))
+    private void instantReschedule(int x, int y, int z, boolean playerChanged, CallbackInfo ci, @Local RenderSection section, @Local(ordinal = 3) int pendingUpdate) {
         // this might result in the section being enqueued multiple times, if this gets executed,
         // and the async search sees it at the exactly wrong moment
-        // This is a problem when sodium translucency sorting is enabled since translucentData.getGeometryPlanes()
-        // can be null on the second ChunkBuildOutput resulting in a NPE
         if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs) {
-            var queue = taskLists.get(pendingUpdate);
-            if (isSectionVisibleBfs(section)  && queue.size() < pendingUpdate.getMaximumQueueSize() && !queue.contains(section)) {
-                ((IRenderSectionExtension)section).isSubmittedRebuild(true);
-                taskLists.get(pendingUpdate).add(section);
+            var queueType = queueTypeFor(pendingUpdate);
+            var queue = taskLists.get(queueType);
+            if (isSectionVisibleBfs(section) && queue.size() < queueType.queueSizeLimit() && !queue.contains(section) && section.getRunningJob() == null) {
+                ((IRenderSectionExtension) section).isSubmittedRebuild(true);
+                queue.add(section);
             }
         }
     }
 
-    @Inject(method = "scheduleSort(JZ)V", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;setPendingUpdate(Lnet/caffeinemc/mods/sodium/client/render/chunk/ChunkUpdateType;)V"), locals = LocalCapture.CAPTURE_FAILHARD)
-    public void promoteScheduleSort(long sectionPos, boolean isDirectTrigger, CallbackInfo ci, RenderSection section, ChunkUpdateType pendingUpdate, SortBehavior.PriorityMode priorityMode) {
-        if (Nvidium.IS_ENABLED && section.getPendingUpdate() != null && pendingUpdate != section.getPendingUpdate()) {
-            // The sorter promoted our task, we need to change the taskList
-            taskLists.get(section.getPendingUpdate()).remove(section);
-            taskLists.get(pendingUpdate).add(section);
+    @Inject(method = "scheduleSort(JZ)V", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSectionManager;upgradePendingUpdate(Lnet/caffeinemc/mods/sodium/client/render/chunk/RenderSection;I)Z"))
+    private void promoteScheduleSort(long sectionPos, boolean isDirectTrigger, CallbackInfo ci, @Local RenderSection section, @Local int pendingUpdate) {
+        if (Nvidium.IS_ENABLED && Nvidium.config.async_bfs && section.getPendingUpdate() != 0 && pendingUpdate != section.getPendingUpdate()) {
+            // The sorter promoted our task, we need to change the taskList it lives in
+            taskLists.get(queueTypeFor(section.getPendingUpdate())).remove(section);
+            taskLists.get(queueTypeFor(pendingUpdate)).add(section);
         }
     }
 

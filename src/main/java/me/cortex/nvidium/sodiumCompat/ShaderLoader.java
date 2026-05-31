@@ -51,6 +51,11 @@ public class ShaderLoader {
         builder.add("TEXTURE_MAX_SCALE", String.valueOf(NvidiumCompactChunkVertex.TEXTURE_MAX_VALUE));
         constantBuilder.accept(builder);
 
-        return ShaderParser.parseShader("#import <"+path.getNamespace()+":"+path.getPath()+">", builder.build());
+        // Sodium 0.8's ShaderParser inserts the #define constants at line index 1, i.e. it requires
+        // the actual shader source (whose first line is "#version ...") to be the root. Passing a
+        // synthetic "#import <...>" line as the root instead buries #version below the defines and
+        // makes GLSL fall back to version 110. So feed it the real source, like Sodium itself does.
+        var shaderSrc = net.caffeinemc.mods.sodium.client.gl.shader.ShaderLoader.getShaderSource(path);
+        return ShaderParser.parseShader(shaderSrc, builder.build()).src();
     }
 }

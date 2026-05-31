@@ -1,0 +1,52 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "LGPL-3.0"
+issueTrackerURL = "https://github.com/MCRcortex/nvidium/issues"
+
+[[mods]]
+modId = "nvidium"
+version = "${version}"
+displayName = "Nvidium"
+authors = "Cortex, drouarb"
+description = '''
+Replacement rendering engine for Sodium, using cutting edge NVIDIA features to render huge amounts of terrain geometry at very playable framerates.
+'''
+logoFile = "assets/nvidium/nvidium.png"
+
+[[dependencies.nvidium]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1]"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.nvidium]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1,)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.nvidium]]
+modId = "sodium"
+type = "required"
+# The backport ships as a pre-release (0.8.12-alpha.4+mc1.21.1). In Maven version
+# ordering a "-alpha" qualifier sorts BEFORE 0.8.12, so "[0.8.12,)" would reject it.
+# Lower-bound at the alpha qualifier to accept it and any later 0.8.12+ build.
+versionRange = "[0.8.12-alpha,)"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[dependencies.nvidium]]
+modId = "iris"
+type = "optional"
+versionRange = "*"
+ordering = "AFTER"
+side = "CLIENT"
+
+# Register nvidium's config page with Sodium's 0.8 config API
+[modproperties.nvidium]
+"sodium:config_api_user" = "me.cortex.nvidium.config.ConfigGuiBuilder"
+
+[[mixins]]
+config = "nvidium.mixins.json"
