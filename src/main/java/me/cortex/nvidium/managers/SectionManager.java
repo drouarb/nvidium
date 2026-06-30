@@ -85,7 +85,7 @@ public class SectionManager {
             return;
         }
 
-        RenderSection section = sortOutput.render;
+        RenderSection section = sortOutput.section;
         long sectionKey = SectionPos.asLong(section.getChunkX(), section.getChunkY(), section.getChunkZ());
         var quadCountData = this.translucencyQuadCounts.get(sectionKey);
         if (quadCountData == null) { // early exist if we don't have a section
@@ -137,7 +137,7 @@ public class SectionManager {
     public void uploadChunkBuildResult(ChunkBuildOutput result) {
         var output = ((IRepackagedResult)result).getOutput();
 
-        RenderSection section = result.render;
+        RenderSection section = result.section;
         long sectionKey = SectionPos.asLong(section.getChunkX(), section.getChunkY(), section.getChunkZ());
 
         if (output == null || output.quads() == 0) {
@@ -223,7 +223,7 @@ public class SectionManager {
 
         // Reinject or free index data
         if (Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.SODIUM) {
-            if (result.isReusingUploadedIndexData()) {
+            if (result.containsNewIndexData()) {
                 int trIdx = this.section2index.get(sectionKey);
                 // Don't forget to scale and don't scale -1 (no data)
                 MemoryUtil.memPutInt(metadata, trIdx * (trIdx != -1 ? quadVertexSize : 1));

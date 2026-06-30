@@ -3,7 +3,6 @@ package me.cortex.nvidium;
 import com.mojang.blaze3d.textures.GpuSampler;
 import me.cortex.nvidium.config.TranslucencySortingLevel;
 import me.cortex.nvidium.gl.RenderDevice;
-import me.cortex.nvidium.managers.AsyncOcclusionTracker;
 import me.cortex.nvidium.managers.SectionManager;
 import me.cortex.nvidium.sodiumCompat.NvidiumCompactChunkVertex;
 import me.cortex.nvidium.util.DownloadTaskStream;
@@ -39,14 +38,13 @@ public class NvidiumWorldRenderer {
     private final SectionManager sectionManager;
     private final RenderPipeline renderPipeline;
 
-    private final AsyncOcclusionTracker asyncChunkTracker;
 
     //Max memory that the gpu can use to store geometry in mb
     private long max_geometry_memory;
     private long last_sample_time;
 
     //Note: the reason that asyncChunkTracker is passed in as an already constructed object is cause of the amount of argmuents it takes to construct it
-    public NvidiumWorldRenderer(AsyncOcclusionTracker asyncChunkTracker) {
+    public NvidiumWorldRenderer() {
         int frames = SodiumClientMod.options().advanced.cpuRenderAheadLimit+1;
         //32 mb upload buffer
         this.uploadStream = new UploadingBufferStream(device, 32000000);
@@ -57,9 +55,6 @@ public class NvidiumWorldRenderer {
         //this.sectionManager = new SectionManager(device, max_geometry_memory*1024*1024, uploadStream, 150, 24, CompactChunkVertex.STRIDE);
         this.sectionManager = new SectionManager(device, max_geometry_memory*1024*1024, uploadStream, Nvidium.config.use_sodium_vertex_format ? ChunkMeshFormats.COMPACT.getVertexFormat().getStride() : NvidiumCompactChunkVertex.STRIDE, this);
         this.renderPipeline = new RenderPipeline(device, uploadStream, downloadStream, sectionManager);
-
-
-        this.asyncChunkTracker = asyncChunkTracker;
     }
 
     public void enqueueRegionSort(int regionId) {
@@ -70,10 +65,6 @@ public class NvidiumWorldRenderer {
         uploadStream.delete();
         downloadStream.delete();
         renderPipeline.delete();
-        if (asyncChunkTracker != null) {
-            asyncChunkTracker.delete();
-        }
-
         sectionManager.destroy();
     }
 
@@ -107,7 +98,7 @@ public class NvidiumWorldRenderer {
             this.sectionManager.uploadChunkBuildResult(chunkBuildOutput);
         }
         if (buildOutput instanceof ChunkSortOutput chunkSortOutput &&
-                !chunkSortOutput.isReusingUploadedIndexData() &&
+                !chunkSortOutput.containsNewIndexData() &&
                 Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.SODIUM) {
             this.sectionManager.uploadChunkSort(chunkSortOutput);
         }
@@ -127,9 +118,6 @@ public class NvidiumWorldRenderer {
                         this.sectionManager.terrainAreana.getUsedMB())
                 + "/"+ this.max_geometry_memory + String.format(", F: %.2f", sectionManager.terrainAreana.getFragmentation()*100));
         debugInfo.add("Regions: " + sectionManager.getRegionManager().regionCount() + "/" + sectionManager.getRegionManager().maxRegions());
-        if (this.asyncChunkTracker != null) {
-            debugInfo.add("A-BFS: " + asyncChunkTracker.getIterationTime() + " Q: " + Arrays.toString(this.asyncChunkTracker.getBuildQueueSizes()));//Async BFS iteration time:, Build queue sizes:
-        }
         this.renderPipeline.addDebugInfo(debugInfo);
     }
 
@@ -144,39 +132,8 @@ public class NvidiumWorldRenderer {
         }
     }
 
-    public void update(Camera camera, Viewport viewport, boolean spectator) {
-        if (asyncChunkTracker != null) {
-            asyncChunkTracker.update(viewport, camera, spectator);
-        }
-    }
-
-    public int getAsyncFrameId() {
-        if (asyncChunkTracker != null) {
-            return asyncChunkTracker.getFrame();
-        } else {
-            return -1;
-        }
-    }
-
-    public List<RenderSection> getSectionsWithEntities() {
-        if (asyncChunkTracker != null) {
-            return asyncChunkTracker.getLatestSectionsWithEntities();
-        } else {
-            return List.of();
-        }
-    }
-
     public SectionManager getSectionManager() {
         return sectionManager;
-    }
-
-    @Nullable
-    public TextureAtlasSprite[] getAnimatedSpriteSet() {
-        if (asyncChunkTracker != null) {
-            return asyncChunkTracker.getVisibleAnimatedSprites();
-        } else {
-            return new TextureAtlasSprite[0];
-        }
     }
 
     public void setTransformation(int id, Matrix4fc transform) {
@@ -187,13 +144,6 @@ public class NvidiumWorldRenderer {
         this.renderPipeline.setOrigin(id, x, y, z);
     }
 
-    public int getAsyncBfsVisibilityCount() {
-        if (this.asyncChunkTracker != null) {
-            return this.asyncChunkTracker.getLastVisibilityCount();
-        } else {
-            return -1;
-        }
-    }
     public int getMaxGeometryMemory() {
         return (int) max_geometry_memory;
     }

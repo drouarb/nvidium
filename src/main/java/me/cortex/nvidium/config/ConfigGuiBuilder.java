@@ -71,18 +71,6 @@ public class ConfigGuiBuilder implements ConfigEntryPoint {
         );
 
         nvidiumOptionPage.addOption(
-                builder.createBooleanOption(Identifier.parse("nvidium:async_bfs"))
-                        .setName(Component.translatable("nvidium.options.async_bfs.name"))
-                        .setTooltip(Component.translatable("nvidium.options.async_bfs.tooltip"))
-                        .setDefaultValue(true)
-                        .setImpact(OptionImpact.HIGH)
-                        .setEnabledProvider(c -> Nvidium.IS_ENABLED)
-                        .setBinding(v -> store.getData().async_bfs = v, () -> store.getData().async_bfs)
-                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .setStorageHandler(this.saveConfig)
-        );
-
-        nvidiumOptionPage.addOption(
                 builder.createBooleanOption(Identifier.parse("nvidium:automatic_memory_limit"))
                         .setName(Component.translatable("nvidium.options.automatic_memory_limit.name"))
                         .setTooltip(Component.translatable("nvidium.options.automatic_memory_limit.tooltip"))

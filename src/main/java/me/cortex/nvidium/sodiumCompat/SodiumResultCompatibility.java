@@ -117,9 +117,9 @@ public class SodiumResultCompatibility {
             //NOTE: mutates the input translucent geometry
             var cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().position();
 
-            float cpx = (float) (cameraPos.x - (result.render.getChunkX()<<4));
-            float cpy = (float) (cameraPos.y - (result.render.getChunkY()<<4));
-            float cpz = (float) (cameraPos.z - (result.render.getChunkZ()<<4));
+            float cpx = (float) (cameraPos.x - (result.section.getChunkX()<<4));
+            float cpy = (float) (cameraPos.y - (result.section.getChunkY()<<4));
+            float cpz = (float) (cameraPos.z - (result.section.getChunkZ()<<4));
 
             {//Project the camera pos onto the bounding outline of the chunk (-8 -> 24 for each axis)
                 float len = (float) Math.sqrt(cpx*cpx + cpy*cpy + cpz*cpz);
@@ -253,7 +253,7 @@ public class SodiumResultCompatibility {
 
         if (offset*4*formatSize != output.getLength()) {
             throw new IllegalStateException("Nvidium bad build result got " + offset*4*formatSize + " instead of " + output.getLength() + " at " +
-                    result.render.getChunkX() + " " + result.render.getChunkY() + " " + result.render.getChunkZ());
+                    result.section.getChunkX() + " " + result.section.getChunkY() + " " + result.section.getChunkZ());
         }
     }
 
