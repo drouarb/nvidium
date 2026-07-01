@@ -13,11 +13,11 @@
 
 layout(binding = 1) uniform sampler2D tex_light;
 
-#import <nvidium:occlusion/scene.glsl>
-#import <nvidium:terrain/vertex_format/vertex_format.glsl>
+#moj_import <nvidium:occlusion/scene.glsl>
+#moj_import <nvidium:terrain/vertex_format/vertex_format.glsl>
 
 #ifdef RENDER_FOG
-#import <sodium:include/fog.glsl>
+#moj_import <sodium:include/fog.glsl>
 #endif
 
 #ifdef TRANSLUCENCY_SORTING_QUADS

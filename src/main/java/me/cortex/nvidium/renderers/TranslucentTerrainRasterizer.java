@@ -12,6 +12,7 @@ import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import me.cortex.nvidium.util.GPUTiming;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.ShaderDefines;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.opengl.*;
 
@@ -24,7 +25,7 @@ public class TranslucentTerrainRasterizer extends Phase {
     private final Shader shader = Shader.make()
             .addSource(TASK, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "terrain/translucent/task.glsl")))
             .addSource(MESH, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "terrain/translucent/mesh.glsl")))
-            .addSource(FRAGMENT, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "terrain/frag.frag"), builder->{builder.add("TRANSLUCENT_PASS");}))
+            .addSource(FRAGMENT, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "terrain/frag.frag"), ShaderDefines.builder().define("TRANSLUCENT_PASS")))
             .compile();
 
     public TranslucentTerrainRasterizer() {

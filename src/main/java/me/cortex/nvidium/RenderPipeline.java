@@ -13,7 +13,7 @@ import me.cortex.nvidium.mixin.minecraft.TextureAtlasAccessor;
 import me.cortex.nvidium.renderers.*;
 import me.cortex.nvidium.util.*;
 import net.caffeinemc.mods.sodium.client.SodiumClientMod;
-import net.caffeinemc.mods.sodium.client.gl.device.GLRenderDevice;
+import net.caffeinemc.mods.sodium.client.gpu.GPULimits;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.impl.CompactChunkVertex;
@@ -226,7 +226,7 @@ public class RenderPipeline {
                 .getTextureManager()
                 .getTexture(TextureAtlas.LOCATION_BLOCKS);
 
-        double subTexelPrecision = (1 << GLRenderDevice.INSTANCE.getSubTexelPrecisionBits());
+        double subTexelPrecision = (1 << GPULimits.getSubTexelPrecisionBits());
         double subTexelOffset = 1.0f / CompactChunkVertex.TEXTURE_MAX_VALUE;
 
         float subTexelWidth = (float)(subTexelOffset - (((1.0D / textureAtlas.nvidium$getWidth()) / subTexelPrecision)));
@@ -420,7 +420,7 @@ public class RenderPipeline {
 
         //NOTE: For GL_REPRESENTATIVE_FRAGMENT_TEST_NV to work, depth testing must be disabled, or depthMask = false
         glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LEQUAL);
+        glDepthFunc(GL_GEQUAL);
         glDepthMask(false);
         if (DEBUG_RENDER_LEVEL == 1 && WRITE_DEPTH) {
             glDepthMask(true);
@@ -487,7 +487,7 @@ public class RenderPipeline {
         glDisableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
         glDisableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
         glDisableClientState(GL_DRAW_INDIRECT_UNIFIED_NV);
-        glDepthFunc(GL11C.GL_LEQUAL);
+        glDepthFunc(GL11C.GL_GEQUAL);
 
         //if ((err = glGetError()) != 0) {
         //    throw new IllegalStateException("GLERROR: "+err);

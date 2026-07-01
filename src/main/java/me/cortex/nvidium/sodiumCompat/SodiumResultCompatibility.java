@@ -17,7 +17,7 @@ import org.lwjgl.system.MemoryUtil;
 public class SodiumResultCompatibility {
 
     public static RepackagedSectionOutput repackage(ChunkBuildOutput result) {
-        int formatSize = Nvidium.config.use_sodium_vertex_format ? ChunkMeshFormats.COMPACT.getVertexFormat().getStride() : NvidiumCompactChunkVertex.STRIDE;
+        int formatSize = Nvidium.config.use_sodium_vertex_format ? ChunkMeshFormats.COMPACT.getVertexFormat().getVertexSize() : NvidiumCompactChunkVertex.STRIDE;
         int geometryBytes = result.meshes.values().stream().mapToInt(a->a.getVertexData().getLength()).sum();
         var output = new NativeBuffer(geometryBytes);
         var offsets = new short[8];
@@ -115,7 +115,7 @@ public class SodiumResultCompatibility {
             }
         } else if (translucentData != null) {
             //NOTE: mutates the input translucent geometry
-            var cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().position();
+            var cameraPos = Minecraft.getInstance().gameRenderer.mainCamera().position();
 
             float cpx = (float) (cameraPos.x - (result.section.getChunkX()<<4));
             float cpy = (float) (cameraPos.y - (result.section.getChunkY()<<4));

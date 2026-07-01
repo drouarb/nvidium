@@ -1,6 +1,7 @@
 package me.cortex.nvidium.sodiumCompat;
 
-import net.caffeinemc.mods.sodium.client.gl.attribute.GlVertexFormat;
+import com.mojang.blaze3d.GpuFormat;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.util.Mth;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkVertexEncoder;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkVertexType;
@@ -9,7 +10,9 @@ import net.caffeinemc.mods.sodium.api.util.ColorU8;
 import org.lwjgl.system.MemoryUtil;
 
 public class NvidiumCompactChunkVertex implements ChunkVertexType {
-    public static final GlVertexFormat VERTEX_FORMAT = new GlVertexFormat(null, null, 16);
+    public static final VertexFormat VERTEX_FORMAT = VertexFormat.builder(0)
+            .addAttribute("vtx", GpuFormat.RGBA32_UINT)
+            .build();
 
     public static final int STRIDE = 16;
     public static final NvidiumCompactChunkVertex INSTANCE = new NvidiumCompactChunkVertex();
@@ -40,7 +43,7 @@ public class NvidiumCompactChunkVertex implements ChunkVertexType {
 //    }
 
     @Override
-    public GlVertexFormat getVertexFormat() {
+    public VertexFormat getVertexFormat() {
         return VERTEX_FORMAT;
     }
 

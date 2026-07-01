@@ -1,9 +1,9 @@
 #define COLOR_SCALE        1.0 / 255.0
 
 #ifdef USE_SODIUM_VERTEX_FORMAT
-#import <nvidium:terrain/vertex_format/sodium_vertex_format.glsl>
+#moj_import <nvidium:terrain/vertex_format/sodium_vertex_format.glsl>
 #else
-#import <nvidium:terrain/vertex_format/nvidium_vertex_format.glsl>
+#moj_import <nvidium:terrain/vertex_format/nvidium_vertex_format.glsl>
 #endif
 
 float getVertexAlphaCutoff(uint v) {

@@ -1,28 +1,13 @@
 package me.cortex.nvidium.mixin.sodium;
 
-import com.mojang.blaze3d.opengl.GlConst;
-import com.mojang.blaze3d.opengl.GlDevice;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.opengl.GlTexture;
-import com.mojang.blaze3d.pipeline.RenderTarget;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.GpuSampler;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.NvidiumWorldRenderer;
 import me.cortex.nvidium.sodiumCompat.*;
-import net.caffeinemc.mods.sodium.client.gl.device.CommandList;
 import net.caffeinemc.mods.sodium.client.render.chunk.*;
 import net.caffeinemc.mods.sodium.client.render.chunk.region.RenderRegionManager;
-import net.caffeinemc.mods.sodium.client.render.chunk.terrain.DefaultTerrainRenderPasses;
-import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import net.caffeinemc.mods.sodium.client.render.chunk.translucent_sorting.SortBehavior;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkVertexType;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
-import net.caffeinemc.mods.sodium.client.util.FogParameters;
-import net.caffeinemc.mods.sodium.mixin.core.CommandEncoderAccessor;
-import net.caffeinemc.mods.sodium.mixin.core.GlCommandEncoderAccessor;
-import net.caffeinemc.mods.sodium.mixin.core.GpuDeviceAccessor;
-import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import org.spongepowered.asm.mixin.Final;
@@ -48,7 +33,7 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
     }
 
     @Inject(method = "<init>", at = @At("TAIL"))
-    private void init(ClientLevel level, int renderDistance, SortBehavior sortBehavior, CommandList commandList, CallbackInfo ci) {
+    private void init(ClientLevel level, int renderDistance, SortBehavior sortBehavior, CallbackInfo ci) {
         updateNvidiumIsEnabled();
         if (Nvidium.IS_ENABLED) {
             if (renderer != null)
@@ -88,32 +73,6 @@ public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
             }
         }
         section.delete();
-    }
-
-    @Inject(method = "prepareRenderTrees", at = @At("HEAD"))
-    private void trackViewport(Camera camera, Viewport viewport, FogParameters fogParameters, boolean spectator, CallbackInfo ci) {
-        this.viewport = viewport;
-    }
-
-    @Inject(method = "renderLayer", at = @At("HEAD"), cancellable = true)
-    public void renderLayer(ChunkRenderMatrices matrices, TerrainRenderPass pass, double x, double y, double z, FogParameters fogParameters, GpuSampler terrainSampler, CallbackInfo ci) {
-        if (Nvidium.IS_ENABLED) {
-            ci.cancel();
-            if (pass == DefaultTerrainRenderPasses.CUTOUT) // Early exit, cutout will be rendered with SOLID
-                return;
-
-            RenderTarget target = pass.getTarget();
-            GlStateManager._viewport(0, 0, target.getColorTexture().getWidth(0), target.getColorTexture().getHeight(0));
-            GlStateManager._glBindFramebuffer(GlConst.GL_FRAMEBUFFER, ((GlTexture) target.getColorTexture()).getFbo(((GlDevice) ((GpuDeviceAccessor) RenderSystem.getDevice()).sodium$getBackend()).directStateAccess(), target.getDepthTexture()));
-            ((GlCommandEncoderAccessor) ((CommandEncoderAccessor) RenderSystem.getDevice().createCommandEncoder()).sodium$getBackend()).sodium$applyPipelineState(pass.getPipeline());
-            ((GlCommandEncoderAccessor) ((CommandEncoderAccessor) RenderSystem.getDevice().createCommandEncoder()).sodium$getBackend()).sodium$setLastProgram(null);
-
-            if (pass == DefaultTerrainRenderPasses.SOLID) {
-                renderer.renderFrame(pass, viewport, fogParameters, matrices, x, y, z, terrainSampler);
-            } else if (pass == DefaultTerrainRenderPasses.TRANSLUCENT) {
-                renderer.renderTranslucent(pass, terrainSampler);
-            }
-        }
     }
 
     @Inject(method = "getDebugStrings", at = @At("HEAD"), cancellable = true)

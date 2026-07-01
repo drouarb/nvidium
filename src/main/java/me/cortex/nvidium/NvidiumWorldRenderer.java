@@ -45,7 +45,7 @@ public class NvidiumWorldRenderer {
 
     //Note: the reason that asyncChunkTracker is passed in as an already constructed object is cause of the amount of argmuents it takes to construct it
     public NvidiumWorldRenderer() {
-        int frames = SodiumClientMod.options().advanced.cpuRenderAheadLimit+1;
+        int frames = 3;
         //32 mb upload buffer
         this.uploadStream = new UploadingBufferStream(device, 32000000);
         //8 mb download buffer
@@ -53,7 +53,7 @@ public class NvidiumWorldRenderer {
 
         update_allowed_memory();
         //this.sectionManager = new SectionManager(device, max_geometry_memory*1024*1024, uploadStream, 150, 24, CompactChunkVertex.STRIDE);
-        this.sectionManager = new SectionManager(device, max_geometry_memory*1024*1024, uploadStream, Nvidium.config.use_sodium_vertex_format ? ChunkMeshFormats.COMPACT.getVertexFormat().getStride() : NvidiumCompactChunkVertex.STRIDE, this);
+        this.sectionManager = new SectionManager(device, max_geometry_memory*1024*1024, uploadStream, Nvidium.config.use_sodium_vertex_format ? ChunkMeshFormats.COMPACT.getVertexFormat().getVertexSize() : NvidiumCompactChunkVertex.STRIDE, this);
         this.renderPipeline = new RenderPipeline(device, uploadStream, downloadStream, sectionManager);
     }
 
