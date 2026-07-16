@@ -18,7 +18,6 @@ import static me.cortex.nvidium.util.SegmentedManager.SIZE_LIMIT;
 import static org.lwjgl.opengl.ARBDirectStateAccess.glCopyNamedBufferSubData;
 import static org.lwjgl.opengl.ARBDirectStateAccess.glFlushMappedNamedBufferRange;
 import static org.lwjgl.opengl.ARBMapBufferRange.*;
-import static org.lwjgl.opengl.GL11.glFinish;
 import static org.lwjgl.opengl.GL11.glGetError;
 import static org.lwjgl.opengl.GL42.glMemoryBarrier;
 import static org.lwjgl.opengl.GL42C.GL_BUFFER_UPDATE_BARRIER_BIT;
@@ -60,7 +59,10 @@ public class UploadingBufferStream {
                 this.commit();
                 int attempts = 10;
                 while (--attempts != 0 && this.caddr == SIZE_LIMIT) {
-                    glFinish();
+                    // Wait for the oldest upload frame instead of draining all GPU work
+                    if (!this.frames.isEmpty()) {
+                        this.frames.peek().fence.await(100_000_000L); // 100ms timeout
+                    }
                     this.tick();
                     this.caddr = this.allocationArena.alloc((int) size);
                 }

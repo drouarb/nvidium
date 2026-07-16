@@ -23,6 +23,21 @@ public class GlFence extends TrackedObject {
         return this.signaled;
     }
 
+    /** Block until the fence signals or timeoutNanos elapses. Returns true if signaled. */
+    public boolean await(long timeoutNanos) {
+        this.assertNotFreed();
+        if (this.signaled) return true;
+        int ret = glClientWaitSync(this.fence, GL_SYNC_FLUSH_COMMANDS_BIT, timeoutNanos);
+        if (ret == GL_ALREADY_SIGNALED || ret == GL_CONDITION_SATISFIED) {
+            this.signaled = true;
+            return true;
+        }
+        if (ret != GL_TIMEOUT_EXPIRED) {
+            throw new IllegalStateException("Wait for fence failed, ret: " + ret + " glError: " + glGetError());
+        }
+        return false;
+    }
+
     @Override
     public void free() {
         super.free0();
