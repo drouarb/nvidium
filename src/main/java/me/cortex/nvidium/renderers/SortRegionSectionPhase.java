@@ -17,10 +17,14 @@ public class SortRegionSectionPhase extends Phase {
 
     public void dispatch(int sortingRegionCount) {
         shader.bind();
+        timing.marker();
         glDispatchCompute(sortingRegionCount, 1, 1);
+        timing.marker();
+        timing.tick();
     }
 
     public void delete() {
+        super.delete();
         shader.delete();
     }
 }

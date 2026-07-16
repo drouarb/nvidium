@@ -51,7 +51,10 @@ public class TemporalTerrainRasterizer extends Phase {
 
 
         glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandAddr, regionCount*8L);//Bind the command buffer
+        timing.marker();
         glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
+        timing.marker();
+        timing.tick();
 
 
         GL45C.glBindSampler(0, 0);
@@ -59,6 +62,7 @@ public class TemporalTerrainRasterizer extends Phase {
     }
 
     public void delete() {
+        super.delete();
         GL45.glDeleteSamplers(blockSampler);
         GL45.glDeleteSamplers(lightSampler);
         shader.delete();

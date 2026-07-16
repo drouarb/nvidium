@@ -3,7 +3,6 @@ package me.cortex.nvidium.renderers;
 import com.mojang.blaze3d.platform.GlStateManager;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
-import me.cortex.nvidium.util.GPUTiming;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import me.cortex.nvidium.mixin.minecraft.LightTextureAccessor;
@@ -48,7 +47,7 @@ public class TranslucentTerrainRasterizer extends Phase {
 
     //Translucency is rendered in a very cursed and incorrect way
     // it hijacks the unassigned indirect command dispatch and uses that to dispatch the translucent chunks as well
-    public void raster(int regionCount, long commandAddr, GPUTiming gpuTiming) {
+    public void raster(int regionCount, long commandAddr) {
         shader.bind();
 
         int blockId = Minecraft.getInstance().getTextureManager().getTexture(ResourceLocation.fromNamespaceAndPath("minecraft", "textures/atlas/blocks.png")).getId();
@@ -61,15 +60,16 @@ public class TranslucentTerrainRasterizer extends Phase {
 
         //the +8*6 is to offset to the unassigned dispatch
         glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandAddr, regionCount*8L);//Bind the command buffer
-        gpuTiming.marker();
+        timing.marker();
         glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
-        gpuTiming.marker();
-        gpuTiming.tick();
+        timing.marker();
+        timing.tick();
         GL45C.glBindSampler(0, 0);
         GL45C.glBindSampler(1, 0);
     }
 
     public void delete() {
+        super.delete();
         GL45.glDeleteSamplers(blockSampler);
         GL45.glDeleteSamplers(lightSampler);
         shader.delete();

@@ -16,10 +16,14 @@ public class SectionRasterizer extends Phase {
 
     public void raster(int regionCount) {
         shader.bind();
+        timing.marker();
         glDrawMeshTasksNV(0,regionCount);
+        timing.marker();
+        timing.tick();
     }
 
     public void delete() {
+        super.delete();
         shader.delete();
     }
 }
