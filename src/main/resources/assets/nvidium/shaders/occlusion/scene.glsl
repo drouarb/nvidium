@@ -111,6 +111,7 @@ layout(std140, binding=0) uniform SceneData {
     uint16_t regionCount;//Number of regions in regionIndicies
     //align(1)
     uint8_t frameId;
+    float angularVelocity;
 };
 
 mat4 getRegionTransformation(Region region) {

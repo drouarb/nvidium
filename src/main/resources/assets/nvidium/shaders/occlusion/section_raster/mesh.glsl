@@ -74,8 +74,13 @@ void main() {
     int visibilityIndex = int(_visOutBase|currentSectionIdx);
 
     uint8_t lastData = sectionVisibility[visibilityIndex];
-    // this is almost 100% guarenteed not needed afaik
-    //barrier();
+    // Apply angular velocity decay to confidence
+    uint confidence = uint(lastData);
+    // Only halve confidence on extremely fast rotation (>57°/frame)
+    // At 100 FPS this is ~5700°/s, only triggered by deliberate flick turns
+    if (angularVelocity > 1.0) {
+        confidence = confidence >> 1;
+    }
 
     ivec4 header = sectionData[_offset|currentSectionIdx].header;
     //If the section header was empty or the hide section bit is set, return
@@ -94,6 +99,11 @@ void main() {
         return;
     }
 
+    // Undo the angular velocity decay we applied above if the rep test doesn't run,
+    // but the confidence will be updated correctly by either:
+    //   - fragment shader (if section is visible): boosts by +32
+    //   - mesh shader fallback (if section invisible): slowly decays by -1
+
     vec3 mins = (header.xyz&0xF)-ADD_SIZE;
     vec3 maxs = mins+((header.xyz>>4)&0xF)+1+(ADD_SIZE*2);
     ivec3 chunk = ivec3(header.xyz)>>8;
@@ -109,7 +119,7 @@ void main() {
     corner += vec3(((tid&1)==0)?mins.x:maxs.x, ((tid&4)==0)?mins.y:maxs.y, ((tid&2)==0)?mins.z:maxs.z);
     gl_MeshVerticesNV[gl_LocalInvocationID.x].gl_Position = (MVP*(regionTransform*vec4(corner, 1.0)));
 
-    int prim_payload = (visibilityIndex<<8)|int(((uint(lastData))<<1)&0xff)|1;
+    int prim_payload = (visibilityIndex << 8) | int(confidence & 0xFF);
 
     emitIndicies(batchIdx, prim_payload);
     if (tid < 4) {
@@ -121,9 +131,13 @@ void main() {
         vec3 maxPos = maxs + cornerCopy;
         bool isInSection = all(lessThan(minPos, vec3(ADD_SIZE))) && all(lessThan(vec3(-ADD_SIZE), maxPos));
 
-        //Shift and set, this gives us a bonus of having the last 8 frames as visibility history
-        sectionVisibility[visibilityIndex] = uint8_t(lastData<<1) | uint8_t(isInSection?1:0);//Inject visibility aswell
-        //sectionVisibility[visibilityIndex] = uint8_t(lastData<<1) | uint8_t(0);
+        if (isInSection) {
+            // Camera is inside this section, force visibility
+            sectionVisibility[visibilityIndex] = uint8_t(min(confidence + 64, 255));
+        } else {
+            // Decrement confidence (fragment shader will boost by +32 if visible)
+            sectionVisibility[visibilityIndex] = uint8_t(max(confidence, 1) - 1);
+        }
     }
     if (gl_LocalInvocationID.x == 0) {
         gl_PrimitiveCountNV = 48;

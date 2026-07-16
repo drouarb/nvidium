@@ -18,6 +18,9 @@ void main() {
 }
 #else
 void main() {
-    sectionVisibility[gl_PrimitiveID>>8] = uint8_t(gl_PrimitiveID);
+    uint idx = gl_PrimitiveID >> 8;
+    uint8_t base = sectionVisibility[idx];
+    // Section passed the reprerasterizer test, boost confidence
+    sectionVisibility[idx] = uint8_t(min(uint(base) + 64u, 255u));
 }
 #endif

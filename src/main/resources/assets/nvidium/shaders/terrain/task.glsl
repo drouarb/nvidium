@@ -18,7 +18,7 @@
 layout(local_size_x=1) in;
 
 bool shouldRenderVisible(uint sectionId) {
-    return (sectionVisibility[sectionId]&uint8_t(1)) != uint8_t(0);
+    return sectionVisibility[sectionId] > uint8_t(0);
 }
 
 #import <nvidium:terrain/task_common2.glsl>

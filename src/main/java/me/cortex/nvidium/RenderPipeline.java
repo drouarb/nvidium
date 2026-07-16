@@ -91,7 +91,8 @@ public class RenderPipeline {
                     4 +     // bool      isCylindricalFog
                     4 +     // uint      flags
                     2 +     // uint16_t  regionCount
-                    1       // uint8_t   frameId
+                    1 +     // uint8_t   frameId
+                    4       // float     angularVelocity
             , 2);
 
     private final IDeviceMappedBuffer regionVisibility;
@@ -194,6 +195,28 @@ public class RenderPipeline {
     private int prevRegionCount;
     private int frameId;
     private boolean compiledForFog = false;
+    private final Vector3d lastLookDir = new Vector3d(0, 0, -1);
+    private boolean hasLastLook = false;
+
+    private float computeAngularVelocity(ChunkRenderMatrices crm) {
+        // Extract camera forward direction from the modelView matrix
+        // Column 2 is the "into the screen" direction (-Z in view space)
+        Vector4f col2 = new Vector4f();
+        crm.modelView().getColumn(2, col2);
+        Vector3d currentLookDir = new Vector3d(-col2.x(), -col2.y(), -col2.z()).normalize();
+
+        float velocity;
+        if (hasLastLook) {
+            double cosAngle = lastLookDir.dot(currentLookDir);
+            cosAngle = Math.max(-1.0, Math.min(1.0, cosAngle));
+            velocity = (float) Math.acos(cosAngle);
+        } else {
+            velocity = 0.0f;
+        }
+        lastLookDir.set(currentLookDir);
+        hasLastLook = true;
+        return velocity;
+    }
 
     //TODO FIXME: regions that where in frustum but are now out of frustum must have the visibility data cleared
     // this is due to funny issue of pain where the section was "visible" last frame cause it didnt get ticked
@@ -294,6 +317,8 @@ public class RenderPipeline {
         }
 
         {
+            float angularVelocity = computeAngularVelocity(crm);
+
             Vector3f delta = new Vector3f((float) (px-(chunkPos.x<<4)), (float) (py-(chunkPos.y<<4)), (float) (pz-(chunkPos.z<<4)));
             delta.negate();
             long addr = uploadStream.upload(sceneUniform, 0, SCENE_SIZE);
@@ -367,6 +392,8 @@ public class RenderPipeline {
             MemoryUtil.memPutShort(addr, (short) visibleRegions);
             addr += 2;
             MemoryUtil.memPutByte(addr, (byte) (frameId++));
+            addr += 1;
+            MemoryUtil.memPutFloat(addr, angularVelocity);
         }
 
         if (Nvidium.config.translucency_sorting_level == TranslucencySortingLevel.NONE) {
