@@ -3,8 +3,8 @@ package me.cortex.nvidium.renderers;
 import com.mojang.blaze3d.platform.GlStateManager;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
+import me.cortex.nvidium.util.GPUTiming;
 import net.minecraft.client.Minecraft;
-import me.cortex.nvidium.util.FrameTimeProfiler;
 import net.minecraft.resources.ResourceLocation;
 import me.cortex.nvidium.mixin.minecraft.LightTextureAccessor;
 import org.lwjgl.opengl.GL12C;
@@ -42,7 +42,7 @@ public class PrimaryTerrainRasterizer extends Phase {
         GlStateManager._bindTexture(textureId);
     }
 
-    public void raster(int regionCount, long commandAddr, FrameTimeProfiler frameTimeProfiler) {
+    public void raster(int regionCount, long commandAddr, GPUTiming gpuTiming) {
         shader.bind();
 
         int blockId = Minecraft.getInstance().getTextureManager().getTexture(ResourceLocation.fromNamespaceAndPath("minecraft", "textures/atlas/blocks.png")).getId();
@@ -54,9 +54,10 @@ public class PrimaryTerrainRasterizer extends Phase {
         setTexture(lightId, 1);
 
         glBufferAddressRangeNV(GL_DRAW_INDIRECT_ADDRESS_NV, 0, commandAddr, regionCount*8L);//Bind the command buffer
-        frameTimeProfiler.startQuery();
+        gpuTiming.marker();
         glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
-        frameTimeProfiler.endQuery();
+        gpuTiming.marker();
+        gpuTiming.tick();
         GL45C.glBindSampler(0, 0);
         GL45C.glBindSampler(1, 0);
     }
