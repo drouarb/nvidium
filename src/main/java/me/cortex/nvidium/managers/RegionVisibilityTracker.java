@@ -1,9 +1,9 @@
 package me.cortex.nvidium.managers;
 
-import me.cortex.nvidium.gl.buffers.Buffer;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import me.cortex.nvidium.util.DownloadTaskStream;
+import me.cortex.nvidium.vk.buffers.VkBuffer;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.system.MemoryUtil;
 
@@ -34,7 +34,7 @@ public class RegionVisibilityTracker {
 
     private int fram = 0;
     //This is kind of evil in the fact that it just reuses the visibility buffer
-    public void computeVisibility(int regionCount, Buffer regionVisibilityBuffer, short[] regionMapping) {
+    public void computeVisibility(int regionCount, VkBuffer regionVisibilityBuffer, short[] regionMapping) {
         shader.bind();
         fram++;
         glDrawMeshTasksNV(0, (regionCount + 3) / 4);

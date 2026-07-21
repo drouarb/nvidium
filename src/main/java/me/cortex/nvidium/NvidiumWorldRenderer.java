@@ -2,12 +2,11 @@ package me.cortex.nvidium;
 
 import com.mojang.blaze3d.textures.GpuSampler;
 import me.cortex.nvidium.config.TranslucencySortingLevel;
-import me.cortex.nvidium.gl.RenderDevice;
 import me.cortex.nvidium.managers.SectionManager;
 import me.cortex.nvidium.sodiumCompat.NvidiumCompactChunkVertex;
 import me.cortex.nvidium.util.DownloadTaskStream;
 import me.cortex.nvidium.util.UploadingBufferStream;
-import net.caffeinemc.mods.sodium.client.SodiumClientMod;
+import me.cortex.nvidium.vk.VkRenderDevice;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
 import net.caffeinemc.mods.sodium.client.render.chunk.RenderSection;
 import net.caffeinemc.mods.sodium.client.render.chunk.compile.BuilderTaskOutput;
@@ -17,20 +16,15 @@ import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkMeshFormats;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.caffeinemc.mods.sodium.client.util.FogParameters;
-import net.minecraft.client.Camera;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4fc;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 import static org.lwjgl.opengl.GL11.glGetInteger;
 import static org.lwjgl.opengl.NVXGPUMemoryInfo.GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX;
 
 public class NvidiumWorldRenderer {
-    private static final RenderDevice device = new RenderDevice();
+    private static final VkRenderDevice device = new VkRenderDevice();
 
     private final UploadingBufferStream uploadStream;
     private final DownloadTaskStream downloadStream;

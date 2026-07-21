@@ -1,17 +1,13 @@
 package me.cortex.nvidium.util;
 
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
-import me.cortex.nvidium.gl.RenderDevice;
-import me.cortex.nvidium.gl.buffers.Buffer;
-import me.cortex.nvidium.gl.buffers.PersistentClientMappedBuffer;
-import me.cortex.nvidium.util.SegmentedManager;
+import me.cortex.nvidium.vk.VkRenderDevice;
+import me.cortex.nvidium.vk.buffers.VkBuffer;
+import me.cortex.nvidium.vk.buffers.VkPersistentClientMappedBuffer;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
+import static org.lwjgl.util.vma.Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+import static org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
 //Download stream from gpu to cpu
 public class DownloadTaskStream {
@@ -20,15 +16,15 @@ public class DownloadTaskStream {
     private record Download(long addr, IDownloadFinishedCallback callback) {}
 
     private final SegmentedManager allocator = new SegmentedManager();
-    private final RenderDevice device;
-    private PersistentClientMappedBuffer buffer;
+    private final VkRenderDevice device;
+    private VkPersistentClientMappedBuffer buffer;
 
     private int cidx;
     private final ObjectList<Download>[] allocations;
-    public DownloadTaskStream(RenderDevice device, int frames, long size) {
+    public DownloadTaskStream(VkRenderDevice device, int frames, long size) {
         this.device = device;
         allocator.setLimit(size);
-        buffer = device.createClientMappedBuffer(size);
+        buffer = device.createClientMappedBuffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT);
         TickableManager.register(this);
         allocations = new ObjectList[frames];
         for (int i = 0; i < frames; i++) {
@@ -36,7 +32,7 @@ public class DownloadTaskStream {
         }
     }
 
-    public void download(Buffer source, long offset, int size, IDownloadFinishedCallback callback) {
+    public void download(VkBuffer source, long offset, int size, IDownloadFinishedCallback callback) {
         long addr = allocator.alloc(size);
         device.copyBuffer(source, buffer, offset, addr, size);
         allocations[cidx].add(new Download(addr, callback));

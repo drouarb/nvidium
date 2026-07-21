@@ -1,13 +1,12 @@
 package me.cortex.nvidium.managers;
 
-
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import me.cortex.nvidium.Nvidium;
-import me.cortex.nvidium.gl.RenderDevice;
-import me.cortex.nvidium.gl.buffers.IDeviceMappedBuffer;
 import me.cortex.nvidium.mixin.sodium.ViewportAccessor;
 import me.cortex.nvidium.util.IdProvider;
 import me.cortex.nvidium.util.UploadingBufferStream;
+import me.cortex.nvidium.vk.VkRenderDevice;
+import me.cortex.nvidium.vk.buffers.VkDeviceOnlyMappedBuffer;
 import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.core.SectionPos;
 import org.lwjgl.system.MemoryUtil;
@@ -15,6 +14,9 @@ import org.lwjgl.system.MemoryUtil;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.function.Consumer;
+
+import static org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+import static org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
 //8x4x8
 public class RegionManager {
@@ -26,9 +28,9 @@ public class RegionManager {
 
     private static final int TOTAL_SECTION_META_SIZE = SectionManager.SECTION_SIZE * 256;
 
-    private final IDeviceMappedBuffer regionBuffer;
-    private final IDeviceMappedBuffer sectionBuffer;
-    private final RenderDevice device;
+    private final VkDeviceOnlyMappedBuffer regionBuffer;
+    private final VkDeviceOnlyMappedBuffer sectionBuffer;
+    private final VkRenderDevice device;
     private final UploadingBufferStream uploadStream;
 
     private final Long2IntOpenHashMap regionTransformationIdMapping = new Long2IntOpenHashMap();
@@ -40,11 +42,19 @@ public class RegionManager {
 
     private final Consumer<Integer> regionUploadCallback;
 
-    public RegionManager(RenderDevice device, int maxRegions, int maxSections, UploadingBufferStream uploadStream, Consumer<Integer> regionUploaded) {
+    public RegionManager(VkRenderDevice device, int maxRegions, int maxSections, UploadingBufferStream uploadStream, Consumer<Integer> regionUploaded) {
         this.regionMap.defaultReturnValue(-1);
         this.device = device;
-        this.regionBuffer = device.createDeviceOnlyMappedBuffer((long) maxRegions * META_SIZE);
-        this.sectionBuffer = device.createDeviceOnlyMappedBuffer((long) maxSections * SectionManager.SECTION_SIZE);
+        this.regionBuffer = device.createDeviceOnlyMappedBuffer(
+                (long) maxRegions * META_SIZE,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                0
+        );
+        this.sectionBuffer = device.createDeviceOnlyMappedBuffer(
+                (long) maxSections * SectionManager.SECTION_SIZE,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                0
+        );
         this.uploadStream = uploadStream;
         this.regions = new Region[maxRegions];
         this.regionUploadCallback = regionUploaded;
@@ -275,9 +285,9 @@ public class RegionManager {
                     ((region.rx << 7) - vp.nvidium$getTransform().intX) - vp.nvidium$getTransform().fracX,
                     ((region.ry << 6) - vp.nvidium$getTransform().intY) - vp.nvidium$getTransform().fracY,
                     ((region.rz << 7) - vp.nvidium$getTransform().intZ) - vp.nvidium$getTransform().fracZ,
-                    ((region.rx+1 << 7) - vp.nvidium$getTransform().intX) - vp.nvidium$getTransform().fracX,
-                    ((region.ry+1 << 6) - vp.nvidium$getTransform().intY) - vp.nvidium$getTransform().fracY,
-                    ((region.rz+1 << 7) - vp.nvidium$getTransform().intZ) - vp.nvidium$getTransform().fracZ
+                    ((region.rx + 1 << 7) - vp.nvidium$getTransform().intX) - vp.nvidium$getTransform().fracX,
+                    ((region.ry + 1 << 6) - vp.nvidium$getTransform().intY) - vp.nvidium$getTransform().fracY,
+                    ((region.rz + 1 << 7) - vp.nvidium$getTransform().intZ) - vp.nvidium$getTransform().fracZ
             );
         }
     }
@@ -303,9 +313,9 @@ public class RegionManager {
         var region = this.regions[regionId];
         //TODO: also account for region area instead of entire region
         return (region.rx << 7 <= camX && camX <= ((region.rx + 1) << 7)) ||
-               (region.ry << 6 <= camY && camY <= ((region.ry + 1) << 6)) ||
-               (region.rz << 7 <= camZ && camZ <= ((region.rz + 1) << 7))
-               ;
+                (region.ry << 6 <= camY && camY <= ((region.ry + 1) << 6)) ||
+                (region.rz << 7 <= camZ && camZ <= ((region.rz + 1) << 7))
+                ;
     }
 
     public long getRegionBufferAddress() {
