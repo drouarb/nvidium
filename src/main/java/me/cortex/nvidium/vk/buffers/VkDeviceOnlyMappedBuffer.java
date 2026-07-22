@@ -5,18 +5,19 @@ import com.mojang.blaze3d.vulkan.VulkanDevice;
 import com.mojang.blaze3d.vulkan.VulkanUtils;
 import me.cortex.nvidium.gl.TrackedObject;
 import me.cortex.nvidium.mixin.minecraft.GpuDeviceAccessor;
+import me.cortex.nvidium.vk.shader.VkPipelineLayout;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.vma.Vma;
 import org.lwjgl.util.vma.VmaAllocationCreateInfo;
-import org.lwjgl.vulkan.VkBufferCreateInfo;
-import org.lwjgl.vulkan.VkBufferDeviceAddressInfo;
+import org.lwjgl.vulkan.*;
 
 import java.nio.LongBuffer;
+import java.util.function.Supplier;
 
 import static org.lwjgl.util.vma.Vma.*;
-import static org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE;
+import static org.lwjgl.vulkan.VK10.*;
 import static org.lwjgl.vulkan.VK12.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 import static org.lwjgl.vulkan.VK12.vkGetBufferDeviceAddress;
 
@@ -26,9 +27,10 @@ public class VkDeviceOnlyMappedBuffer extends TrackedObject implements VkBuffer 
     private final long vmaAllocation;
     private final long deviceAddr;
     private final long size;
+    Supplier<String> label;
 
-    public VkDeviceOnlyMappedBuffer(long size, int bufferUsage, int allocFlags) {
-        System.out.println("VkPersistentClientMappedBuffer LEZGO");
+    public VkDeviceOnlyMappedBuffer(long size, int bufferUsage, int allocFlags, Supplier<String> label) {
+        this.label = label;
 
         vkDevice = (VulkanDevice)((GpuDeviceAccessor) RenderSystem.getDevice()).nvidium$getGpuDeviceBackend();
         this.size = size;
@@ -62,11 +64,10 @@ public class VkDeviceOnlyMappedBuffer extends TrackedObject implements VkBuffer 
                 Vma.vmaDestroyBuffer(this.vkDevice.vma(), this.handle, this.vmaAllocation);
                 throw new IllegalStateException("Failed to get buffer device address");
             }
-            /* TODO LABEL FOR DEBUG ?
-            if (label != null) {
-                device.instance().debug().setObjectName(device.vkDevice(), 9, vkBuffer, label);
-            }
-             */
+
+            vkDevice.instance().debug().setObjectName(vkDevice.vkDevice(), 9, handle, label);
+
+            System.out.println("Create VkPersistentClientMappedBuffer " + label.get() + " => 0x" + Long.toHexString(this.handle));
         }
     }
 
@@ -75,12 +76,41 @@ public class VkDeviceOnlyMappedBuffer extends TrackedObject implements VkBuffer 
     }
 
     public void delete() {
+        System.out.println("DELETE BUFFER " + label.get());
+        //(new Exception()).printStackTrace();
         super.free0();
-        Vma.vmaDestroyBuffer(
-                vkDevice.vma(),
-                this.handle,
-                this.vmaAllocation
-        );
+        Vma.vmaDestroyBuffer(vkDevice.vma(), this.handle, this.vmaAllocation);
+    }
+
+    public void bind(VkCommandBuffer commandBuffer, VkPipelineLayout layout, long size) {
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            VkDescriptorBufferInfo.Buffer bufferInfo =
+                    VkDescriptorBufferInfo.calloc(1, stack);
+
+            bufferInfo.get(0)
+                    .buffer(this.handle)
+                    .offset(0)
+                    .range(size);
+
+            VkWriteDescriptorSet.Buffer writes =
+                    VkWriteDescriptorSet.calloc(1, stack);
+
+            writes.get(0)
+                    .sType$Default()
+                    .dstBinding(0)
+                    .dstArrayElement(0)
+                    .descriptorCount(1)
+                    .descriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                    .pBufferInfo(bufferInfo);
+
+            KHRPushDescriptor.vkCmdPushDescriptorSetKHR(
+                    commandBuffer,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    layout.layout(),
+                    0, // descriptor set index
+                    writes
+            );
+        }
     }
 
     public long getDeviceAddress() {

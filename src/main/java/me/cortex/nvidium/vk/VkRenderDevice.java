@@ -14,6 +14,8 @@ import org.lwjgl.vulkan.VkBufferCopy;
 import org.lwjgl.vulkan.VkDependencyInfo;
 import org.lwjgl.vulkan.VkMemoryBarrier2;
 
+import java.util.function.Supplier;
+
 import static org.lwjgl.vulkan.VK10.vkCmdCopyBuffer;
 import static org.lwjgl.vulkan.VK13.*;
 
@@ -69,7 +71,7 @@ public class VkRenderDevice {
         return new PersistentSparseAddressableBuffer(totalSize);
     }*/
 
-    public VkDeviceOnlyMappedBuffer createDeviceOnlyMappedBuffer(long size, int bufferUsage, int allocFlags) {
-        return new VkDeviceOnlyMappedBuffer(size, bufferUsage, allocFlags);
+    public VkDeviceOnlyMappedBuffer createDeviceOnlyMappedBuffer(long size, int bufferUsage, int allocFlags, Supplier<String> label) {
+        return new VkDeviceOnlyMappedBuffer(size, bufferUsage, allocFlags, label);
     }
 }

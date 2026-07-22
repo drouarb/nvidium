@@ -25,9 +25,11 @@ public class BufferArena {
         this.memory_size = memory;
         if (Nvidium.SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER) {
             //buffer = device.createSparseBuffer(80000000000L);//Create a 80gb buffer
-            buffer = device.createDeviceOnlyMappedBuffer(memory, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 0);
+            buffer = device.createDeviceOnlyMappedBuffer(memory, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 0,
+                    () -> "TerrainArena");
         } else {
-            buffer = device.createDeviceOnlyMappedBuffer(memory, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 0);
+            buffer = device.createDeviceOnlyMappedBuffer(memory, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 0,
+                    () -> "TerrainArena");
             this.segments.setLimit(memory/(4L*this.vertexFormatSize));
         }
         //Reserve index 0

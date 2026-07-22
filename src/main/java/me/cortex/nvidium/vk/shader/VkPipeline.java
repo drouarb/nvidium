@@ -15,6 +15,8 @@ import org.lwjgl.vulkan.*;
 
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +37,10 @@ public class VkPipeline {
         return pipeline;
     }
 
+    public long layout() {
+        return this.pipelineLayout;
+    }
+
     public void bind(VkCommandBuffer commandBuffer) {
         VK12.vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     }
@@ -43,8 +49,8 @@ public class VkPipeline {
         VkDevice vkDevice = ((VulkanDevice) ((GpuDeviceAccessor) RenderSystem.getDevice()).nvidium$getGpuDeviceBackend()).vkDevice();
 
         vkDestroyPipeline(vkDevice, pipeline, null);
-        vkDestroyPipelineLayout(vkDevice, pipelineLayout, null);
-        for (long shaderModule : shaderModules) {
+        // vkDestroyPipelineLayout(vkDevice, pipelineLayout, null);
+        for (long shaderModule : shaderModules) { // TODO FREE AT COMPILE ??
             vkDestroyShaderModule(vkDevice, shaderModule, null);
         }
     }
@@ -57,6 +63,7 @@ public class VkPipeline {
     public static class Builder {
         private final List<ShaderStage> sources = new ArrayList<>();
         private ColorTargetState colorTargetState;
+        private VkPipelineLayout layout = null;
 
         private Builder() {
         }
@@ -68,6 +75,11 @@ public class VkPipeline {
 
         public Builder withColorTargetState(ColorTargetState colorTargetState) {
             this.colorTargetState = colorTargetState;
+            return this;
+        }
+
+        public Builder withLayout(VkPipelineLayout layout) {
+            this.layout = layout;
             return this;
         }
 
@@ -92,24 +104,28 @@ public class VkPipeline {
                             .pName(stack.UTF8("main"));
                 }
 
-                // TODO LAYOUT ====================================================
-                VkPipelineLayoutCreateInfo layoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
-                        .sType$Default();
+                long pipelineLayout;
+                if (layout == null) {
+                    VkPipelineLayoutCreateInfo layoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
+                            .sType$Default();
 
-                LongBuffer pLayout = stack.mallocLong(1);
+                    LongBuffer pLayout = stack.mallocLong(1);
 
-                int result = vkCreatePipelineLayout(
-                        vkDevice,
-                        layoutInfo,
-                        null,
-                        pLayout
-                );
+                    int result = vkCreatePipelineLayout(
+                            vkDevice,
+                            layoutInfo,
+                            null,
+                            pLayout
+                    );
 
-                if (result != VK_SUCCESS) {
-                    throw new RuntimeException("Failed to create pipeline layout: " + result);
+                    if (result != VK_SUCCESS) {
+                        throw new RuntimeException("Failed to create pipeline layout: " + result);
+                    }
+
+                    pipelineLayout = pLayout.get(0);
+                } else {
+                    pipelineLayout = layout.layout();
                 }
-
-                long pipelineLayout = pLayout.get(0);
 
                 VkPipelineViewportStateCreateInfo viewportState =
                         VkPipelineViewportStateCreateInfo.calloc(stack)
@@ -194,7 +210,7 @@ public class VkPipeline {
 
                 LongBuffer pPipeline = stack.mallocLong(1);
 
-                result = vkCreateGraphicsPipelines(
+                int result = vkCreateGraphicsPipelines(
                         vkDevice,
                         VK_NULL_HANDLE,
                         pipelineInfo,
@@ -247,6 +263,8 @@ public class VkPipeline {
         }
 
         public ByteBuffer compileGlsl(MemoryStack stack, ShaderStage stage) {
+            System.out.println("Compiling " + stage.path);
+            System.out.println(stage.source);
             long result = Shaderc.shaderc_compile_into_spv(
                     shaderCompiler,
                     stage.source,
@@ -261,6 +279,7 @@ public class VkPipeline {
 
             int status = Shaderc.shaderc_result_get_compilation_status(result);
             if (status != Shaderc.shaderc_compilation_status_success) {
+                System.out.println(stage.source);
                 String error = Shaderc.shaderc_result_get_error_message(result);
 
                 throw new IllegalArgumentException("Failed to compile " + stage.path + ":\n" + error);
@@ -276,6 +295,17 @@ public class VkPipeline {
             spirv.flip();
 
             Shaderc.shaderc_result_release(result);
+
+            try { // TODO REMOVE IT
+                ByteBuffer dump = spirv.duplicate();
+                byte[] bytes = new byte[dump.remaining()];
+                dump.get(bytes);
+                System.out.println("DUMPING " + stage.path.toDebugFileName());
+                Files.write(Path.of(stage.path.toDebugFileName() + ".spv"), bytes);
+            } catch (Exception e) {
+                System.out.println("FAILED TO DUMP " + stage.path + e);
+            }
+
             return spirv;
         }
 

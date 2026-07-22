@@ -14,6 +14,7 @@ import me.cortex.nvidium.renderers.*;
 import me.cortex.nvidium.util.*;
 import me.cortex.nvidium.vk.VkRenderDevice;
 import me.cortex.nvidium.vk.buffers.VkDeviceOnlyMappedBuffer;
+import me.cortex.nvidium.vk.shader.VkPipelineLayout;
 import net.caffeinemc.mods.sodium.client.SodiumClientMod;
 import net.caffeinemc.mods.sodium.client.gpu.GPULimits;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
@@ -26,6 +27,7 @@ import net.minecraft.client.TextureFilteringMethod;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import org.joml.*;
 import org.lwjgl.system.MemoryUtil;
+import org.lwjgl.vulkan.VkCommandBuffer;
 
 import java.lang.Math;
 import java.util.BitSet;
@@ -94,6 +96,8 @@ public class RenderPipeline {
                     1       // uint8_t   frameId
             , 2);
 
+    private final VkPipelineLayout layout;
+
     private final VkDeviceOnlyMappedBuffer sceneUniform;
     private final VkDeviceOnlyMappedBuffer regionVisibility;
     private final VkDeviceOnlyMappedBuffer sectionVisibility;
@@ -128,7 +132,8 @@ public class RenderPipeline {
         this.sectionManager = sectionManager;
         this.compiledForFog = Nvidium.config.render_fog;
 
-        regionRasterizer = new RegionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH);
+        layout = new VkPipelineLayout(device);
+        regionRasterizer = new RegionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
         /*
         terrainRasterizer = new PrimaryTerrainRasterizer();
         sectionRasterizer = new SectionRasterizer();
@@ -145,54 +150,64 @@ public class RenderPipeline {
         sceneUniform = device.createDeviceOnlyMappedBuffer(
                 SCENE_SIZE + maxRegions * 2L,
                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                0
+                0,
+                () -> "SceneUniform"
         );
         System.out.println("regionVisibility");
         regionVisibility = device.createDeviceOnlyMappedBuffer(
                 maxRegions,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                0
+                0,
+                () -> "RegionVisibility"
         );
         System.out.println("sectionVisibility");
         sectionVisibility = device.createDeviceOnlyMappedBuffer(
                 maxRegions * 256L,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                0
+                0,
+                () -> "SectionVisibility"
         );
         sectionIndices = device.createDeviceOnlyMappedBuffer(
                 maxRegions * 256L * 3L,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                0
+                0,
+                () -> "SectionIndices"
         );
         terrainCommandBuffer = device.createDeviceOnlyMappedBuffer(
                 maxRegions * 8L,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
-                0
+                0,
+                () -> "TerrainCommandBuffer"
         );
         translucencyCommandBuffer = device.createDeviceOnlyMappedBuffer(
                 maxRegions * 8L,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
-                0
+                0,
+                () -> "TranslucentCommandBuffer"
         );
         temporalCommandBuffer = device.createDeviceOnlyMappedBuffer(
                 maxRegions * 8L,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
-                0
+                0,
+                () -> "TemporalCommandBuffer"
         );
         regionSortingList = device.createDeviceOnlyMappedBuffer(
                 maxRegions * 2L,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                0
+                0,
+                () -> "RegionSortingList"
         );
         this.transformationArray = device.createDeviceOnlyMappedBuffer(
                 RegionManager.MAX_TRANSFORMATION_COUNT * (4 * 4 * 4),
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
-                0
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                0,
+                () -> "TransformationArray"
         );
         this.originOffsetArray = device.createDeviceOnlyMappedBuffer(
                 RegionManager.MAX_TRANSFORMATION_COUNT * 8,
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
-                0
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                0,
+                () -> "OriginOffsetArray"
         );
 
         regionVisibilityTracker = new BitSet(maxRegions);
@@ -201,7 +216,8 @@ public class RenderPipeline {
         statisticsBuffer = device.createDeviceOnlyMappedBuffer(
                 4 * 4,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                0
+                0,
+                () -> "StatisticsBuffer"
         );
         stats = new Statistics();
 
@@ -219,6 +235,7 @@ public class RenderPipeline {
         vkCmdFillBuffer(device.getVkDevice().createCommandEncoder().commandBuffer(), originOffsetArray.getHandle(), 0,  VK_WHOLE_SIZE, 0);
         // TODO BARRIER ?
         // nglClearNamedBufferData(this.originOffsetArray.getId(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, 0);
+        device.getVkDevice().createCommandEncoder().submit();
     }
 
     public void setTransformation(int id, Matrix4fc transform) {
@@ -459,8 +476,15 @@ public class RenderPipeline {
                         OptionalDouble.empty()
                 )) {
 
-            triangle.raster(device.getVkDevice().createCommandEncoder().commandBuffer());
-            regionRasterizer.raster(device.getVkDevice().createCommandEncoder().commandBuffer(), visibleRegions);
+            VkCommandBuffer commandBuffer = device.getVkDevice().createCommandEncoder().commandBuffer();
+
+            //System.out.println("BIND");
+            sceneUniform.bind(commandBuffer, layout, SCENE_SIZE);
+
+            //System.out.println("TRIANGLE");
+            //triangle.raster(commandBuffer);
+            //System.out.println("RegionRaster " + visibleRegions);
+            regionRasterizer.raster(commandBuffer, visibleRegions);
         }
 
         //if ((err = glGetError()) != 0) {
@@ -711,6 +735,6 @@ public class RenderPipeline {
         regionSectionSorter = new SortRegionSectionPhase();
         cmdBufferBuilder = new CmdBufferBuilder();
          */
-        regionRasterizer = new RegionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH);
+        regionRasterizer = new RegionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
     }
 }

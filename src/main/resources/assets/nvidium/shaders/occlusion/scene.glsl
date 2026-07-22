@@ -58,8 +58,58 @@ bool sectionEmpty(ivec4 header) {
     return header == ivec4(0);
 }
 
+layout(buffer_reference, std430, buffer_reference_align = 1)
+restrict buffer U8Ptr {
+    uint8_t data[];
+};
 
-layout(std140, binding=0) uniform SceneData {
+layout(buffer_reference, buffer_reference_align = 2)
+readonly restrict buffer U16Ptr {
+    uint16_t data[];
+};
+
+layout(buffer_reference, buffer_reference_align = 4)
+readonly restrict buffer U32Ptr {
+    uint data[];
+};
+
+layout(buffer_reference, buffer_reference_align = 8)
+readonly restrict buffer U64Ptr {
+    uint64_t data[];
+};
+
+layout(buffer_reference, std430, buffer_reference_align = 16)
+readonly restrict buffer RegionPtr {
+    Region data[];
+};
+
+layout(buffer_reference, std430)
+restrict buffer SectionPtr {
+    Section data[];
+};
+
+layout(buffer_reference, std430)
+restrict buffer U8vec3Ptr {
+    u8vec3 data[];
+};
+
+layout(buffer_reference, std430, buffer_reference_align = 16)
+restrict buffer Uvec4Ptr {
+    uvec4 data[];
+};
+
+layout(buffer_reference, std430) // TODO SIZE ??
+restrict buffer VertexPtr {
+    Vertex data[];
+};
+
+layout(buffer_reference, std430)
+restrict buffer Mat4Ptr {
+    mat4 data[];
+};
+
+
+layout(std140, binding=0, set=0) uniform SceneData {
     //Need to basicly go in order of alignment
     //align(16)
     mat4 MVP;
@@ -71,32 +121,32 @@ layout(std140, binding=0) uniform SceneData {
 
     //vec4  subChunkPosition;//The subChunkTranslation is already done inside the MVP
     //align(8)
-    readonly restrict uint16_t *regionIndicies;//Pointer to block of memory at the end of the SceneData struct, also mapped to be a uniform
-    readonly restrict Region *regionData;
-    restrict Section *sectionData;
+    U16Ptr regionIndicies;//Pointer to block of memory at the end of the SceneData struct, also mapped to be a uniform
+    RegionPtr regionData;
+    SectionPtr sectionData;
     //NOTE: for the following, can make it so that region visibility actually uses section visibility array
-    restrict uint8_t *regionVisibility;
-    restrict uint8_t *sectionVisibility;
-    restrict u8vec3  *sectionIndices;
+    U8Ptr regionVisibility;
+    U8Ptr sectionVisibility;
+    U8vec3Ptr sectionIndices;
     //Terrain command buffer, the first 4 bytes are actually the count
-    writeonly restrict uvec2 *terrainCommandBuffer;
-    writeonly restrict uvec2 *translucencyCommandBuffer;
-    writeonly restrict uvec2 *temporalCommandBuffer;
+    Uvec4Ptr terrainCommandBuffer;
+    Uvec4Ptr translucencyCommandBuffer;
+    Uvec4Ptr temporalCommandBuffer;
 
-    readonly restrict uint16_t *sortingRegionList;
+    U16Ptr sortingRegionList;
 
     //TODO:FIXME: only apply non readonly to translucency mesh
-    restrict Vertex *terrainData;//readonly
-    restrict uint   *translucencyIndexData;
+    VertexPtr terrainData;//readonly
+    U32Ptr translucencyIndexData;
 
     //TODO: possibly make this a uniform instead of a buffer, but it might get quite large is the issue
-    readonly restrict mat4 *transformationArray;
-    readonly restrict uint64_t *originArray;
+    Mat4Ptr transformationArray;
+    U64Ptr originArray;
 
     //readonly restrict u64vec4 *terrainData;
     //uvec4 *terrainData;
 
-    uint32_t *statistics_buffer;
+    U32Ptr statistics_buffer;
 
     vec2 screenSize;
 
@@ -116,11 +166,11 @@ layout(std140, binding=0) uniform SceneData {
 };
 
 mat4 getRegionTransformation(Region region) {
-    return transformationArray[unpackRegionTransformId(region)];
+    return transformationArray.data[unpackRegionTransformId(region)];
 }
 
 ivec3 unpackOriginOffsetId(uint id) {
-    uint64_t val = originArray[id];
+    uint64_t val = originArray.data[id];
     int x = (int(uint(val&0x1ffffff))<<7)>>7;
     int y = (int(uint((val>>50)&0x3fff))<<18)>>18;
     int z = (int(uint((val>>25)&0x1ffffff))<<7)>>7;

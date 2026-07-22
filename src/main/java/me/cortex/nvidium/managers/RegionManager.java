@@ -48,12 +48,14 @@ public class RegionManager {
         this.regionBuffer = device.createDeviceOnlyMappedBuffer(
                 (long) maxRegions * META_SIZE,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                0
+                0,
+                () -> "RegionBuffer"
         );
         this.sectionBuffer = device.createDeviceOnlyMappedBuffer(
                 (long) maxSections * SectionManager.SECTION_SIZE,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                0
+                0,
+                () -> "SectionBuffer"
         );
         this.uploadStream = uploadStream;
         this.regions = new Region[maxRegions];
