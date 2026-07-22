@@ -5,6 +5,7 @@ import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vulkan.VulkanConst;
 import com.mojang.blaze3d.vulkan.VulkanDevice;
+import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.mixin.minecraft.GpuDeviceAccessor;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import net.minecraft.resources.Identifier;
@@ -64,12 +65,25 @@ public class VkPipeline {
         private final List<ShaderStage> sources = new ArrayList<>();
         private ColorTargetState colorTargetState;
         private VkPipelineLayout layout = null;
+        private boolean representativeFragmentTest = false;
+        private boolean depthTest = false;
+        private boolean depthWrite = false;
 
         private Builder() {
         }
 
         public Builder addSource(VkShaderType type, Identifier path) {
             sources.add(new ShaderStage(type, path, ShaderLoader.parse(path)));
+            return this;
+        }
+
+        public Builder withDepthTest(boolean v) {
+            this.depthTest = v;
+            return this;
+        }
+
+        public Builder withDepthWrite(boolean v) {
+            this.depthWrite = v;
             return this;
         }
 
@@ -80,6 +94,11 @@ public class VkPipeline {
 
         public Builder withLayout(VkPipelineLayout layout) {
             this.layout = layout;
+            return this;
+        }
+
+        public Builder withRepresentativeFragmentTest(boolean v) {
+            representativeFragmentTest = v;
             return this;
         }
 
@@ -104,6 +123,7 @@ public class VkPipeline {
                             .pName(stack.UTF8("main"));
                 }
 
+                // TODO PROBABLY NO NEED TO CREATE DUMMY LAYOUT
                 long pipelineLayout;
                 if (layout == null) {
                     VkPipelineLayoutCreateInfo layoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
@@ -127,76 +147,68 @@ public class VkPipeline {
                     pipelineLayout = layout.layout();
                 }
 
-                VkPipelineViewportStateCreateInfo viewportState =
-                        VkPipelineViewportStateCreateInfo.calloc(stack)
-                                .sType$Default()
-                                .viewportCount(1)
-                                .scissorCount(1);
-                VkPipelineDynamicStateCreateInfo dynamicState =
-                        VkPipelineDynamicStateCreateInfo.calloc(stack)
-                                .sType$Default()
-                                .pDynamicStates(stack.ints(
-                                        VK_DYNAMIC_STATE_VIEWPORT,
-                                        VK_DYNAMIC_STATE_SCISSOR
-                                ));
+                VkPipelineViewportStateCreateInfo viewportState = VkPipelineViewportStateCreateInfo.calloc(stack)
+                        .sType$Default()
+                        .viewportCount(1)
+                        .scissorCount(1);
+
+                VkPipelineDynamicStateCreateInfo dynamicState = VkPipelineDynamicStateCreateInfo.calloc(stack)
+                        .sType$Default()
+                        .pDynamicStates(stack.ints(
+                                VK_DYNAMIC_STATE_VIEWPORT,
+                                VK_DYNAMIC_STATE_SCISSOR
+                        ));
 
 
-                VkPipelineRasterizationStateCreateInfo rasterizationState =
-                        VkPipelineRasterizationStateCreateInfo.calloc(stack)
-                                .sType$Default()
-                                .depthClampEnable(false)
-                                .rasterizerDiscardEnable(false)
-                                .polygonMode(VK_POLYGON_MODE_FILL)
-                                .cullMode(VK_CULL_MODE_NONE)
-                                .frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE)
-                                .depthBiasEnable(false)
-                                .lineWidth(1.0f);
+                VkPipelineRasterizationStateCreateInfo rasterizationState = VkPipelineRasterizationStateCreateInfo.calloc(stack)
+                        .sType$Default()
+                        .depthClampEnable(false)
+                        .rasterizerDiscardEnable(false)
+                        .polygonMode(VK_POLYGON_MODE_FILL)
+                        .cullMode(VK_CULL_MODE_NONE)
+                        .frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE)
+                        .depthBiasEnable(false)
+                        .lineWidth(1.0f);
 
-                VkPipelineMultisampleStateCreateInfo multisampleState =
-                        VkPipelineMultisampleStateCreateInfo.calloc(stack)
-                                .sType$Default()
-                                .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
-                                .sampleShadingEnable(false);
+                VkPipelineMultisampleStateCreateInfo multisampleState = VkPipelineMultisampleStateCreateInfo.calloc(stack)
+                        .sType$Default()
+                        .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
+                        .sampleShadingEnable(false);
+
+                VkPipelineColorBlendAttachmentState.Buffer colorBlendAttachment = VkPipelineColorBlendAttachmentState.calloc(1, stack);
+                VkPipelineColorBlendAttachmentState attachment = colorBlendAttachment.get(0)
+                        .colorWriteMask(VulkanConst.toVk(colorTargetState));
+
+                colorTargetState.blendFunction().ifPresentOrElse(
+                        blend ->
+                                attachment
+                                        .blendEnable(true)
+                                        .colorBlendOp(VulkanConst.toVk(blend.color().op()))
+                                        .alphaBlendOp(VulkanConst.toVk(blend.alpha().op()))
+                                        .srcColorBlendFactor(VulkanConst.toVk(blend.color().sourceFactor()))
+                                        .dstColorBlendFactor(VulkanConst.toVk(blend.color().destFactor()))
+                                        .srcAlphaBlendFactor(VulkanConst.toVk(blend.alpha().sourceFactor()))
+                                        .dstAlphaBlendFactor(VulkanConst.toVk(blend.alpha().destFactor())),
+                        () -> attachment
+                                .blendEnable(false)
+                );
 
 
-                VkPipelineColorBlendAttachmentState.Buffer colorBlendAttachment =
-                        VkPipelineColorBlendAttachmentState.calloc(1, stack);
+                VkPipelineColorBlendStateCreateInfo colorBlendState = VkPipelineColorBlendStateCreateInfo.calloc(stack)
+                        .sType$Default()
+                        .logicOpEnable(false)
+                        .pAttachments(colorBlendAttachment);
 
-                colorBlendAttachment.get(0)
-                        .blendEnable(false)
-                        .colorWriteMask(
-                                VK_COLOR_COMPONENT_R_BIT |
-                                        VK_COLOR_COMPONENT_G_BIT |
-                                        VK_COLOR_COMPONENT_B_BIT |
-                                        VK_COLOR_COMPONENT_A_BIT
-                        );
-
-                VkPipelineColorBlendStateCreateInfo colorBlendState =
-                        VkPipelineColorBlendStateCreateInfo.calloc(stack)
-                                .sType$Default()
-                                .logicOpEnable(false)
-                                .pAttachments(colorBlendAttachment);
-
-                VkPipelineDepthStencilStateCreateInfo depthStencilState =
-                        VkPipelineDepthStencilStateCreateInfo.calloc(stack)
-                                .sType$Default()
-                                .depthTestEnable(false)
-                                .depthWriteEnable(false)
-                                .depthBoundsTestEnable(false)
-                                .stencilTestEnable(false);
-
-                VkPipelineRenderingCreateInfoKHR renderingInfo =
-                        VkPipelineRenderingCreateInfoKHR.calloc(stack)
-                                .sType$Default()
-                                .pColorAttachmentFormats(
-                                        stack.ints(VulkanConst.toVk(colorTargetState.format()))
-                                )
-                                .depthAttachmentFormat(VK_FORMAT_D32_SFLOAT)
-                                .stencilAttachmentFormat(VK_FORMAT_UNDEFINED);
+                VkPipelineDepthStencilStateCreateInfo depthStencilState = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
+                        .sType$Default()
+                        .depthTestEnable(this.depthTest)
+                        .depthWriteEnable(this.depthWrite)
+                        .depthCompareOp(VK_COMPARE_OP_GREATER_OR_EQUAL)
+                        .depthBoundsTestEnable(false)
+                        .stencilTestEnable(false);
 
                 VkGraphicsPipelineCreateInfo.Buffer pipelineInfo = VkGraphicsPipelineCreateInfo.calloc(1, stack)
                         .sType$Default();
-
                 pipelineInfo.get(0)
                         .pStages(stages)
                         .layout(pipelineLayout)
@@ -205,8 +217,26 @@ public class VkPipeline {
                         .pRasterizationState(rasterizationState)
                         .pMultisampleState(multisampleState)
                         .pColorBlendState(colorBlendState)
-                        .pDepthStencilState(depthStencilState)
-                        .pNext(renderingInfo);
+                        .pDepthStencilState(depthStencilState);
+
+                VkPipelineRenderingCreateInfoKHR renderingInfo = VkPipelineRenderingCreateInfoKHR.calloc(stack)
+                        .sType$Default()
+                        .pColorAttachmentFormats(stack.ints(VulkanConst.toVk(colorTargetState.format())))
+                        .depthAttachmentFormat(VK_FORMAT_D32_SFLOAT)
+                        .stencilAttachmentFormat(VK_FORMAT_UNDEFINED);
+
+                if (Nvidium.SUPPORT_NV_REPRESENTATIVE_TEST_FRAGMENT && this.representativeFragmentTest) {
+                    VkPipelineRepresentativeFragmentTestStateCreateInfoNV representativeState = VkPipelineRepresentativeFragmentTestStateCreateInfoNV.calloc(stack)
+                            .sType$Default()
+                            .representativeFragmentTestEnable(true)
+                            .pNext(renderingInfo.address());
+
+                    pipelineInfo.get(0)
+                            .pNext(representativeState);
+                } else {
+                    pipelineInfo.get(0)
+                            .pNext(renderingInfo);
+                }
 
                 LongBuffer pPipeline = stack.mallocLong(1);
 

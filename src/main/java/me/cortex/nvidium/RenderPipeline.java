@@ -40,7 +40,7 @@ import static org.lwjgl.vulkan.VK10.*;
 
 public class RenderPipeline {
     final int DEBUG_RENDER_LEVEL = 1; //0: no debug, 1: region debug, 2: section debug
-    final boolean WRITE_DEPTH = false;
+    final boolean WRITE_DEPTH = true;
 
     public static final int GL_DRAW_INDIRECT_UNIFIED_NV = 0x8F40;
     public static final int GL_DRAW_INDIRECT_ADDRESS_NV = 0x8F41;
@@ -512,6 +512,7 @@ public class RenderPipeline {
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         }
 
+        // TODO REGION =======================================
         //NOTE: For GL_REPRESENTATIVE_FRAGMENT_TEST_NV to work, depth testing must be disabled, or depthMask = false
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_GEQUAL);

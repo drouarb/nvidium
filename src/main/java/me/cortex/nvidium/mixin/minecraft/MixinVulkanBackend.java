@@ -24,7 +24,14 @@ import static org.lwjgl.vulkan.EXTMeshShader.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_M
 public class MixinVulkanBackend {
     @Unique
     private static final VulkanPNextStruct MESH_SHADER_FEATURES_STRUCT = new VulkanPNextStruct(
-            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT, VkPhysicalDeviceMeshShaderFeaturesEXT.SIZEOF
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
+            VkPhysicalDeviceMeshShaderFeaturesEXT.SIZEOF
+    );
+
+    @Unique
+    private static final VulkanPNextStruct REPRESENTATIVE_FRAGMENT_FEATURES_STRUCT = new VulkanPNextStruct(
+            NVRepresentativeFragmentTest.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV,
+            VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV.SIZEOF
     );
 
     @Unique
@@ -37,7 +44,10 @@ public class MixinVulkanBackend {
             new VulkanFeature(VulkanBackend.VK12_FEATURES_STRUCT, "uniformAndStorageBuffer8BitAccess", VkPhysicalDeviceVulkan12Features.UNIFORMANDSTORAGEBUFFER8BITACCESS),
             new VulkanFeature(VulkanBackend.VK12_FEATURES_STRUCT, "bufferDeviceAddress", VkPhysicalDeviceVulkan12Features.BUFFERDEVICEADDRESS),
             new VulkanFeature(MESH_SHADER_FEATURES_STRUCT, "meshShader", VkPhysicalDeviceMeshShaderFeaturesEXT.MESHSHADER),
-            new VulkanFeature(MESH_SHADER_FEATURES_STRUCT, "taskShader", VkPhysicalDeviceMeshShaderFeaturesEXT.TASKSHADER)
+            new VulkanFeature(MESH_SHADER_FEATURES_STRUCT, "taskShader", VkPhysicalDeviceMeshShaderFeaturesEXT.TASKSHADER),
+
+            // TODO PROPER CHECK AND NOT ENABLING
+            new VulkanFeature(REPRESENTATIVE_FRAGMENT_FEATURES_STRUCT, "representativeFragmentTest", VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV.REPRESENTATIVEFRAGMENTTEST)
     );
 
     @Inject(

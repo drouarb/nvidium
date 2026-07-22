@@ -16,6 +16,7 @@ public class Nvidium {
     public static boolean IS_DEBUG = true; // System.getProperty("nvidium.isDebug", "false").equals("TRUE");
     public static boolean SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER = true;
     public static boolean FORCE_DISABLE = false;
+    public static boolean SUPPORT_NV_REPRESENTATIVE_TEST_FRAGMENT = true;
 
     public static NvidiumConfig config = NvidiumConfig.loadOrCreate();
 
