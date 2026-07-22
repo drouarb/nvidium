@@ -1,29 +1,43 @@
 package me.cortex.nvidium.renderers;
 
-import me.cortex.nvidium.gl.shader.Shader;
-import me.cortex.nvidium.sodiumCompat.ShaderLoader;
+import com.mojang.blaze3d.GpuFormat;
+import com.mojang.blaze3d.pipeline.ColorTargetState;
+import me.cortex.nvidium.vk.shader.VkPipeline;
+import me.cortex.nvidium.vk.shader.VkPipelineLayout;
+import me.cortex.nvidium.vk.shader.VkShaderType;
 import net.minecraft.resources.Identifier;
+import org.lwjgl.vulkan.VkCommandBuffer;
 
-import static me.cortex.nvidium.gl.shader.ShaderType.*;
-import static org.lwjgl.opengl.NVMeshShader.glDrawMeshTasksNV;
+import java.util.Optional;
 
-public class SectionRasterizer extends Phase {
+import static org.lwjgl.vulkan.EXTMeshShader.vkCmdDrawMeshTasksEXT;
 
-    private final Shader shader = Shader.make()
-            .addSource(TASK, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "occlusion/section_raster/task.glsl")))
-            .addSource(MESH, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "occlusion/section_raster/mesh.glsl")))
-            .addSource(FRAGMENT, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "occlusion/section_raster/fragment.glsl"))).compile();
+public class SectionRasterizer{
 
-    public void raster(int regionCount) {
-        shader.bind();
-        timing.marker();
-        glDrawMeshTasksNV(0,regionCount);
-        timing.marker();
-        timing.tick();
+    private final VkPipeline shader;
+
+    public SectionRasterizer(int debug, boolean writeDepth, VkPipelineLayout layout) {
+        shader = VkPipeline.make()
+                .addSource(VkShaderType.TASK, Identifier.fromNamespaceAndPath("nvidium", "occlusion/section_raster/task.glsl"))
+                .addSource(VkShaderType.MESH, Identifier.fromNamespaceAndPath("nvidium", "occlusion/section_raster/mesh.glsl"))
+                .addSource(VkShaderType.FRAGMENT, Identifier.fromNamespaceAndPath("nvidium", "occlusion/section_raster/fragment.glsl"))
+                .withLayout(layout)
+                .withColorTargetState(debug == 2 ?
+                        ColorTargetState.DEFAULT :
+                        new ColorTargetState(Optional.empty(), GpuFormat.RGBA8_UNORM, ColorTargetState.WRITE_NONE)
+                )
+                .withDepthTest(true)
+                .withDepthWrite(debug == 2 && writeDepth)
+                .withRepresentativeFragmentTest(debug == 0)
+                .compile();
+    }
+
+    public void raster(VkCommandBuffer commandBuffer, int regionCount) {
+        shader.bind(commandBuffer);
+        vkCmdDrawMeshTasksEXT(commandBuffer, regionCount, 1, 1);
     }
 
     public void delete() {
-        super.delete();
         shader.delete();
     }
 }

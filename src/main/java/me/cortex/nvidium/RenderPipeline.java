@@ -39,7 +39,7 @@ import static me.cortex.nvidium.gl.buffers.PersistentSparseAddressableBuffer.ali
 import static org.lwjgl.vulkan.VK10.*;
 
 public class RenderPipeline {
-    final int DEBUG_RENDER_LEVEL = 1; //0: no debug, 1: region debug, 2: section debug
+    final int DEBUG_RENDER_LEVEL = 2; //0: no debug, 1: region debug, 2: section debug
     final boolean WRITE_DEPTH = true;
 
     public static final int GL_DRAW_INDIRECT_UNIFIED_NV = 0x8F40;
@@ -52,18 +52,16 @@ public class RenderPipeline {
     private final SectionManager sectionManager;
 
     private RegionRasterizer regionRasterizer;
+    private SectionRasterizer sectionRasterizer;
     /*
     public final RegionVisibilityTracker regionVisibilityTracking;
 
     private PrimaryTerrainRasterizer terrainRasterizer;
-    private SectionRasterizer sectionRasterizer;
     private TemporalTerrainRasterizer temporalRasterizer;
     private TranslucentTerrainRasterizer translucencyTerrainRasterizer;
     private SortRegionSectionPhase regionSectionSorter;
     private CmdBufferBuilder cmdBufferBuilder;
     */
-
-    private Triangle triangle;
 
     private static final int SCENE_SIZE = (int) alignUp(
                     4*4*4 +  // mat4     MVP
@@ -134,15 +132,14 @@ public class RenderPipeline {
 
         layout = new VkPipelineLayout(device);
         regionRasterizer = new RegionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
+        sectionRasterizer = new SectionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
         /*
         terrainRasterizer = new PrimaryTerrainRasterizer();
-        sectionRasterizer = new SectionRasterizer();
         temporalRasterizer = new TemporalTerrainRasterizer();
         translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
         regionSectionSorter = new SortRegionSectionPhase();
         cmdBufferBuilder = new CmdBufferBuilder();
          */
-        triangle = new Triangle();
 
         int maxRegions = sectionManager.getRegionManager().maxRegions();
 
@@ -481,10 +478,9 @@ public class RenderPipeline {
             //System.out.println("BIND");
             sceneUniform.bind(commandBuffer, layout, SCENE_SIZE);
 
-            //System.out.println("TRIANGLE");
-            //triangle.raster(commandBuffer);
             //System.out.println("RegionRaster " + visibleRegions);
             regionRasterizer.raster(commandBuffer, visibleRegions);
+            sectionRasterizer.raster(commandBuffer, visibleRegions);
         }
 
         //if ((err = glGetError()) != 0) {
@@ -664,9 +660,9 @@ public class RenderPipeline {
         regionSortingList.delete();
 
         regionRasterizer.delete();
+        sectionRasterizer.delete();
         /*
         terrainRasterizer.delete();
-        sectionRasterizer.delete();
         temporalRasterizer.delete();
         translucencyTerrainRasterizer.delete();
         regionSectionSorter.delete();
@@ -721,21 +717,21 @@ public class RenderPipeline {
         this.compiledForFog = Nvidium.config.render_fog;
 
         regionRasterizer.delete();
+        sectionRasterizer.delete();
         /*
         terrainRasterizer.delete();
-        sectionRasterizer.delete();
         temporalRasterizer.delete();
         translucencyTerrainRasterizer.delete();
         regionSectionSorter.delete();
         cmdBufferBuilder.delete();
 
         terrainRasterizer = new PrimaryTerrainRasterizer();
-        sectionRasterizer = new SectionRasterizer();
         temporalRasterizer = new TemporalTerrainRasterizer();
         translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
         regionSectionSorter = new SortRegionSectionPhase();
         cmdBufferBuilder = new CmdBufferBuilder();
          */
         regionRasterizer = new RegionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
+        sectionRasterizer = new SectionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
     }
 }
