@@ -22,13 +22,12 @@ public class SectionRasterizer{
                 .addSource(VkShaderType.MESH, Identifier.fromNamespaceAndPath("nvidium", "occlusion/section_raster/mesh.glsl"))
                 .addSource(VkShaderType.FRAGMENT, Identifier.fromNamespaceAndPath("nvidium", "occlusion/section_raster/fragment.glsl"))
                 .withLayout(layout)
-                .withColorTargetState(debug == 2 ?
-                        ColorTargetState.DEFAULT :
+                .withColorTargetState(debug == 2 ? ColorTargetState.DEFAULT :
                         new ColorTargetState(Optional.empty(), GpuFormat.RGBA8_UNORM, ColorTargetState.WRITE_NONE)
                 )
                 .withDepthTest(true)
                 .withDepthWrite(debug == 2 && writeDepth)
-                .withRepresentativeFragmentTest(false)
+                .withRepresentativeFragmentTest(debug == 0)
                 .compile();
     }
 

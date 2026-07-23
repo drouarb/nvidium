@@ -185,6 +185,18 @@ public class VkPipeline {
                         .depthBoundsTestEnable(false)
                         .stencilTestEnable(false);
 
+                VkPipelineRenderingCreateInfoKHR renderingInfo = VkPipelineRenderingCreateInfoKHR.calloc(stack)
+                        .sType$Default()
+                        .depthAttachmentFormat(VK_FORMAT_D32_SFLOAT)
+                        .stencilAttachmentFormat(VK_FORMAT_UNDEFINED);
+
+                if (colorTargetState != null) {
+                    renderingInfo
+                            .pColorAttachmentFormats(stack.ints(VulkanConst.toVk(colorTargetState.format())));
+                } else {
+                    renderingInfo.colorAttachmentCount(0);
+                }
+
                 VkGraphicsPipelineCreateInfo.Buffer pipelineInfo = VkGraphicsPipelineCreateInfo.calloc(1, stack)
                         .sType$Default();
                 pipelineInfo.get(0)
@@ -195,25 +207,15 @@ public class VkPipeline {
                         .pRasterizationState(rasterizationState)
                         .pMultisampleState(multisampleState)
                         .pColorBlendState(colorBlendState)
-                        .pDepthStencilState(depthStencilState);
-
-                VkPipelineRenderingCreateInfoKHR renderingInfo = VkPipelineRenderingCreateInfoKHR.calloc(stack)
-                        .sType$Default()
-                        .pColorAttachmentFormats(stack.ints(VulkanConst.toVk(colorTargetState.format())))
-                        .depthAttachmentFormat(VK_FORMAT_D32_SFLOAT)
-                        .stencilAttachmentFormat(VK_FORMAT_UNDEFINED);
+                        .pDepthStencilState(depthStencilState)
+                        .pNext(renderingInfo);
 
                 if (Nvidium.SUPPORT_NV_REPRESENTATIVE_TEST_FRAGMENT && this.representativeFragmentTest) {
                     VkPipelineRepresentativeFragmentTestStateCreateInfoNV representativeState = VkPipelineRepresentativeFragmentTestStateCreateInfoNV.calloc(stack)
                             .sType$Default()
-                            .representativeFragmentTestEnable(true)
-                            .pNext(renderingInfo.address());
+                            .representativeFragmentTestEnable(true);
 
-                    pipelineInfo.get(0)
-                            .pNext(representativeState);
-                } else {
-                    pipelineInfo.get(0)
-                            .pNext(renderingInfo);
+                    renderingInfo.pNext(representativeState.address());
                 }
 
                 LongBuffer pPipeline = stack.mallocLong(1);
