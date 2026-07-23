@@ -193,7 +193,7 @@ void main() {
 
     #ifdef STATISTICS_CULL
         if (subgroupElect()) {
-            atomicAdd(statistics_buffer[3], (32 - 1) - triCount); // Count culled triangles
+            atomicAdd(statistics_buffer.data[3], (32 - 1) - triCount); // Count culled triangles
         }
     #endif
     }

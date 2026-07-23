@@ -213,7 +213,7 @@ public class RenderPipeline {
 
         statisticsBuffer = device.createDeviceOnlyMappedBuffer(
                 4 * 4,
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                 0,
                 () -> "StatisticsBuffer"
         );
@@ -641,7 +641,7 @@ public class RenderPipeline {
         glDisableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
         glDisableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
         glDisableClientState(GL_DRAW_INDIRECT_UNIFIED_NV);
-
+         */
 
         //Download statistics
         if (Nvidium.config.statistics_level.ordinal() > StatisticsLoggingLevel.FRUSTUM.ordinal()) {
@@ -657,11 +657,11 @@ public class RenderPipeline {
         if (Nvidium.config.statistics_level.ordinal() > StatisticsLoggingLevel.FRUSTUM.ordinal()) {
             //glMemoryBarrier(GL_ALL_BARRIER_BITS);
             //Stupid bloody nvidia not following spec forcing me to use a upload stream
+            // TODO maybe fixed with VK ?????
             long upload = this.uploadStream.upload(statisticsBuffer, 0, 4 * 4);
             MemoryUtil.memSet(upload, 0, 4 * 4);
             //glClearNamedBufferSubData(statisticsBuffer.getId(), GL_R32UI, 0, 4 * 4, GL_RED_INTEGER, GL_UNSIGNED_INT, new int[]{0});
         }
-         */
     }
 
     public void delete() {
@@ -695,6 +695,8 @@ public class RenderPipeline {
         if (statisticsBuffer != null) {
             statisticsBuffer.delete();
         }
+
+        this.layout.delete();
     }
 
     public void addDebugInfo(List<String> info) {

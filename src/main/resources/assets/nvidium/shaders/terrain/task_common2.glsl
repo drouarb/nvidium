@@ -60,5 +60,10 @@ void populateTasks(ivec3 relative, uint baseOffset, uvec4 ranges) {
 
     task.quadCount = sum;
     //Emit enough mesh shaders such that max(gl_GlobalInvocationID.x)>=2*quadCount
+
+#ifdef STATISTICS_QUADS
+    atomicAdd(statistics_buffer.data[2], task.quadCount);
+#endif
+
     EmitMeshTasksEXT(((sum*2)+MESH_WORKLOAD_PER_INVOCATION-1)/MESH_WORKLOAD_PER_INVOCATION, 1, 1);
 }

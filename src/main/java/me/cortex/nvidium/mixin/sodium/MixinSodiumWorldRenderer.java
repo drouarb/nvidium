@@ -58,7 +58,11 @@ public abstract class MixinSodiumWorldRenderer implements INvidiumWorldRendererG
                 return;
 
                 //System.out.println("RENDER");
+            if (pass == DefaultTerrainRenderPasses.SOLID) {
                 this.getRenderer().renderFrame(pass, viewport, fogParameters, matrices, x, y, z, terrainSampler);
+            } else {
+                this.getRenderer().renderTranslucent(pass, terrainSampler);
+            }
                 /*
                 GlStateManager._disableScissorTest();
                 GlStateManager._enableCull();

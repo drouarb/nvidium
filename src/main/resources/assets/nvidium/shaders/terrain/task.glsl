@@ -33,9 +33,4 @@ void main() {
 
     task.origin = vec3(chunk<<4);
     populateTasks(chunk, uint(header.w), uvec4(sectionData.data[sectionId].renderRanges));
-
-
-    #ifdef STATISTICS_QUADS
-    atomicAdd(statistics_buffer.data[2], quadCount);
-    #endif
 }
