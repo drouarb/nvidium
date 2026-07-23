@@ -37,7 +37,7 @@ public class PrimaryTerrainRasterizer {
                 .compile();
     }
 
-    private void bindTextures(VkCommandBuffer commandBuffer, VkPipelineLayout layout, TerrainRenderPass pass, GpuSampler terrainSampler) {
+    public static void bindTextures(VkCommandBuffer commandBuffer, VkPipelineLayout layout, TerrainRenderPass pass, GpuSampler terrainSampler) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkDescriptorImageInfo.Buffer terrainInfo = VkDescriptorImageInfo.calloc(1, stack)
                     .sampler(((VulkanGpuSampler) terrainSampler).vkSampler())
