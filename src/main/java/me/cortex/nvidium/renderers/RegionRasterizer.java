@@ -26,7 +26,7 @@ public class RegionRasterizer {
                 )
                 .withDepthTest(true)
                 .withDepthWrite(debug == 1 && writeDepth)
-                .withRepresentativeFragmentTest(debug == 0)
+                .withRepresentativeFragmentTest(false)
                 .compile();
     }
 

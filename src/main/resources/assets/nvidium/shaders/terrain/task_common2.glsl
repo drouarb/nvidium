@@ -1,6 +1,6 @@
 #define MESH_WORKLOAD_PER_INVOCATION 32
 
-taskNV out Task {
+struct Task {
     //Very compacted search indexs and data
     uvec4 binStarts;
     uvec4 binOffsets;
@@ -9,6 +9,8 @@ taskNV out Task {
     uint quadCount;
     uint transformationId;
 };
+
+taskPayloadSharedEXT Task task;
 
 bvec3 and(bvec3 a, bvec3 b) {
     return bvec3(a.x&&b.x, a.y&&b.y, a.z&&b.z);
@@ -53,10 +55,10 @@ void populateTasks(ivec3 relative, uint baseOffset, uvec4 ranges) {
     //Note: the + baseOffset here is a cheaky thing which means dont need to add or pass on
     uint ci = buildBinData(starts, offsets, sum, (ranges.w>>16)+baseOffset, ranges.w&0xFFFFu, a, b, cA, cB);
 
-    binStarts = starts;
-    binOffsets = offsets-starts;//Make it a delta from start
+    task.binStarts = starts;
+    task.binOffsets = offsets-starts;//Make it a delta from start
 
-    quadCount = sum;
+    task.quadCount = sum;
     //Emit enough mesh shaders such that max(gl_GlobalInvocationID.x)>=2*quadCount
-    gl_TaskCountNV = ((sum*2)+MESH_WORKLOAD_PER_INVOCATION-1)/MESH_WORKLOAD_PER_INVOCATION;
+    EmitMeshTasksEXT(((sum*2)+MESH_WORKLOAD_PER_INVOCATION-1)/MESH_WORKLOAD_PER_INVOCATION, 1, 1);
 }

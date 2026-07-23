@@ -28,7 +28,7 @@ public class SectionRasterizer{
                 )
                 .withDepthTest(true)
                 .withDepthWrite(debug == 2 && writeDepth)
-                .withRepresentativeFragmentTest(debug == 0)
+                .withRepresentativeFragmentTest(false)
                 .compile();
     }
 

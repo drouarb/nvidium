@@ -40,7 +40,7 @@ public class VkPipelineLayout {
                     .binding(2)
                     .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
                     .descriptorCount(1)
-                    .stageFlags(VK_SHADER_STAGE_FRAGMENT_BIT);
+                    .stageFlags(VK_SHADER_STAGE_MESH_BIT_EXT |VK_SHADER_STAGE_FRAGMENT_BIT);
 
             VkDescriptorSetLayoutCreateInfo setLayoutInfo = VkDescriptorSetLayoutCreateInfo.calloc(stack)
                     .sType$Default()

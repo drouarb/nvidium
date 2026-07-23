@@ -1,49 +1,41 @@
 #version 460
-
-#extension GL_ARB_shading_language_include : enable
 #pragma optionNV(unroll all)
 #define UNROLL_LOOP
-#extension GL_NV_mesh_shader : require
-#extension GL_NV_gpu_shader5 : require
-#extension GL_NV_bindless_texture : require
 
-#extension GL_KHR_shader_subgroup_basic : require
-#extension GL_KHR_shader_subgroup_ballot : require
-#extension GL_KHR_shader_subgroup_vote : require
+#extension GL_EXT_mesh_shader : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 
 #moj_import <nvidium:occlusion/scene.glsl>
-
 
 //This is 1 since each task shader workgroup -> multiple meshlets. its not each globalInvocation (afaik)
 layout(local_size_x=1) in;
 
-bool shouldRenderVisible(uint sectionId) {
-    return (sectionVisibility[sectionId]&uint8_t(1)) != uint8_t(0);
-}
-
 #moj_import <nvidium:terrain/task_common2.glsl>
 
 void main() {
-    uint sectionId = sectionIndices[gl_WorkGroupID.x].x + (gl_WorkGroupID.x & 0xFFFFFF00);
+    uint sectionId = sectionIndices.data[terrainCommandBuffer.data[gl_DrawID].w + gl_WorkGroupID.x].x + terrainCommandBuffer.data[gl_DrawID].w;
 
     #ifdef STATISTICS_SECTIONS
-    atomicAdd(statistics_buffer+1, 1);
+    atomicAdd(statistics_buffer.data[1], 1);
     #endif
 
-    ivec4 header = sectionData[sectionId].header;
+    ivec4 header = sectionData.data[sectionId].header;
     ivec3 chunk = ivec3(header.xyz)>>8;
     chunk.y &= 0x1ff;
     chunk.y <<= 32-9;
     chunk.y >>= 32-9;
     chunk -= chunkPosition.xyz;
-    transformationId = unpackRegionTransformId(regionData[sectionId>>8]);
-    chunk -= unpackOriginOffsetId(transformationId);
+    task.transformationId = unpackRegionTransformId(regionData.data[sectionId>>8]);
+    chunk -= unpackOriginOffsetId(task.transformationId);
 
-    origin = vec3(chunk<<4);
-    populateTasks(chunk, uint(header.w), uvec4(sectionData[sectionId].renderRanges));
+    task.origin = vec3(chunk<<4);
+    populateTasks(chunk, uint(header.w), uvec4(sectionData.data[sectionId].renderRanges));
 
 
     #ifdef STATISTICS_QUADS
-    atomicAdd(statistics_buffer+2, quadCount);
+    atomicAdd(statistics_buffer.data[2], quadCount);
     #endif
 }

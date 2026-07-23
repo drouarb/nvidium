@@ -39,8 +39,8 @@ import static me.cortex.nvidium.gl.buffers.PersistentSparseAddressableBuffer.ali
 import static org.lwjgl.vulkan.VK10.*;
 
 public class RenderPipeline {
-    final int DEBUG_RENDER_LEVEL = 2; //0: no debug, 1: region debug, 2: section debug
-    final boolean WRITE_DEPTH = true;
+    final int DEBUG_RENDER_LEVEL = 0; //0: no debug, 1: region debug, 2: section debug
+    final boolean WRITE_DEPTH = false;
 
     public static final int GL_DRAW_INDIRECT_UNIFIED_NV = 0x8F40;
     public static final int GL_DRAW_INDIRECT_ADDRESS_NV = 0x8F41;

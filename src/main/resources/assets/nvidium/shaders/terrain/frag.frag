@@ -1,19 +1,19 @@
 #version 460
-#extension GL_ARB_shading_language_include : enable
 #pragma optionNV(unroll all)
 #define UNROLL_LOOP
-#extension GL_NV_gpu_shader5 : require
-#extension GL_NV_bindless_texture : require
-#extension GL_NV_shader_buffer_load : require
 
-//#extension GL_NV_conservative_raster_underestimation : enable
+#extension GL_EXT_mesh_shader: require
+#extension GL_EXT_buffer_reference: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64: require
 
 #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
 #extension GL_NV_fragment_shader_barycentric : require
 #endif
 
-layout(set = 0, binding = 0) uniform sampler2D tex_diffuse;
-layout(set = 0, binding = 1) uniform sampler2D tex_light;
+layout(set = 0, binding = 1) uniform sampler2D tex_diffuse;
+layout(set = 0, binding = 2) uniform sampler2D tex_light;
 
 #moj_import <nvidium:occlusion/scene.glsl>
 #moj_import <nvidium:terrain/vertex_format/vertex_format.glsl>
@@ -22,7 +22,6 @@ layout(set = 0, binding = 1) uniform sampler2D tex_light;
 #define USE_FOG
 #moj_import <sodium:include/fog.glsl>
 #endif
-
 
 layout(location = 0) out vec4 colour;
 #ifndef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
@@ -35,6 +34,10 @@ layout(location = 1) in Interpolants {
     vec3 v_colour;
 };
 #endif
+
+// FIX PREPROCESSOR DOING GARBAGE WITH LINES
+#line 39 0
+layout(location = 10) perprimitiveEXT flat in int PRIMITRASH;
 
 Vertex V0;
 Vertex Vp;
@@ -114,12 +117,12 @@ vec4 sampleRGSS(vec2 uv, vec2 du, vec2 dv, vec2 texelScreenSize) {
 }
 
 void main() {
-    uint quadId = uint(gl_PrimitiveID)>>1;
-    bool triangle0 = uint((gl_PrimitiveID)&1)==0;
+    uint quadId = uint(PRIMITRASH)>>1;
+    bool triangle0 = uint((PRIMITRASH)&1)==0;
     uvec3 TRI_INDICIES = triangle0?uvec3(0,1,2):uvec3(2,3,0);
-    V0 = terrainData[(quadId<<2)+TRI_INDICIES.x];
-    Vp = terrainData[(quadId<<2)+TRI_INDICIES.y];
-    V2 = terrainData[(quadId<<2)+TRI_INDICIES.z];
+    V0 = terrainData.data[(quadId<<2)+TRI_INDICIES.x];
+    Vp = terrainData.data[(quadId<<2)+TRI_INDICIES.y];
+    V2 = terrainData.data[(quadId<<2)+TRI_INDICIES.z];
 
     #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
         float HALF_SHIFT = (1.0f/TEXTURE_MAX_SCALE)/2.0f;
