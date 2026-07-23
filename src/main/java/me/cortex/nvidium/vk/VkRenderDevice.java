@@ -9,10 +9,7 @@ import me.cortex.nvidium.vk.buffers.VkBuffer;
 import me.cortex.nvidium.vk.buffers.VkDeviceOnlyMappedBuffer;
 import me.cortex.nvidium.vk.buffers.VkPersistentClientMappedBuffer;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.KHRSynchronization2;
-import org.lwjgl.vulkan.VkBufferCopy;
-import org.lwjgl.vulkan.VkDependencyInfo;
-import org.lwjgl.vulkan.VkMemoryBarrier2;
+import org.lwjgl.vulkan.*;
 
 import java.util.function.Supplier;
 
@@ -34,7 +31,7 @@ public class VkRenderDevice {
         return new VkPersistentClientMappedBuffer(size, bufferUsage, allocFlags);
     }
 
-    public void barrier() {
+    public void barrier(VkCommandBuffer commandBuffer) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             // TODO BETTER BARRIER
             VkMemoryBarrier2.Buffer memoryBarrier = VkMemoryBarrier2.calloc(1, stack).sType$Default();
@@ -44,7 +41,7 @@ public class VkRenderDevice {
             memoryBarrier.dstAccessMask(VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT);
             VkDependencyInfo depInfo = VkDependencyInfo.calloc(stack).sType$Default();
             depInfo.pMemoryBarriers(memoryBarrier);
-            KHRSynchronization2.vkCmdPipelineBarrier2KHR(vkDevice.createCommandEncoder().commandBuffer(), depInfo);
+            KHRSynchronization2.vkCmdPipelineBarrier2KHR(commandBuffer, depInfo);
         }
     }
 

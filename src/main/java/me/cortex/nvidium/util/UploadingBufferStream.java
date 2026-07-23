@@ -1,6 +1,7 @@
 package me.cortex.nvidium.util;
 
 import com.mojang.blaze3d.buffers.GpuFence;
+import com.mojang.blaze3d.vulkan.VulkanCommandEncoder;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import me.cortex.nvidium.vk.VkRenderDevice;
 import me.cortex.nvidium.vk.buffers.VkBuffer;
@@ -51,6 +52,8 @@ public class UploadingBufferStream {
                 this.commit();
                 int attempts = 10;
                 while (--attempts != 0 && this.caddr == SIZE_LIMIT) {
+                    System.out.println("WARNING UPLOAD FORCE FLUSH ????????????????????????");
+                    device.getVkDevice().createCommandEncoder().submit();
                     device.getVkDevice().graphicsQueue().waitIdle();
                     this.tick();
                     this.caddr = this.allocationArena.alloc((int) size);
@@ -86,7 +89,9 @@ public class UploadingBufferStream {
             }
             this.flushList.clear();
         }
-        device.barrier();
+
+        VulkanCommandEncoder commandEncoder = device.getVkDevice().createCommandEncoder();
+        device.barrier(commandEncoder.commandBuffer());
         // TODO glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
         //Execute all the copies
         for (var entry : this.uploadList) {
@@ -94,7 +99,7 @@ public class UploadingBufferStream {
         }
         this.uploadList.clear();
 
-        device.barrier();
+        device.barrier(commandEncoder.commandBuffer());
         // TODO glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
 
         this.caddr = -1;
@@ -108,7 +113,6 @@ public class UploadingBufferStream {
             this.thisFrameAllocations.clear();
         }
         // TODO CHECK IF WE DO THAT HERE
-        device.getVkDevice().createCommandEncoder().submit();
 
         while (!this.frames.isEmpty()) {
             //Since the ordering of frames is the ordering of the gl commands if we encounter an unsignaled fence
