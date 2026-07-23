@@ -82,7 +82,7 @@ public class VkDeviceOnlyMappedBuffer extends TrackedObject implements VkBuffer 
         Vma.vmaDestroyBuffer(vkDevice.vma(), this.handle, this.vmaAllocation);
     }
 
-    public void bind(VkCommandBuffer commandBuffer, VkPipelineLayout layout, long size) {
+    public void bind(VkCommandBuffer commandBuffer, VkPipelineLayout layout, long size, int bindType) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkDescriptorBufferInfo.Buffer bufferInfo =
                     VkDescriptorBufferInfo.calloc(1, stack);
@@ -105,7 +105,7 @@ public class VkDeviceOnlyMappedBuffer extends TrackedObject implements VkBuffer 
 
             KHRPushDescriptor.vkCmdPushDescriptorSetKHR(
                     commandBuffer,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    bindType,
                     layout.layout(),
                     0, // descriptor set index
                     writes

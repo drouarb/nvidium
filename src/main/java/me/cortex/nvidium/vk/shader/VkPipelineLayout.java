@@ -30,7 +30,7 @@ public class VkPipelineLayout {
                     .binding(0)
                     .descriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                     .descriptorCount(1)
-                    .stageFlags(VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT); // TODO ADAPT ???
+                    .stageFlags(VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT); // TODO ADAPT ???
 
             VkDescriptorSetLayoutCreateInfo setLayoutInfo =
                     VkDescriptorSetLayoutCreateInfo.calloc(stack)

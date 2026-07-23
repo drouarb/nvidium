@@ -53,6 +53,7 @@ public class RenderPipeline {
 
     private RegionRasterizer regionRasterizer;
     private SectionRasterizer sectionRasterizer;
+    private CmdBufferBuilder cmdBufferBuilder;
     /*
     public final RegionVisibilityTracker regionVisibilityTracking;
 
@@ -60,7 +61,6 @@ public class RenderPipeline {
     private TemporalTerrainRasterizer temporalRasterizer;
     private TranslucentTerrainRasterizer translucencyTerrainRasterizer;
     private SortRegionSectionPhase regionSectionSorter;
-    private CmdBufferBuilder cmdBufferBuilder;
     */
 
     private static final int SCENE_SIZE = (int) alignUp(
@@ -133,12 +133,12 @@ public class RenderPipeline {
         layout = new VkPipelineLayout(device);
         regionRasterizer = new RegionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
         sectionRasterizer = new SectionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
+        cmdBufferBuilder = new CmdBufferBuilder(layout);
         /*
         terrainRasterizer = new PrimaryTerrainRasterizer();
         temporalRasterizer = new TemporalTerrainRasterizer();
         translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
         regionSectionSorter = new SortRegionSectionPhase();
-        cmdBufferBuilder = new CmdBufferBuilder();
          */
 
         int maxRegions = sectionManager.getRegionManager().maxRegions();
@@ -171,19 +171,19 @@ public class RenderPipeline {
                 () -> "SectionIndices"
         );
         terrainCommandBuffer = device.createDeviceOnlyMappedBuffer(
-                maxRegions * 8L,
+                maxRegions * 16L,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
                 0,
                 () -> "TerrainCommandBuffer"
         );
         translucencyCommandBuffer = device.createDeviceOnlyMappedBuffer(
-                maxRegions * 8L,
+                maxRegions * 16L,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
                 0,
                 () -> "TranslucentCommandBuffer"
         );
         temporalCommandBuffer = device.createDeviceOnlyMappedBuffer(
-                maxRegions * 8L,
+                maxRegions * 16L,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
                 0,
                 () -> "TemporalCommandBuffer"
@@ -463,6 +463,8 @@ public class RenderPipeline {
 
         TickableManager.TickAll();
 
+        VkCommandBuffer commandBuffer = device.getVkDevice().createCommandEncoder().commandBuffer();
+
         try (RenderPass ignored = RenderSystem.getDevice()
                 .createCommandEncoder()
                 .createRenderPass(
@@ -472,16 +474,16 @@ public class RenderPipeline {
                         pass.getTarget().getDepthTextureView(),
                         OptionalDouble.empty()
                 )) {
-
-            VkCommandBuffer commandBuffer = device.getVkDevice().createCommandEncoder().commandBuffer();
-
             //System.out.println("BIND");
-            sceneUniform.bind(commandBuffer, layout, SCENE_SIZE);
+            sceneUniform.bind(commandBuffer, layout, SCENE_SIZE, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
             //System.out.println("RegionRaster " + visibleRegions);
             regionRasterizer.raster(commandBuffer, visibleRegions);
             sectionRasterizer.raster(commandBuffer, visibleRegions);
         }
+
+        sceneUniform.bind(commandBuffer, layout, SCENE_SIZE, VK_PIPELINE_BIND_POINT_COMPUTE);
+        cmdBufferBuilder.dispatch(commandBuffer, visibleRegions);
 
         //if ((err = glGetError()) != 0) {
         //    throw new IllegalStateException("GLERROR: "+err);
@@ -718,20 +720,20 @@ public class RenderPipeline {
 
         regionRasterizer.delete();
         sectionRasterizer.delete();
+        cmdBufferBuilder.delete();
         /*
         terrainRasterizer.delete();
         temporalRasterizer.delete();
         translucencyTerrainRasterizer.delete();
         regionSectionSorter.delete();
-        cmdBufferBuilder.delete();
 
         terrainRasterizer = new PrimaryTerrainRasterizer();
         temporalRasterizer = new TemporalTerrainRasterizer();
         translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
         regionSectionSorter = new SortRegionSectionPhase();
-        cmdBufferBuilder = new CmdBufferBuilder();
          */
         regionRasterizer = new RegionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
         sectionRasterizer = new SectionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
+        cmdBufferBuilder = new CmdBufferBuilder(layout);
     }
 }

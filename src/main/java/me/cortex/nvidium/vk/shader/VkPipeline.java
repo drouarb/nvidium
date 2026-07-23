@@ -27,11 +27,13 @@ public class VkPipeline {
     private final long pipeline;
     private final long[] shaderModules;
     private final long pipelineLayout;
+    private final int bindPoint;
 
-    private VkPipeline(long pipeline, long[] shaderModules, long pipelineLayout) {
+    private VkPipeline(long pipeline, long[] shaderModules, long pipelineLayout, int bindPoint) {
         this.pipeline = pipeline;
         this.shaderModules = shaderModules;
         this.pipelineLayout = pipelineLayout;
+        this.bindPoint = bindPoint;
     }
 
     public long handle() {
@@ -43,7 +45,7 @@ public class VkPipeline {
     }
 
     public void bind(VkCommandBuffer commandBuffer) {
-        VK12.vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        VK12.vkCmdBindPipeline(commandBuffer, bindPoint, pipeline);
     }
 
     public void delete() {
@@ -123,30 +125,6 @@ public class VkPipeline {
                             .pName(stack.UTF8("main"));
                 }
 
-                // TODO PROBABLY NO NEED TO CREATE DUMMY LAYOUT
-                long pipelineLayout;
-                if (layout == null) {
-                    VkPipelineLayoutCreateInfo layoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
-                            .sType$Default();
-
-                    LongBuffer pLayout = stack.mallocLong(1);
-
-                    int result = vkCreatePipelineLayout(
-                            vkDevice,
-                            layoutInfo,
-                            null,
-                            pLayout
-                    );
-
-                    if (result != VK_SUCCESS) {
-                        throw new RuntimeException("Failed to create pipeline layout: " + result);
-                    }
-
-                    pipelineLayout = pLayout.get(0);
-                } else {
-                    pipelineLayout = layout.layout();
-                }
-
                 VkPipelineViewportStateCreateInfo viewportState = VkPipelineViewportStateCreateInfo.calloc(stack)
                         .sType$Default()
                         .viewportCount(1)
@@ -211,7 +189,7 @@ public class VkPipeline {
                         .sType$Default();
                 pipelineInfo.get(0)
                         .pStages(stages)
-                        .layout(pipelineLayout)
+                        .layout(layout.layout())
                         .pViewportState(viewportState)
                         .pDynamicState(dynamicState)
                         .pRasterizationState(rasterizationState)
@@ -254,7 +232,49 @@ public class VkPipeline {
 
                 long pipeline = pPipeline.get(0);
 
-                return new VkPipeline(pipeline, shaderModules, pipelineLayout);
+                return new VkPipeline(pipeline, shaderModules, layout.layout(), VK_PIPELINE_BIND_POINT_GRAPHICS);
+            }
+        }
+
+        public VkPipeline compileCompute() {
+            try (MemoryStack stack = MemoryStack.stackPush()) {
+                VkDevice vkDevice = ((VulkanDevice) ((GpuDeviceAccessor) RenderSystem.getDevice()).nvidium$getGpuDeviceBackend()).vkDevice();
+
+                GlslCompiler compiler = new GlslCompiler();
+                long[] shaderModules = sources
+                        .stream()
+                        .mapToLong(stage -> createShaderModule(vkDevice, compiler, stage))
+                        .toArray();
+                compiler.close();
+
+                VkPipelineShaderStageCreateInfo stage = VkPipelineShaderStageCreateInfo.calloc(stack)
+                                .sType$Default()
+                                .stage(VK_SHADER_STAGE_COMPUTE_BIT)
+                                .module(shaderModules[0])
+                                .pName(stack.UTF8("main"));
+
+                VkComputePipelineCreateInfo.Buffer pipelineInfo = VkComputePipelineCreateInfo.calloc(1, stack)
+                                .sType$Default()
+                                .stage(stage)
+                                .layout(layout.layout());
+
+                LongBuffer pPipeline = stack.mallocLong(1);
+
+                int result = vkCreateComputePipelines(
+                        vkDevice,
+                        VK_NULL_HANDLE,
+                        pipelineInfo,
+                        null,
+                        pPipeline
+                );
+
+                if (result != VK_SUCCESS) {
+                    throw new RuntimeException("Failed to create compute pipeline: " + result);
+                }
+
+                long pipeline = pPipeline.get(0);
+
+                return new VkPipeline(pipeline, shaderModules, layout.layout(), VK_PIPELINE_BIND_POINT_COMPUTE);
             }
         }
 
@@ -294,7 +314,6 @@ public class VkPipeline {
 
         public ByteBuffer compileGlsl(MemoryStack stack, ShaderStage stage) {
             System.out.println("Compiling " + stage.path);
-            System.out.println(stage.source);
             long result = Shaderc.shaderc_compile_into_spv(
                     shaderCompiler,
                     stage.source,
