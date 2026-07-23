@@ -54,10 +54,10 @@ public class RenderPipeline {
     private RegionRasterizer regionRasterizer;
     private SectionRasterizer sectionRasterizer;
     private CmdBufferBuilder cmdBufferBuilder;
+    private PrimaryTerrainRasterizer terrainRasterizer;
     /*
     public final RegionVisibilityTracker regionVisibilityTracking;
 
-    private PrimaryTerrainRasterizer terrainRasterizer;
     private TemporalTerrainRasterizer temporalRasterizer;
     private TranslucentTerrainRasterizer translucencyTerrainRasterizer;
     private SortRegionSectionPhase regionSectionSorter;
@@ -131,11 +131,12 @@ public class RenderPipeline {
         this.compiledForFog = Nvidium.config.render_fog;
 
         layout = new VkPipelineLayout(device);
+
+        terrainRasterizer = new PrimaryTerrainRasterizer(layout);
         regionRasterizer = new RegionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
         sectionRasterizer = new SectionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
         cmdBufferBuilder = new CmdBufferBuilder(layout);
         /*
-        terrainRasterizer = new PrimaryTerrainRasterizer();
         temporalRasterizer = new TemporalTerrainRasterizer();
         translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
         regionSectionSorter = new SortRegionSectionPhase();
@@ -477,6 +478,12 @@ public class RenderPipeline {
             //System.out.println("BIND");
             sceneUniform.bind(commandBuffer, layout, SCENE_SIZE, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
+            if (prevRegionCount != 0) {
+                // TODO terrainRasterizer.raster
+                terrainRasterizer.raster(commandBuffer, layout, pass, prevRegionCount, terrainCommandBuffer, terrainSampler);
+            }
+            // TODO regionSectionSorter.dispatch
+
             //System.out.println("RegionRaster " + visibleRegions);
             regionRasterizer.raster(commandBuffer, visibleRegions);
             sectionRasterizer.raster(commandBuffer, visibleRegions);
@@ -484,6 +491,14 @@ public class RenderPipeline {
 
         sceneUniform.bind(commandBuffer, layout, SCENE_SIZE, VK_PIPELINE_BIND_POINT_COMPUTE);
         cmdBufferBuilder.dispatch(commandBuffer, visibleRegions);
+
+        prevRegionCount = visibleRegions;
+
+        if (Nvidium.config.enable_temporal_coherence) {
+            // TODO temporalRasterizer.raster
+        }
+
+        // TODO regionVisibilityTracking.computeVisibility
 
         //if ((err = glGetError()) != 0) {
         //    throw new IllegalStateException("GLERROR: "+err);
@@ -650,6 +665,10 @@ public class RenderPipeline {
     }
 
     public void delete() {
+        // WAIT FOR WORK TO FINISH ON BUFFERS BEFORE DELETING
+        device.getVkDevice().createCommandEncoder().submit();
+        device.getVkDevice().graphicsQueue().waitIdle();
+
         // regionVisibilityTracking.delete();
 
         sceneUniform.delete();
@@ -661,14 +680,14 @@ public class RenderPipeline {
         temporalCommandBuffer.delete();
         regionSortingList.delete();
 
+        terrainRasterizer.delete();
         regionRasterizer.delete();
         sectionRasterizer.delete();
+        cmdBufferBuilder.delete();
         /*
-        terrainRasterizer.delete();
         temporalRasterizer.delete();
         translucencyTerrainRasterizer.delete();
         regionSectionSorter.delete();
-        cmdBufferBuilder.delete();
          */
         this.transformationArray.delete();
         this.originOffsetArray.delete();
@@ -718,20 +737,20 @@ public class RenderPipeline {
     public void reloadShaders() {
         this.compiledForFog = Nvidium.config.render_fog;
 
+        terrainRasterizer.delete();
         regionRasterizer.delete();
         sectionRasterizer.delete();
         cmdBufferBuilder.delete();
         /*
-        terrainRasterizer.delete();
         temporalRasterizer.delete();
         translucencyTerrainRasterizer.delete();
         regionSectionSorter.delete();
 
-        terrainRasterizer = new PrimaryTerrainRasterizer();
         temporalRasterizer = new TemporalTerrainRasterizer();
         translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
         regionSectionSorter = new SortRegionSectionPhase();
          */
+        terrainRasterizer = new PrimaryTerrainRasterizer(layout);
         regionRasterizer = new RegionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
         sectionRasterizer = new SectionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
         cmdBufferBuilder = new CmdBufferBuilder(layout);

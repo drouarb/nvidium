@@ -12,8 +12,8 @@
 #extension GL_NV_fragment_shader_barycentric : require
 #endif
 
-layout(binding = 0) uniform sampler2D tex_diffuse;
-layout(binding = 1) uniform sampler2D tex_light;
+layout(set = 0, binding = 0) uniform sampler2D tex_diffuse;
+layout(set = 0, binding = 1) uniform sampler2D tex_light;
 
 #moj_import <nvidium:occlusion/scene.glsl>
 #moj_import <nvidium:terrain/vertex_format/vertex_format.glsl>

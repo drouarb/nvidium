@@ -84,16 +84,14 @@ public class VkDeviceOnlyMappedBuffer extends TrackedObject implements VkBuffer 
 
     public void bind(VkCommandBuffer commandBuffer, VkPipelineLayout layout, long size, int bindType) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
-            VkDescriptorBufferInfo.Buffer bufferInfo =
-                    VkDescriptorBufferInfo.calloc(1, stack);
+            VkDescriptorBufferInfo.Buffer bufferInfo = VkDescriptorBufferInfo.calloc(1, stack);
 
             bufferInfo.get(0)
                     .buffer(this.handle)
                     .offset(0)
                     .range(size);
 
-            VkWriteDescriptorSet.Buffer writes =
-                    VkWriteDescriptorSet.calloc(1, stack);
+            VkWriteDescriptorSet.Buffer writes = VkWriteDescriptorSet.calloc(1, stack);
 
             writes.get(0)
                     .sType$Default()

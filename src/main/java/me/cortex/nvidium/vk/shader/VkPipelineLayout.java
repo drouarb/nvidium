@@ -12,7 +12,6 @@ import static org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_MESH_BIT_EXT;
 import static org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_TASK_BIT_EXT;
 import static org.lwjgl.vulkan.KHRPushDescriptor.VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
 import static org.lwjgl.vulkan.VK10.*;
-import static org.lwjgl.vulkan.VK10.VK_SUCCESS;
 
 public class VkPipelineLayout {
     private final VkRenderDevice vkDevice;
@@ -23,8 +22,7 @@ public class VkPipelineLayout {
         this.vkDevice = device;
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
-            VkDescriptorSetLayoutBinding.Buffer bindings =
-                    VkDescriptorSetLayoutBinding.calloc(1, stack);
+            VkDescriptorSetLayoutBinding.Buffer bindings = VkDescriptorSetLayoutBinding.calloc(3, stack);
 
             bindings.get(0)
                     .binding(0)
@@ -32,11 +30,22 @@ public class VkPipelineLayout {
                     .descriptorCount(1)
                     .stageFlags(VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT); // TODO ADAPT ???
 
-            VkDescriptorSetLayoutCreateInfo setLayoutInfo =
-                    VkDescriptorSetLayoutCreateInfo.calloc(stack)
-                            .sType$Default()
-                            .flags(VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR)
-                            .pBindings(bindings);
+            bindings.get(1)
+                    .binding(1)
+                    .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                    .descriptorCount(1)
+                    .stageFlags(VK_SHADER_STAGE_FRAGMENT_BIT);
+
+            bindings.get(2)
+                    .binding(2)
+                    .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                    .descriptorCount(1)
+                    .stageFlags(VK_SHADER_STAGE_FRAGMENT_BIT);
+
+            VkDescriptorSetLayoutCreateInfo setLayoutInfo = VkDescriptorSetLayoutCreateInfo.calloc(stack)
+                    .sType$Default()
+                    .flags(VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR)
+                    .pBindings(bindings);
 
             LongBuffer pSetLayout = stack.mallocLong(1);
 
