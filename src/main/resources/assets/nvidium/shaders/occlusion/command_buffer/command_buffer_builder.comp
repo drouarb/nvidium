@@ -1,13 +1,12 @@
 #version 460
-#pragma unroll
-#pragma optionNV(unroll all)
 
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #extension GL_KHR_shader_subgroup_basic : require
-#extension  GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_EXT_control_flow_attributes : require
 
 #moj_import <nvidium:occlusion/scene.glsl>
 
@@ -31,6 +30,7 @@ void main() {
 
     if (regionVisibility.data[gl_WorkGroupID.x] == uint8_t(0)) {
         // Region was not visible, reset visibility bits
+        [[unroll]]
         for (uint i = 0; i < 8; i++) {
             uint index = baseSectionId + gl_LocalInvocationID.x * 8 + i;
             sectionVisibility.data[index] = uint8_t(0);
@@ -45,6 +45,7 @@ void main() {
     }
 
     uvec3 renderCounts = uvec3(0);
+    [[unroll]]
     for (uint i = 0; i < 8; i++) {
         uint visibilityIndex = baseSectionId + gl_LocalInvocationID.x * 8 + i;
         uint8_t visibilityData = sectionVisibility.data[visibilityIndex];
@@ -62,6 +63,7 @@ void main() {
     uvec3 workId = subgroupExclusiveAdd(renderCounts);
     uvec3 totalSectionCount = subgroupAdd(renderCounts);
 
+    [[unroll]]
     for (uint i = 0; i < 8; i++) {
         uint visibilityIndex = baseSectionId + gl_LocalInvocationID.x * 8 + i;
         uint visibilityData = sectionVisibility.data[visibilityIndex];
