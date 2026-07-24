@@ -28,7 +28,7 @@ taskPayloadSharedEXT Task task;
 void main() {
     uint sectionId = sectionIndices.data[translucencyCommandBuffer.data[gl_DrawID].w + gl_WorkGroupID.x].y + translucencyCommandBuffer.data[gl_DrawID].w;
 
-    task.translucencyIndex = -1; // sectionData.data[sectionId].translucencyDataIdx;
+    task.translucencyIndex = sectionData.data[sectionId].translucencyDataIdx;
 
     ivec4 header = sectionData.data[sectionId].header;
     uint baseDataOffset = uint(header.w);

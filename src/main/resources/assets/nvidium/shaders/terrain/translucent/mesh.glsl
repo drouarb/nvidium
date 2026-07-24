@@ -162,7 +162,7 @@ void main() {
     //Each pair of meshlet invokations emits 4 vertices each and 2 primative each
     uint id;
     #ifdef TRANSLUCENCY_SORTING_SODIUM
-    if (translucencyIndex == -1) { // If no translucency data, fallback to quad order
+    if (task.translucencyIndex == -1) { // If no translucency data, fallback to quad order
         id = (floatBitsToUint(task.originAndBaseData.w) + gl_GlobalInvocationID.x)<<2;
     } else { // If we have sorting data, process the vertex at the index translucencyIndexData
         id = (floatBitsToUint(task.originAndBaseData.w) + translucencyIndexData.data[task.translucencyIndex + gl_GlobalInvocationID.x])<<2;

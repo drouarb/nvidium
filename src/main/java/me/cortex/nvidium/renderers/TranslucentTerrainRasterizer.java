@@ -30,7 +30,7 @@ public class TranslucentTerrainRasterizer {
                 .withLayout(layout)
                 .withColorTargetState(new ColorTargetState(Optional.of(BlendFunction.TRANSLUCENT), GpuFormat.RGBA8_UNORM, 0xFFFFFFFF))
                 .withDepthTest(true)
-                .withDepthWrite(false)
+                .withDepthWrite(true)
                 .compile();
     }
 
