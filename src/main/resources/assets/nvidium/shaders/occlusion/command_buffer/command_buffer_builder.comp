@@ -27,7 +27,15 @@ bool hasTranslucentData(uint sectionId) {
 }
 
 void main() {
+    uint baseSectionId = uint(regionIndicies.data[gl_WorkGroupID.x]) << 8;
+
     if (regionVisibility.data[gl_WorkGroupID.x] == uint8_t(0)) {
+        // Region was not visible, reset visibility bits
+        for (uint i = 0; i < 8; i++) {
+            uint index = baseSectionId + gl_LocalInvocationID.x * 8 + i;
+            sectionVisibility.data[index] = uint8_t(0);
+        }
+
         if (subgroupElect()) {
             terrainCommandBuffer.data[gl_WorkGroupID.x] = uvec4(0);
             translucencyCommandBuffer.data[(uint(regionCount) - gl_WorkGroupID.x) - 1] = uvec4(0);
@@ -35,8 +43,6 @@ void main() {
         }
         return;
     }
-
-    uint baseSectionId = uint(regionIndicies.data[gl_WorkGroupID.x]) << 8;
 
     uvec3 renderCounts = uvec3(0);
     for (uint i = 0; i < 8; i++) {

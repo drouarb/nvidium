@@ -8,6 +8,7 @@ import com.mojang.blaze3d.vulkan.VulkanDevice;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.mixin.minecraft.GpuDeviceAccessor;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
+import net.minecraft.client.renderer.ShaderDefines;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -70,12 +71,14 @@ public class VkPipeline {
         private boolean representativeFragmentTest = false;
         private boolean depthTest = false;
         private boolean depthWrite = false;
+        private ShaderDefines.Builder shaderDefinesBuilder = ShaderDefines.builder();
 
         private Builder() {
         }
 
         public Builder addSource(VkShaderType type, Identifier path) {
-            sources.add(new ShaderStage(type, path, ShaderLoader.parse(path)));
+            sources.add(new ShaderStage(type, path, ShaderLoader.parse(path, shaderDefinesBuilder)));
+            shaderDefinesBuilder = ShaderDefines.builder();
             return this;
         }
 
@@ -101,6 +104,11 @@ public class VkPipeline {
 
         public Builder withRepresentativeFragmentTest(boolean v) {
             representativeFragmentTest = v;
+            return this;
+        }
+
+        public Builder withShaderDefines(ShaderDefines.Builder builder) {
+            this.shaderDefinesBuilder = builder;
             return this;
         }
 

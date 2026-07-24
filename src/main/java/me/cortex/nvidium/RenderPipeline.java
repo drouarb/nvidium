@@ -46,9 +46,6 @@ public class RenderPipeline {
     final int DEBUG_RENDER_LEVEL = 0; //0: no debug, 1: region debug, 2: section debug
     final boolean WRITE_DEPTH = false;
 
-    public static final int GL_DRAW_INDIRECT_UNIFIED_NV = 0x8F40;
-    public static final int GL_DRAW_INDIRECT_ADDRESS_NV = 0x8F41;
-
     private final VkRenderDevice device;
     private final UploadingBufferStream uploadStream;
     private final DownloadTaskStream downloadStream;
@@ -171,7 +168,7 @@ public class RenderPipeline {
                 () -> "SectionVisibility"
         );
         sectionIndices = device.createDeviceOnlyMappedBuffer(
-                maxRegions * 256L * 3L,
+                maxRegions * 256L * 4L,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                 0,
                 () -> "SectionIndices"
@@ -336,6 +333,7 @@ public class RenderPipeline {
                         //Clear the visibility bits
                         if (Nvidium.config.enable_temporal_coherence) {
                             //nglClearNamedBufferSubData(sectionVisibility.getId(), GL_R8UI, (long) i << 8, 255, GL_RED_INTEGER, GL_UNSIGNED_BYTE, 0);
+                            // TODO IN CMDBUFFERBUILDER ????
                             vkCmdFillBuffer(
                                     device.getVkDevice().createCommandEncoder().commandBuffer(),
                                     sectionVisibility.getHandle(),

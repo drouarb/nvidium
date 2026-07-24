@@ -17,7 +17,7 @@ layout(local_size_x=1) in;
 #moj_import <nvidium:terrain/task_common2.glsl>
 
 void main() {
-    uint sectionId = sectionIndices.data[temporalCommandBuffer.data[gl_DrawID].w + gl_WorkGroupID.x].x + temporalCommandBuffer.data[gl_DrawID].w;
+    uint sectionId = sectionIndices.data[temporalCommandBuffer.data[gl_DrawID].w + gl_WorkGroupID.x].z + temporalCommandBuffer.data[gl_DrawID].w;
 
 #ifdef STATISTICS_SECTIONS
     atomicAdd(statistics_buffer.data[1], 1);
