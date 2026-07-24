@@ -35,6 +35,12 @@ public class MixinVulkanBackend {
     );
 
     @Unique
+    private static final VulkanPNextStruct FRAGMENT_SHADER_BARYCENTRIC_FEATURES_STRUCT = new VulkanPNextStruct(
+            KHRFragmentShaderBarycentric.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR,
+            VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR.SIZEOF
+    );
+
+    @Unique
     private static final Set<VulkanFeature> NVIDIUM_REQUIRED_FEATURES = Set.of(
             new VulkanFeature(VulkanBackend.VK10_FEATURES_STRUCT, "shaderInt64", VkPhysicalDeviceFeatures.SHADERINT64),
             new VulkanFeature(VulkanBackend.VK11_FEATURES_STRUCT, "storageBuffer16BitAccess", VkPhysicalDeviceVulkan11Features.STORAGEBUFFER16BITACCESS),
@@ -47,7 +53,8 @@ public class MixinVulkanBackend {
             new VulkanFeature(MESH_SHADER_FEATURES_STRUCT, "taskShader", VkPhysicalDeviceMeshShaderFeaturesEXT.TASKSHADER),
 
             // TODO PROPER CHECK AND NOT ENABLING
-            new VulkanFeature(REPRESENTATIVE_FRAGMENT_FEATURES_STRUCT, "representativeFragmentTest", VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV.REPRESENTATIVEFRAGMENTTEST)
+            new VulkanFeature(REPRESENTATIVE_FRAGMENT_FEATURES_STRUCT, "representativeFragmentTest", VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV.REPRESENTATIVEFRAGMENTTEST),
+            new VulkanFeature(FRAGMENT_SHADER_BARYCENTRIC_FEATURES_STRUCT, "fragmentShaderBarycentric", VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR.FRAGMENTSHADERBARYCENTRIC)
     );
 
     @Inject(
@@ -57,6 +64,9 @@ public class MixinVulkanBackend {
     private static void nvidium$enableBDAFeature(Collection<String> deviceExtensions, VulkanPhysicalDevice physicalDevice, Set<VulkanFeature> vulkanFeatures, CallbackInfoReturnable<VkDevice> cir) {
         Nvidium.LOGGER.info("Enabling Vulkan Mesh shader");
         deviceExtensions.add(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME);
+
+        Nvidium.LOGGER.info("Enabling VK KHR barycentric");
+        deviceExtensions.add(KHRFragmentShaderBarycentric.VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME);
 
         for (var feature : NVIDIUM_REQUIRED_FEATURES) {
             // TODO CHECK

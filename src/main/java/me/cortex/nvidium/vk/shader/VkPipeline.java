@@ -151,8 +151,8 @@ public class VkPipeline {
                         .depthClampEnable(false)
                         .rasterizerDiscardEnable(false)
                         .polygonMode(VK_POLYGON_MODE_FILL)
-                        .cullMode(VK_CULL_MODE_NONE)
-                        .frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE)
+                        .cullMode(VK_CULL_MODE_BACK_BIT)
+                        .frontFace(VK_FRONT_FACE_CLOCKWISE)
                         .depthBiasEnable(false)
                         .lineWidth(1.0f);
 

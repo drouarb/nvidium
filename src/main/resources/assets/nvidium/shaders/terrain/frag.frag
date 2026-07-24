@@ -9,7 +9,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int64: require
 
 #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
-#extension GL_NV_fragment_shader_barycentric : require
+#extension GL_EXT_fragment_shader_barycentric : require
 #endif
 
 layout(set = 0, binding = 1) uniform sampler2D tex_diffuse;
@@ -44,7 +44,7 @@ Vertex Vp;
 Vertex V2;
 #ifdef USE_NV_FRAGMENT_SHADER_BARYCENTRIC
 void computeOutputColour(inout vec3 colour) {
-    vec3 multiplier = gl_BaryCoordNV.x*computeMultiplier(V0) + gl_BaryCoordNV.y*computeMultiplier(Vp) + gl_BaryCoordNV.z*computeMultiplier(V2);
+    vec3 multiplier = gl_BaryCoordEXT.x*computeMultiplier(V0) + gl_BaryCoordEXT.y*computeMultiplier(Vp) + gl_BaryCoordEXT.z*computeMultiplier(V2);
     colour *= multiplier;
 }
 #endif
@@ -129,7 +129,7 @@ void main() {
         vec2 uv0 = decodeVertexUV(V0);
         vec2 uvp = decodeVertexUV(Vp);
         vec2 uv2 = decodeVertexUV(V2);
-        vec2 uvr = gl_BaryCoordNV.x*uv0 + gl_BaryCoordNV.y*uvp + gl_BaryCoordNV.z*uv2;
+        vec2 uvr = gl_BaryCoordEXT.x*uv0 + gl_BaryCoordEXT.y*uvp + gl_BaryCoordEXT.z*uv2;
         vec2 uv = clamp(uvr, min(min(uv0, uv2),uvp)+HALF_SHIFT, max(max(uv0, uv2),uvp)-HALF_SHIFT);
 
         vec2 du = dFdx(uvr);

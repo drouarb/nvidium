@@ -1,66 +1,47 @@
 package me.cortex.nvidium.renderers;
 
-import com.mojang.blaze3d.opengl.GlSampler;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.opengl.GlTexture;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.blaze3d.GpuFormat;
+import com.mojang.blaze3d.pipeline.BlendFunction;
+import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.textures.GpuSampler;
-import com.mojang.blaze3d.textures.GpuTextureView;
-import me.cortex.nvidium.gl.shader.Shader;
-import me.cortex.nvidium.sodiumCompat.ShaderLoader;
+import me.cortex.nvidium.vk.buffers.VkDeviceOnlyMappedBuffer;
+import me.cortex.nvidium.vk.shader.VkPipeline;
+import me.cortex.nvidium.vk.shader.VkPipelineLayout;
+import me.cortex.nvidium.vk.shader.VkShaderType;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.ShaderDefines;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.opengl.*;
+import org.lwjgl.vulkan.VkCommandBuffer;
 
-import static me.cortex.nvidium.gl.shader.ShaderType.*;
-import static org.lwjgl.opengl.NVMeshShader.glMultiDrawMeshTasksIndirectNV;
-import static org.lwjgl.opengl.NVVertexBufferUnifiedMemory.glBufferAddressRangeNV;
+import java.util.Optional;
 
-public class TranslucentTerrainRasterizer extends Phase {
-    private final Shader shader = Shader.make()
-            .addSource(TASK, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "terrain/translucent/task.glsl")))
-            .addSource(MESH, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "terrain/translucent/mesh.glsl")))
-            .addSource(FRAGMENT, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "terrain/frag.frag"), ShaderDefines.builder().define("TRANSLUCENT_PASS")))
-            .compile();
+import static org.lwjgl.vulkan.EXTMeshShader.vkCmdDrawMeshTasksIndirectEXT;
 
-    public TranslucentTerrainRasterizer() {
+public class TranslucentTerrainRasterizer {
+    private final VkPipeline shader;
+
+    public TranslucentTerrainRasterizer(VkPipelineLayout layout) {
+        shader = VkPipeline.make()
+                .addSource(VkShaderType.TASK, Identifier.fromNamespaceAndPath("nvidium", "terrain/translucent/task.glsl"))
+                .addSource(VkShaderType.MESH, Identifier.fromNamespaceAndPath("nvidium", "terrain/translucent/mesh.glsl"))
+                .withShaderDefines(ShaderDefines.builder().define("TRANSLUCENT_PASS"))
+                .addSource(VkShaderType.FRAGMENT, Identifier.fromNamespaceAndPath("nvidium", "terrain/frag.frag"))
+                .withLayout(layout)
+                .withColorTargetState(new ColorTargetState(Optional.of(BlendFunction.TRANSLUCENT), GpuFormat.RGBA8_UNORM, 0xFFFFFFFF))
+                .withDepthTest(true)
+                .withDepthWrite(false)
+                .compile();
     }
 
-    private static void setTexture(GpuTextureView texView, int bindingPoint, GpuSampler sampler) {
-        GlTexture tex = (GlTexture) texView.texture();
-        GlStateManager._activeTexture(GL32C.GL_TEXTURE0 + bindingPoint);
-        GlStateManager._bindTexture(tex.glId());
-        GlStateManager._texParameter(GL32C.GL_TEXTURE_2D, 33084, texView.baseMipLevel());
-        GlStateManager._texParameter(GL32C.GL_TEXTURE_2D, 33085, texView.baseMipLevel() + texView.mipLevels() - 1);
-        GL33C.glBindSampler(bindingPoint, ((GlSampler) sampler).getId());
-    }
+    public void raster(VkCommandBuffer commandBuffer, VkPipelineLayout layout, TerrainRenderPass pass, int regionCount, VkDeviceOnlyMappedBuffer mdiCommandBuffer, GpuSampler terrainSampler) {
+        shader.bind(commandBuffer);
+        PrimaryTerrainRasterizer.bindTextures(commandBuffer, layout, pass, terrainSampler);
 
-    //Translucency is rendered in a very cursed and incorrect way
-    // it hijacks the unassigned indirect command dispatch and uses that to dispatch the translucent chunks as well
-    public void raster(TerrainRenderPass pass, int regionCount, long commandAddr, GpuSampler terrainSampler) {
-        shader.bind();
-
-        GpuTextureView blockTexture = pass.getAtlas();
-        GpuTextureView lightTexture = Minecraft.getInstance().gameRenderer.lightmap();
-
-        setTexture(blockTexture, 0, terrainSampler);
-        setTexture(lightTexture, 1, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
-
-        //the +8*6 is to offset to the unassigned dispatch
-        glBufferAddressRangeNV(0, 0, commandAddr, regionCount*8L);//Bind the command buffer
-        timing.marker();
-        glMultiDrawMeshTasksIndirectNV( 0, regionCount, 0);
-        timing.marker();
-        timing.tick();
-        GL45C.glBindSampler(0, 0);
-        GL45C.glBindSampler(1, 0);
+        vkCmdDrawMeshTasksIndirectEXT(commandBuffer, mdiCommandBuffer.getHandle(), 0, regionCount, 16);
     }
 
     public void delete() {
-        super.delete();
         shader.delete();
     }
 }

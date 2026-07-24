@@ -57,11 +57,11 @@ public class RenderPipeline {
     private SectionRasterizer sectionRasterizer;
     private CmdBufferBuilder cmdBufferBuilder;
     private TemporalTerrainRasterizer temporalRasterizer;
+    private TranslucentTerrainRasterizer translucencyTerrainRasterizer;
 
     /*
     public final RegionVisibilityTracker regionVisibilityTracking;
 
-    private TranslucentTerrainRasterizer translucencyTerrainRasterizer;
     private SortRegionSectionPhase regionSectionSorter;
     */
 
@@ -139,8 +139,8 @@ public class RenderPipeline {
         sectionRasterizer = new SectionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
         cmdBufferBuilder = new CmdBufferBuilder(layout);
         temporalRasterizer = new TemporalTerrainRasterizer(layout);
+        translucencyTerrainRasterizer = new TranslucentTerrainRasterizer(layout);
         /*
-        translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
         regionSectionSorter = new SortRegionSectionPhase();
          */
 
@@ -658,6 +658,20 @@ public class RenderPipeline {
     //Translucency is rendered in a very cursed and incorrect way
     // it hijacks the unassigned indirect command dispatch and uses that to dispatch the translucent chunks as well
     public void renderTranslucent(TerrainRenderPass pass, GpuSampler terrainSampler) {
+        try (RenderPass renderPass = RenderSystem.getDevice()
+                .createCommandEncoder()
+                .createRenderPass(
+                        () -> "Nvidium Translucent Terrain",
+                        pass.getTarget().getColorTextureView(),
+                        Optional.empty(),
+                        pass.getTarget().getDepthTextureView(),
+                        OptionalDouble.empty()
+                )) {
+            VulkanRenderPass renderPassBackend = (VulkanRenderPass) ((RenderPassAccessor)renderPass).nvidium$getRenderPassBackend();
+            VkCommandBuffer commandBuffer = ((VulkanRenderPassAccessor)renderPassBackend).nvidium$getCommandBuffer();
+            sceneUniform.bind(commandBuffer, layout, SCENE_SIZE, VK_PIPELINE_BIND_POINT_GRAPHICS);
+            translucencyTerrainRasterizer.raster(commandBuffer, layout, pass, prevRegionCount, translucencyCommandBuffer, terrainSampler);
+        }
         /*
         glEnableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
         glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
@@ -720,8 +734,8 @@ public class RenderPipeline {
         sectionRasterizer.delete();
         cmdBufferBuilder.delete();
         temporalRasterizer.delete();
-        /*
         translucencyTerrainRasterizer.delete();
+        /*
         regionSectionSorter.delete();
          */
         this.transformationArray.delete();
@@ -779,11 +793,9 @@ public class RenderPipeline {
         sectionRasterizer.delete();
         cmdBufferBuilder.delete();
         temporalRasterizer.delete();
-        /*
         translucencyTerrainRasterizer.delete();
+        /*
         regionSectionSorter.delete();
-
-        translucencyTerrainRasterizer = new TranslucentTerrainRasterizer();
         regionSectionSorter = new SortRegionSectionPhase();
          */
         terrainRasterizer = new PrimaryTerrainRasterizer(layout);
@@ -791,5 +803,6 @@ public class RenderPipeline {
         sectionRasterizer = new SectionRasterizer(DEBUG_RENDER_LEVEL, WRITE_DEPTH, layout);
         cmdBufferBuilder = new CmdBufferBuilder(layout);
         temporalRasterizer = new TemporalTerrainRasterizer(layout);
+        translucencyTerrainRasterizer = new TranslucentTerrainRasterizer(layout);
     }
 }
