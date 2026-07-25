@@ -24,7 +24,7 @@ public class DownloadTaskStream {
     public DownloadTaskStream(VkRenderDevice device, int frames, long size) {
         this.device = device;
         allocator.setLimit(size);
-        buffer = device.createClientMappedBuffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT);
+        buffer = device.createClientMappedBuffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT, () -> "DownloadStagingBuffer");
         TickableManager.register(this);
         allocations = new ObjectList[frames];
         for (int i = 0; i < frames; i++) {

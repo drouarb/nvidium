@@ -54,42 +54,13 @@ public abstract class MixinSodiumWorldRenderer implements INvidiumWorldRendererG
     public void renderLayer(ChunkRenderMatrices matrices, TerrainRenderPass pass, double x, double y, double z, FogParameters fogParameters, GpuSampler terrainSampler, CallbackInfo ci) {
         if (Nvidium.IS_ENABLED) {
             ci.cancel();
-            if (pass == DefaultTerrainRenderPasses.CUTOUT) // Early exit, cutout will be rendered with SOLID
-                return;
 
-                //System.out.println("RENDER");
+            // CUTOUT IS WITH SOLID
             if (pass == DefaultTerrainRenderPasses.SOLID) {
                 this.getRenderer().renderFrame(pass, viewport, fogParameters, matrices, x, y, z, terrainSampler);
-            } else {
+            } else if (pass == DefaultTerrainRenderPasses.TRANSLUCENT) {
                 this.getRenderer().renderTranslucent(pass, terrainSampler);
             }
-                /*
-                GlStateManager._disableScissorTest();
-                GlStateManager._enableCull();
-                GlStateManager._enableDepthTest();
-                GlStateManager._depthFunc(GL33C.GL_GEQUAL); // reverse-Z
-                GlStateManager._colorMask(0, 15);
-                GlStateManager._depthMask(true);
-
-                if (pass == DefaultTerrainRenderPasses.SOLID) {
-                    GlStateManager._disableBlend(0);
-
-                    this.getRenderer().renderFrame(pass, viewport, fogParameters, matrices, x, y, z, terrainSampler);
-                } else if (pass == DefaultTerrainRenderPasses.TRANSLUCENT) {
-                    GlStateManager._enableBlend(0);
-                    GlStateManager._blendFuncSeparate(
-                            GL33C.GL_SRC_ALPHA,
-                            GL33C.GL_ONE_MINUS_SRC_ALPHA,
-                            GL33C.GL_ONE,
-                            GL33C.GL_ONE_MINUS_SRC_ALPHA
-                    );
-
-                    this.getRenderer().renderTranslucent(pass, terrainSampler);
-                    GlStateManager._disableBlend(0);
-                }
-                GlStateManager._depthMask(true);
-                GlStateManager._disableBlend(0);
-                */
         }
     }
 }

@@ -27,7 +27,7 @@ public class UploadingBufferStream {
     public UploadingBufferStream(VkRenderDevice device, long size) {
         this.device = device;
         this.allocationArena.setLimit(size);
-        this.uploadBuffer = device.createClientMappedBuffer(size,VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+        this.uploadBuffer = device.createClientMappedBuffer(size,VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, () -> "UploadStagingBuffer");
         TickableManager.register(this);
     }
 
@@ -130,7 +130,7 @@ public class UploadingBufferStream {
     public void delete() {
         TickableManager.remove(this);
         this.uploadBuffer.delete();
-        //this.frames.forEach(frame->frame.fence.free());
+        this.frames.forEach(frame->frame.fence.close());
     }
 
     private record UploadFrame(GpuFence fence, LongArrayList allocations) {}

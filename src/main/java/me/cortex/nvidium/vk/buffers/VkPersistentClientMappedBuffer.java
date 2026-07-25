@@ -14,6 +14,7 @@ import org.lwjgl.util.vma.VmaAllocationInfo;
 import org.lwjgl.vulkan.VkBufferCreateInfo;
 
 import java.nio.LongBuffer;
+import java.util.function.Supplier;
 
 import static org.lwjgl.util.vma.Vma.VMA_ALLOCATION_CREATE_MAPPED_BIT;
 import static org.lwjgl.util.vma.Vma.VMA_MEMORY_USAGE_AUTO;
@@ -26,9 +27,7 @@ public class VkPersistentClientMappedBuffer extends TrackedObject implements VkB
     private final long addr;
     private final long size;
 
-    public VkPersistentClientMappedBuffer(long size, int bufferUsage, int allocFlags) {
-        System.out.println("VkPersistentClientMappedBuffer LEZGO");
-
+    public VkPersistentClientMappedBuffer(long size, int bufferUsage, int allocFlags, Supplier<String> label) {
         vkDevice = (VulkanDevice)((GpuDeviceAccessor)RenderSystem.getDevice()).nvidium$getGpuDeviceBackend();
         this.size = size;
 
@@ -59,11 +58,7 @@ public class VkPersistentClientMappedBuffer extends TrackedObject implements VkB
                 throw new IllegalStateException("VMA allocation was not persistently mapped");
             }
 
-            /* TODO LABEL FOR DEBUG ?
-            if (label != null) {
-                device.instance().debug().setObjectName(device.vkDevice(), 9, vkBuffer, label);
-            }
-             */
+            vkDevice.instance().debug().setObjectName(vkDevice.vkDevice(), 9, handle, label);
         }
     }
 

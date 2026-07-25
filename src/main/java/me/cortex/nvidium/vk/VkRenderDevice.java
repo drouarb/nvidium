@@ -27,8 +27,8 @@ public class VkRenderDevice {
         return vkDevice;
     }
 
-    public VkPersistentClientMappedBuffer createClientMappedBuffer(long size, int bufferUsage, int allocFlags) {
-        return new VkPersistentClientMappedBuffer(size, bufferUsage, allocFlags);
+    public VkPersistentClientMappedBuffer createClientMappedBuffer(long size, int bufferUsage, int allocFlags, Supplier<String> label) {
+        return new VkPersistentClientMappedBuffer(size, bufferUsage, allocFlags, label);
     }
 
     public void barrier(VkCommandBuffer commandBuffer) {
