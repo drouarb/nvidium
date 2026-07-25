@@ -1,5 +1,10 @@
 #version 460 core
-#extension GL_NV_gpu_shader5 : require
+
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
 #define SORTING_NETWORK_SIZE 256
 layout(local_size_x = (SORTING_NETWORK_SIZE>>1), local_size_y = 1 , local_size_z = 1) in;
 
@@ -9,7 +14,7 @@ layout(local_size_x = (SORTING_NETWORK_SIZE>>1), local_size_y = 1 , local_size_z
 
 
 void populateSection(uint regionId, uint8_t sectionId) {
-    ivec4 sectionHeader = sectionData[(regionId<<8)|uint(sectionId)].header;
+    ivec4 sectionHeader = sectionData.data[(regionId<<8)|uint(sectionId)].header;
     if (sectionEmpty(sectionHeader)) {
         //The section doesnt exist so nuke it from existance
         putSortingData(sectionId, -999999999.0f);
@@ -27,7 +32,7 @@ uint regionId = 0;
 
 //Note: dont actually need to access the region header since everything is in the section header
 bool populate() {
-    regionId = sortingRegionList[gl_WorkGroupID.x];
+    regionId = sortingRegionList.data[gl_WorkGroupID.x];
 
     //TODO: FIXME: the reason this doesnt work is cause the regionId != the location of visibility
     //if (regionVisibility[regionId] == uint8_t(0)) {
@@ -43,10 +48,10 @@ bool populate() {
 void updateSection(uint regionId, uint8_t id) {
     uint8_t from = id;
     uint8_t too = threadBufferIndex[id];
-    ivec4 header = sectionData[(regionId<<8)|uint(from)].header;
+    ivec4 header = sectionData.data[(regionId<<8)|uint(from)].header;
     header.y &= ~(0xFF<<18);
     header.y |= int(uint(too))<<18;
-    sectionData[(regionId<<8)|uint(from)].header = header;
+    sectionData.data[(regionId<<8)|uint(from)].header = header;
 }
 
 void update() {

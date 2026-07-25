@@ -1,30 +1,29 @@
 package me.cortex.nvidium.renderers;
 
-import me.cortex.nvidium.gl.shader.Shader;
-import me.cortex.nvidium.sodiumCompat.ShaderLoader;
+import me.cortex.nvidium.vk.shader.VkPipeline;
+import me.cortex.nvidium.vk.shader.VkPipelineLayout;
+import me.cortex.nvidium.vk.shader.VkShaderType;
 import net.minecraft.resources.Identifier;
+import org.lwjgl.vulkan.VkCommandBuffer;
 
-import static me.cortex.nvidium.gl.shader.ShaderType.*;
-import static org.lwjgl.opengl.GL43C.glDispatchCompute;
+import static org.lwjgl.vulkan.VK10.vkCmdDispatch;
 
-public class SortRegionSectionPhase extends Phase {
-    private final Shader shader = Shader.make()
-            .addSource(COMPUTE, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "sorting/region_section_sorter.comp")))
-            .compile();
+public class SortRegionSectionPhase {
+    private final VkPipeline shader;
 
-    public SortRegionSectionPhase() {
+    public SortRegionSectionPhase(VkPipelineLayout layout) {
+        shader = VkPipeline.make()
+                .addSource(VkShaderType.COMPUTE, Identifier.fromNamespaceAndPath("nvidium", "sorting/region_section_sorter.comp"))
+                .withLayout(layout)
+                .compileCompute();
     }
 
-    public void dispatch(int sortingRegionCount) {
-        shader.bind();
-        timing.marker();
-        glDispatchCompute(sortingRegionCount, 1, 1);
-        timing.marker();
-        timing.tick();
+    public void dispatch(VkCommandBuffer commandBuffer, int sortingRegionCount) {
+        shader.bind(commandBuffer);
+        vkCmdDispatch(commandBuffer, sortingRegionCount, 1, 1);
     }
 
     public void delete() {
-        super.delete();
         shader.delete();
     }
 }

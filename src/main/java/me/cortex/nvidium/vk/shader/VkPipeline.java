@@ -107,7 +107,7 @@ public class VkPipeline {
             return this;
         }
 
-        public Builder withShaderDefines(ShaderDefines.Builder builder) {
+        public Builder nextSourceShaderDefines(ShaderDefines.Builder builder) {
             this.shaderDefinesBuilder = builder;
             return this;
         }

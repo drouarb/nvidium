@@ -25,7 +25,7 @@ public class TranslucentTerrainRasterizer {
         shader = VkPipeline.make()
                 .addSource(VkShaderType.TASK, Identifier.fromNamespaceAndPath("nvidium", "terrain/translucent/task.glsl"))
                 .addSource(VkShaderType.MESH, Identifier.fromNamespaceAndPath("nvidium", "terrain/translucent/mesh.glsl"))
-                .withShaderDefines(ShaderDefines.builder().define("TRANSLUCENT_PASS"))
+                .nextSourceShaderDefines(ShaderDefines.builder().define("TRANSLUCENT_PASS"))
                 .addSource(VkShaderType.FRAGMENT, Identifier.fromNamespaceAndPath("nvidium", "terrain/frag.frag"))
                 .withLayout(layout)
                 .withColorTargetState(new ColorTargetState(Optional.of(BlendFunction.TRANSLUCENT), GpuFormat.RGBA8_UNORM, 0xFFFFFFFF))

@@ -1,15 +1,11 @@
 package me.cortex.nvidium.renderers;
 
-import me.cortex.nvidium.gl.shader.Shader;
-import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import me.cortex.nvidium.vk.shader.VkPipeline;
 import me.cortex.nvidium.vk.shader.VkPipelineLayout;
 import me.cortex.nvidium.vk.shader.VkShaderType;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.vulkan.VkCommandBuffer;
 
-import static me.cortex.nvidium.gl.shader.ShaderType.COMPUTE;
-import static org.lwjgl.opengl.GL43C.glDispatchCompute;
 import static org.lwjgl.vulkan.VK10.vkCmdDispatch;
 
 public class CmdBufferBuilder {
