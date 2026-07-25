@@ -17,6 +17,7 @@ public class Nvidium {
     public static boolean FORCE_DISABLE = false;
     public static boolean SUPPORT_NV_representative_fragment_test = false;
     public static boolean SUPPORT_VK_KHR_fragment_shader_barycentric = false;
+    public static int SUBGROUP_SIZE = 32;
 
     public static NvidiumConfig config = NvidiumConfig.loadOrCreate();
 

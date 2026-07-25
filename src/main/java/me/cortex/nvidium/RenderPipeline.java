@@ -547,11 +547,6 @@ public class RenderPipeline {
         // removeRegion(regionVisibilityTracking.findMostLikelyLeastSeenRegion(sectionManager.getRegionManager().maxRegionIndex()));
     }
 
-    /*
-    private void setRegionVisible(long rid) {
-        glClearNamedBufferSubData(regionVisibility.getId(), GL_R8UI, rid, 1, GL_RED_INTEGER, GL_UNSIGNED_BYTE, new int[]{(byte)(1)});
-    }*/
-
     //Translucency is rendered in a very cursed and incorrect way
     // it hijacks the unassigned indirect command dispatch and uses that to dispatch the translucent chunks as well
     public void renderTranslucent(TerrainRenderPass pass, GpuSampler terrainSampler) {

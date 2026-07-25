@@ -21,6 +21,7 @@ import java.util.Set;
 
 import static org.lwjgl.util.vma.Vma.VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 import static org.lwjgl.vulkan.EXTMeshShader.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+import static org.lwjgl.vulkan.VK11.vkGetPhysicalDeviceProperties2;
 
 @Mixin(value = VulkanBackend.class)
 public class MixinVulkanBackend {
@@ -78,9 +79,9 @@ public class MixinVulkanBackend {
 
         for (var feature : NVIDIUM_REQUIRED_FEATURES) {
             if (isFeatureSupported(physicalDevice.vkPhysicalDevice(), feature)) {
-                Nvidium.LOGGER.info("Enabling feature " + feature.name());
+                Nvidium.LOGGER.info("Enabling feature {}", feature.name());
             } else {
-                Nvidium.LOGGER.info("Missing feature " + feature.name() + ", disabling Nvidium");
+                Nvidium.LOGGER.info("Missing feature {}, disabling Nvidium", feature.name());
                 Nvidium.IS_COMPATIBLE = false;
             }
         }
@@ -119,22 +120,32 @@ public class MixinVulkanBackend {
             Nvidium.LOGGER.info("No VK_NV_representative_fragment_test device extension, using compatibility mode");
         }
 
+        initSubgroupSize(physicalDevice.vkPhysicalDevice());
         Nvidium.config.automatic_memory = false; // TODO REMOVE BUT SHOULD PREVENT CRASH SINCE NOT SUPPORTED YET
     }
 
-    @ModifyArg(
-            method = "createVma(Lorg/lwjgl/vulkan/VkDevice;)J",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lorg/lwjgl/util/vma/Vma;vmaCreateAllocator(Lorg/lwjgl/util/vma/VmaAllocatorCreateInfo;Lorg/lwjgl/PointerBuffer;)I"
-            ),
-            index = 0
-    )
+    @ModifyArg(method = "createVma(Lorg/lwjgl/vulkan/VkDevice;)J", at = @At(value = "INVOKE", target = "Lorg/lwjgl/util/vma/Vma;vmaCreateAllocator(Lorg/lwjgl/util/vma/VmaAllocatorCreateInfo;Lorg/lwjgl/PointerBuffer;)I"), index = 0)
     private static VmaAllocatorCreateInfo nvidium$enableVMABDA(VmaAllocatorCreateInfo createInfo) {
         Nvidium.LOGGER.info("Enabling Vulkan VMA BDA");
         createInfo.flags(createInfo.flags() | VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT);
 
         return createInfo;
+    }
+
+    @Unique
+    private static void initSubgroupSize(VkPhysicalDevice physicalDevice) {
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            VkPhysicalDeviceSubgroupProperties subgroupProperties = VkPhysicalDeviceSubgroupProperties.calloc(stack).sType$Default();
+
+            VkPhysicalDeviceProperties2 properties = VkPhysicalDeviceProperties2.calloc(stack)
+                    .sType$Default()
+                    .pNext(subgroupProperties);
+
+            vkGetPhysicalDeviceProperties2(physicalDevice, properties);
+
+            Nvidium.SUBGROUP_SIZE = subgroupProperties.subgroupSize();
+            Nvidium.LOGGER.info("SubGroup size is {}", Nvidium.SUBGROUP_SIZE);
+        }
     }
 
     @Shadow
