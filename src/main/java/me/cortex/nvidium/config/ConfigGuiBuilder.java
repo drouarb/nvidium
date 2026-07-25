@@ -34,6 +34,18 @@ public class ConfigGuiBuilder implements ConfigEntryPoint {
                         .setStorageHandler(this.noSave)
         );
 
+        if (Nvidium.IS_OPENGL) {
+            nvidiumOptionPage.addOption(
+                    builder.createBooleanOption(Identifier.parse("nvidium:opengl_disable"))
+                            .setName(Component.translatable("nvidium.options.disable_opengl"))
+                            .setTooltip(Component.translatable("nvidium.options.disable_opengl.tooltip"))
+                            .setImpact(OptionImpact.HIGH)
+                            .setDefaultValue(true)
+                            .setBinding((v) -> {}, () -> false)
+                            .setStorageHandler(this.noSave)
+            );
+        }
+
         if (Nvidium.IS_COMPATIBLE && !Nvidium.IS_ENABLED && !Nvidium.FORCE_DISABLE) {
             nvidiumOptionPage.addOption(
                     builder.createBooleanOption(Identifier.parse("nvidium:force_disabled_nvidium"))

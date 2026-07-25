@@ -30,5 +30,7 @@
   "nvidium.options.statistics_level.quads" : "Quads",
   "nvidium.options.statistics_level.cull" : "Culled triangles",
   "nvidium.options.render_fog.name": "Render Fog",
-  "nvidium.options.render_fog.tooltip": "Should fog be rendered"
+  "nvidium.options.render_fog.tooltip": "Should fog be rendered",
+  "nvidium.options.disable_opengl": "OpenGL is not compatible",
+  "nvidium.options.disable_opengl.tooltip": "Nvidium disabled itself because this version is not compatible with OpenGL. Either switch to Vulkan or if you want an OpenGL compatible version, use 0.4.X versions"
 }

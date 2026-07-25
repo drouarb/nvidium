@@ -218,7 +218,7 @@ public class VkPipeline {
                         .pDepthStencilState(depthStencilState)
                         .pNext(renderingInfo);
 
-                if (Nvidium.SUPPORT_NV_REPRESENTATIVE_TEST_FRAGMENT && this.representativeFragmentTest) {
+                if (Nvidium.SUPPORT_NV_representative_fragment_test && this.representativeFragmentTest) {
                     VkPipelineRepresentativeFragmentTestStateCreateInfoNV representativeState = VkPipelineRepresentativeFragmentTestStateCreateInfoNV.calloc(stack)
                             .sType$Default()
                             .representativeFragmentTestEnable(true);
