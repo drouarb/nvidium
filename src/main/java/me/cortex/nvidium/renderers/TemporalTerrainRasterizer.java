@@ -8,7 +8,6 @@ import me.cortex.nvidium.vk.shader.VkPipelineLayout;
 import me.cortex.nvidium.vk.shader.VkShaderType;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.opengl.*;
 import org.lwjgl.vulkan.VkCommandBuffer;
 
 import static org.lwjgl.vulkan.EXTMeshShader.vkCmdDrawMeshTasksIndirectEXT;

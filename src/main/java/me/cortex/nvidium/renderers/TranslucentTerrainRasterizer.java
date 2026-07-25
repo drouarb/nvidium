@@ -11,7 +11,6 @@ import me.cortex.nvidium.vk.shader.VkShaderType;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import net.minecraft.client.renderer.ShaderDefines;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.opengl.*;
 import org.lwjgl.vulkan.VkCommandBuffer;
 
 import java.util.Optional;

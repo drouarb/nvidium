@@ -7,7 +7,6 @@ import net.caffeinemc.mods.sodium.client.render.chunk.*;
 import net.caffeinemc.mods.sodium.client.render.chunk.region.RenderRegionManager;
 import net.caffeinemc.mods.sodium.client.render.chunk.translucent_sorting.SortBehavior;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkVertexType;
-import net.caffeinemc.mods.sodium.client.render.viewport.Viewport;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import org.spongepowered.asm.mixin.Final;
@@ -25,7 +24,6 @@ import java.util.Collection;
 public class MixinRenderSectionManager implements INvidiumWorldRendererGetter {
     @Shadow @Final private RenderRegionManager regions;
     @Unique private NvidiumWorldRenderer renderer;
-    @Unique private Viewport viewport;
 
     @Unique
     private static void updateNvidiumIsEnabled() {

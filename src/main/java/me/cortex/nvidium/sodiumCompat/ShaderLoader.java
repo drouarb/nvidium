@@ -23,6 +23,8 @@ public class ShaderLoader {
     }
 
     public static String parse(Identifier path, ShaderDefines.Builder builder) {
+        builder.define("NVIDIUM_SUBGROUP_SIZE", Nvidium.SUBGROUP_SIZE);
+
         if (Nvidium.IS_DEBUG) {
             builder.define("DEBUG");
         }
