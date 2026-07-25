@@ -45,6 +45,8 @@ public class MixinVulkanBackend {
     @Unique
     private static final Set<VulkanFeature> NVIDIUM_REQUIRED_FEATURES = Set.of(
             new VulkanFeature(VulkanBackend.VK10_FEATURES_STRUCT, "shaderInt64", VkPhysicalDeviceFeatures.SHADERINT64),
+            new VulkanFeature(VulkanBackend.VK10_FEATURES_STRUCT, "sparseBinding", VkPhysicalDeviceFeatures.SPARSEBINDING),
+            new VulkanFeature(VulkanBackend.VK10_FEATURES_STRUCT, "sparseResidencyBuffer", VkPhysicalDeviceFeatures.SPARSERESIDENCYBUFFER),
             new VulkanFeature(VulkanBackend.VK11_FEATURES_STRUCT, "storageBuffer16BitAccess", VkPhysicalDeviceVulkan11Features.STORAGEBUFFER16BITACCESS),
             new VulkanFeature(VulkanBackend.VK11_FEATURES_STRUCT, "uniformAndStorageBuffer16BitAccess", VkPhysicalDeviceVulkan11Features.UNIFORMANDSTORAGEBUFFER16BITACCESS),
             new VulkanFeature(VulkanBackend.VK12_FEATURES_STRUCT, "shaderInt8", VkPhysicalDeviceVulkan12Features.SHADERINT8),
