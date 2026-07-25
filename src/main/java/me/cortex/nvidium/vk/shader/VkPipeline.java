@@ -53,8 +53,7 @@ public class VkPipeline {
         VkDevice vkDevice = ((VulkanDevice) ((GpuDeviceAccessor) RenderSystem.getDevice()).nvidium$getGpuDeviceBackend()).vkDevice();
 
         vkDestroyPipeline(vkDevice, pipeline, null);
-        // vkDestroyPipelineLayout(vkDevice, pipelineLayout, null);
-        for (long shaderModule : shaderModules) { // TODO FREE AT COMPILE ??
+        for (long shaderModule : shaderModules) {
             vkDestroyShaderModule(vkDevice, shaderModule, null);
         }
     }
@@ -355,6 +354,7 @@ public class VkPipeline {
 
             Shaderc.shaderc_result_release(result);
 
+            /*
             try { // TODO REMOVE IT
                 ByteBuffer dump = spirv.duplicate();
                 byte[] bytes = new byte[dump.remaining()];
@@ -363,7 +363,7 @@ public class VkPipeline {
                 Files.write(Path.of(stage.path.toDebugFileName() + ".spv"), bytes);
             } catch (Exception e) {
                 System.out.println("FAILED TO DUMP " + stage.path + e);
-            }
+            } */
 
             return spirv;
         }

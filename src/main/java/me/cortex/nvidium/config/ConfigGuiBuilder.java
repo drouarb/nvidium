@@ -88,7 +88,7 @@ public class ConfigGuiBuilder implements ConfigEntryPoint {
                         .setTooltip(Component.translatable("nvidium.options.automatic_memory_limit.tooltip"))
                         .setDefaultValue(true)
                         .setImpact(OptionImpact.VARIES)
-                        .setEnabledProvider(c -> Nvidium.IS_ENABLED)
+                        .setEnabledProvider(c -> Nvidium.IS_ENABLED && false) // TODO FIX AUTOMATIC MEMORY LIMIT
                         .setBinding(v -> store.getData().automatic_memory = v, () -> store.getData().automatic_memory)
                         .setStorageHandler(this.saveConfig)
         );

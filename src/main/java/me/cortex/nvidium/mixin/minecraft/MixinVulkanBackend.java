@@ -93,7 +93,7 @@ public class MixinVulkanBackend {
             return; // We don't have minimum required extension we stop there and disable
         }
 
-        if (physicalDevice.hasDeviceExtension(KHRFragmentShaderBarycentric.VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)) {
+        if (physicalDevice.hasDeviceExtension(KHRFragmentShaderBarycentric.VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)) { // TODO EMULATE BARY
             if (isFeatureSupported(physicalDevice.vkPhysicalDevice(), FRAGMENT_SHADER_BARYCENTRIC_FEATURE)) {
                 Nvidium.LOGGER.info("Enabling VK_KHR_fragment_shader_barycentric");
                 deviceExtensions.add(KHRFragmentShaderBarycentric.VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME);
@@ -118,6 +118,8 @@ public class MixinVulkanBackend {
         } else {
             Nvidium.LOGGER.info("No VK_NV_representative_fragment_test device extension, using compatibility mode");
         }
+
+        Nvidium.config.automatic_memory = false; // TODO REMOVE BUT SHOULD PREVENT CRASH SINCE NOT SUPPORTED YET
     }
 
     @ModifyArg(
