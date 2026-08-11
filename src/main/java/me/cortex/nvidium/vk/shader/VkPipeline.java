@@ -318,6 +318,7 @@ public class VkPipeline {
 
             Shaderc.shaderc_compile_options_set_source_language(shaderOptions, Shaderc.shaderc_source_language_glsl);
             Shaderc.shaderc_compile_options_set_target_env(shaderOptions, Shaderc.shaderc_target_env_vulkan, Shaderc.shaderc_env_version_vulkan_1_2);
+            Shaderc.shaderc_compile_options_set_generate_debug_info(shaderOptions);
             Shaderc.shaderc_compile_options_set_optimization_level(shaderOptions, Shaderc.shaderc_optimization_level_performance);
         }
 

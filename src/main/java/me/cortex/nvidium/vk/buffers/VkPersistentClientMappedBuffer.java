@@ -76,6 +76,7 @@ public class VkPersistentClientMappedBuffer extends TrackedObject implements VkB
 
     public void delete() {
         super.free0();
+        vkDevice.graphicsQueue().waitIdle();
         Vma.vmaDestroyBuffer(
                 vkDevice.vma(),
                 this.handle,
@@ -94,5 +95,10 @@ public class VkPersistentClientMappedBuffer extends TrackedObject implements VkB
     @Override
     public void free() {
         this.delete();
+    }
+
+    @Override
+    public long getDeviceAddress() {
+        throw new IllegalStateException("No device address on client mapped buffer");
     }
 }

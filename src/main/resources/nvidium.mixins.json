@@ -8,6 +8,7 @@
     "minecraft.MixinFogRenderer",
     "minecraft.MixinGlDevice",
     "minecraft.MixinVulkanBackend",
+    "minecraft.MixinVulkanPhysicalDevice",
     "minecraft.RenderPassAccessor",
     "minecraft.TextureAtlasAccessor",
     "minecraft.VulkanRenderPassAccessor",

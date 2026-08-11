@@ -8,6 +8,7 @@ import me.cortex.nvidium.mixin.minecraft.GpuDeviceAccessor;
 import me.cortex.nvidium.vk.buffers.VkBuffer;
 import me.cortex.nvidium.vk.buffers.VkDeviceOnlyMappedBuffer;
 import me.cortex.nvidium.vk.buffers.VkPersistentClientMappedBuffer;
+import me.cortex.nvidium.vk.buffers.VkSparseAddressableBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.*;
 
@@ -63,10 +64,9 @@ public class VkRenderDevice {
         }
     }
 
-    /*
-    public PersistentSparseAddressableBuffer createSparseBuffer(long totalSize) {
-        return new PersistentSparseAddressableBuffer(totalSize);
-    }*/
+    public VkSparseAddressableBuffer createSparseBuffer(long size, int bufferUsage, int allocFlags, Supplier<String> label) {
+        return new VkSparseAddressableBuffer(size, bufferUsage, allocFlags, label);
+    }
 
     public VkDeviceOnlyMappedBuffer createDeviceOnlyMappedBuffer(long size, int bufferUsage, int allocFlags, Supplier<String> label) {
         return new VkDeviceOnlyMappedBuffer(size, bufferUsage, allocFlags, label);

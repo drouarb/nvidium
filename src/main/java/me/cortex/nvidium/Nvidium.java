@@ -13,7 +13,7 @@ public class Nvidium {
     public static boolean IS_ENABLED = false;
     public static boolean IS_OPENGL = false;
     public static boolean IS_DEBUG = System.getProperty("nvidium.isDebug", "false").equals("TRUE");
-    public static boolean SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER = false;
+    public static boolean SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER = true;
     public static boolean FORCE_DISABLE = false;
     public static boolean SUPPORT_NV_representative_fragment_test = false;
     public static boolean SUPPORT_VK_KHR_fragment_shader_barycentric = false;

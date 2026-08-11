@@ -78,6 +78,7 @@ public class VkDeviceOnlyMappedBuffer extends TrackedObject implements VkBuffer 
     public void delete() {
         System.out.println("DELETE BUFFER " + label.get());
         super.free0();
+        vkDevice.graphicsQueue().waitIdle();
         Vma.vmaDestroyBuffer(vkDevice.vma(), this.handle, this.vmaAllocation);
     }
 
