@@ -38,7 +38,7 @@ void main() {
     chunk.y >>= 32-9;
     task.originAndBaseData.xyz = vec3((chunk - chunkPosition.xyz)<<4);
 
-    quadCount = sectionData.data[sectionId].tranlucentQuadCount;
+    task.quadCount = sectionData.data[sectionId].tranlucentQuadCount;
     #ifdef TRANSLUCENCY_SORTING_QUADS
     jiggle = uint8_t(min(task.quadCount>>1,(uint(frameId)&1)));//Jiggle by 1 quads (either 0 or 1)//*15
     //jiggle = uint8_t(0);
