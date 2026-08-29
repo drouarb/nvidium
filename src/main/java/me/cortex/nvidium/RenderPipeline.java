@@ -59,11 +59,7 @@ public class RenderPipeline {
     private CmdBufferBuilder cmdBufferBuilder;
     private TemporalTerrainRasterizer temporalRasterizer;
     private TranslucentTerrainRasterizer translucencyTerrainRasterizer;
-
-    /*
     public final RegionVisibilityTracker regionVisibilityTracking;
-
-    */
 
     private static final int SCENE_SIZE = (int) alignUp(
                     4*4*4 +  // mat4     MVP
@@ -206,7 +202,7 @@ public class RenderPipeline {
         );
 
         regionVisibilityTracker = new BitSet(maxRegions);
-        //regionVisibilityTracking = new RegionVisibilityTracker(downloadStream, maxRegions);
+        regionVisibilityTracking = new RegionVisibilityTracker(device, layout, downloadStream, maxRegions);
 
         statisticsBuffer = device.createDeviceOnlyMappedBuffer(
                 4 * 4,
@@ -512,26 +508,25 @@ public class RenderPipeline {
 
         prevRegionCount = visibleRegions;
 
-        if (Nvidium.config.enable_temporal_coherence) {
-            try (RenderPass renderPass = RenderSystem.getDevice()
-                    .createCommandEncoder()
-                    .createRenderPass(
-                            () -> "Nvidium Temporal Terrain",
-                            pass.getTarget().getColorTextureView(),
-                            Optional.empty(),
-                            pass.getTarget().getDepthTextureView(),
-                            OptionalDouble.empty()
-                    )) {
-                VulkanRenderPass renderPassBackend = (VulkanRenderPass) ((RenderPassAccessor)renderPass).nvidium$getRenderPassBackend();
-                VkCommandBuffer commandBuffer = ((VulkanRenderPassAccessor)renderPassBackend).nvidium$getCommandBuffer();
-                sceneUniform.bind(commandBuffer, layout, SCENE_SIZE, VK_PIPELINE_BIND_POINT_GRAPHICS);
+        try (RenderPass renderPass = RenderSystem.getDevice()
+                .createCommandEncoder()
+                .createRenderPass(
+                        () -> "Nvidium Temporal Terrain",
+                        pass.getTarget().getColorTextureView(),
+                        Optional.empty(),
+                        pass.getTarget().getDepthTextureView(),
+                        OptionalDouble.empty()
+                )) {
+            VulkanRenderPass renderPassBackend = (VulkanRenderPass) ((RenderPassAccessor)renderPass).nvidium$getRenderPassBackend();
+            VkCommandBuffer commandBuffer = ((VulkanRenderPassAccessor)renderPassBackend).nvidium$getCommandBuffer();
+            sceneUniform.bind(commandBuffer, layout, SCENE_SIZE, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
+            if (Nvidium.config.enable_temporal_coherence) {
                 temporalRasterizer.raster(commandBuffer, layout, pass, visibleRegions, temporalCommandBuffer, terrainSampler);
             }
-        }
 
-        // TODO regionVisibilityTracking.computeVisibility || Maybe we don't need it since we actually reset visibility in cmdBufferBuilder from first RegionRaster
-        // TODO Maybe for removeARegion() when starving memory ?
+            regionVisibilityTracking.computeVisibility(commandBuffer, visibleRegions, regionVisibility, regionMap);
+        }
     }
 
     void enqueueRegionSort(int regionId) {
@@ -540,11 +535,11 @@ public class RenderPipeline {
 
     private void removeRegion(int id) {
         sectionManager.removeRegionById(id);
-        // regionVisibilityTracking.resetRegion(id);
+        regionVisibilityTracking.resetRegion(id);
     }
 
     public void removeARegion() {
-        // removeRegion(regionVisibilityTracking.findMostLikelyLeastSeenRegion(sectionManager.getRegionManager().maxRegionIndex()));
+        removeRegion(regionVisibilityTracking.findMostLikelyLeastSeenRegion(sectionManager.getRegionManager().maxRegionIndex()));
     }
 
     //Translucency is rendered in a very cursed and incorrect way
@@ -586,8 +581,6 @@ public class RenderPipeline {
         device.getVkDevice().createCommandEncoder().submit();
         device.getVkDevice().graphicsQueue().waitIdle();
 
-        // regionVisibilityTracking.delete();
-
         sceneUniform.delete();
         regionVisibility.delete();
         sectionVisibility.delete();
@@ -603,6 +596,7 @@ public class RenderPipeline {
         sectionRasterizer.delete();
         cmdBufferBuilder.delete();
         temporalRasterizer.delete();
+        regionVisibilityTracking.delete();
         translucencyTerrainRasterizer.delete();
         this.transformationArray.delete();
         this.originOffsetArray.delete();

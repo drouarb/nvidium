@@ -1,28 +1,37 @@
 package me.cortex.nvidium.managers;
 
+import com.mojang.blaze3d.GpuFormat;
+import com.mojang.blaze3d.pipeline.ColorTargetState;
 import me.cortex.nvidium.gl.shader.Shader;
 import me.cortex.nvidium.sodiumCompat.ShaderLoader;
 import me.cortex.nvidium.util.DownloadTaskStream;
+import me.cortex.nvidium.vk.VkRenderDevice;
 import me.cortex.nvidium.vk.buffers.VkBuffer;
+import me.cortex.nvidium.vk.shader.VkPipeline;
+import me.cortex.nvidium.vk.shader.VkPipelineLayout;
+import me.cortex.nvidium.vk.shader.VkShaderType;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.system.MemoryUtil;
+import org.lwjgl.vulkan.VkCommandBuffer;
+
+import java.util.Optional;
 
 import static me.cortex.nvidium.gl.shader.ShaderType.FRAGMENT;
 import static me.cortex.nvidium.gl.shader.ShaderType.MESH;
 import static org.lwjgl.opengl.GL42.glMemoryBarrier;
 import static org.lwjgl.opengl.GL43C.GL_SHADER_STORAGE_BARRIER_BIT;
 import static org.lwjgl.opengl.NVMeshShader.glDrawMeshTasksNV;
+import static org.lwjgl.vulkan.EXTMeshShader.vkCmdDrawMeshTasksEXT;
 
 public class RegionVisibilityTracker {
-    private final Shader shader = Shader.make()
-            .addSource(MESH, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "occlusion/queries/region/mesh.glsl")))
-            .addSource(FRAGMENT, ShaderLoader.parse(Identifier.fromNamespaceAndPath("nvidium", "occlusion/queries/region/fragment.frag")))
-            .compile();
+    private final VkPipeline shader;
+    private final VkRenderDevice device;
 
     private final DownloadTaskStream downStream;
     private final int[] frustum;
     private final int[] visible;
-    public RegionVisibilityTracker(DownloadTaskStream downStream, int maxRegions) {
+    public RegionVisibilityTracker(VkRenderDevice device, VkPipelineLayout layout, DownloadTaskStream downStream, int maxRegions) {
+        this.device = device;
         this.downStream = downStream;
         visible = new int[maxRegions];
         frustum = new int[maxRegions];
@@ -30,15 +39,26 @@ public class RegionVisibilityTracker {
             frustum[i] = 0;
             visible[i] = 0;
         }
+
+        shader = VkPipeline.make()
+                .addSource(VkShaderType.MESH, Identifier.fromNamespaceAndPath("nvidium", "occlusion/queries/region/mesh.glsl"))
+                .addSource(VkShaderType.FRAGMENT, Identifier.fromNamespaceAndPath("nvidium", "occlusion/queries/region/fragment.frag"))
+                .withLayout(layout)
+                .withColorTargetState(new ColorTargetState(Optional.empty(), GpuFormat.RGBA8_UNORM, ColorTargetState.WRITE_NONE))
+                .withDepthTest(true)
+                .withDepthWrite(false)
+                .withRepresentativeFragmentTest(true)
+                .compile();
     }
 
     private int fram = 0;
     //This is kind of evil in the fact that it just reuses the visibility buffer
-    public void computeVisibility(int regionCount, VkBuffer regionVisibilityBuffer, short[] regionMapping) {
-        shader.bind();
+    public void computeVisibility(VkCommandBuffer commandBuffer,  int regionCount, VkBuffer regionVisibilityBuffer, short[] regionMapping) {
+        shader.bind(commandBuffer);
         fram++;
-        glDrawMeshTasksNV(0, (regionCount + 3) / 4);
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        vkCmdDrawMeshTasksEXT(commandBuffer, regionCount, 1, 1);
+        device.barrier(commandBuffer);
+
         downStream.download(regionVisibilityBuffer, 0, regionCount, ptr -> {
             for (int i = 0; i < regionMapping.length; i++) {
                 if (MemoryUtil.memGetByte(ptr + i) == 1) {
