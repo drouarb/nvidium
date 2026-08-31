@@ -123,8 +123,16 @@ public class NvidiumWorldRenderer {
 
     private void update_allowed_memory() {
         if (Nvidium.config.automatic_memory) {
-            max_geometry_memory = (glGetInteger(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX) / 1024) + (sectionManager==null?0:sectionManager.terrainAreana.getMemoryUsed()/(1024*1024));
-            max_geometry_memory -= 1024;//Minus 1gb of vram
+            long available_memory = (glGetInteger(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX) / 1024) + (sectionManager==null?0:sectionManager.terrainAreana.getMemoryUsed()/(1024*1024));
+            if (Nvidium.SUPPORTS_PERSISTENT_SPARSE_ADDRESSABLE_BUFFER) {
+                max_geometry_memory = available_memory - 1024;//Minus 1gb of vram
+            } else {
+                //The fallback buffer is fully committed when it is created, so it must stay well
+                // under the available vram instead of claiming all but 1gb of it. Terrain geometry
+                // is only a few hundred mb at normal render distances and overflowing the arena
+                // just evicts regions, so this is deliberately conservative
+                max_geometry_memory = Math.min(available_memory/4, 3072);
+            }
             max_geometry_memory = Math.max(2048, max_geometry_memory);//Minimum 2 gb of vram
         } else {
             max_geometry_memory = Nvidium.config.max_geometry_memory;
