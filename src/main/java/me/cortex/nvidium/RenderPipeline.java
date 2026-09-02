@@ -148,7 +148,7 @@ public class RenderPipeline {
         );
         regionVisibility = device.createDeviceOnlyMappedBuffer(
                 maxRegions,
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                 0,
                 () -> "RegionVisibility"
         );
@@ -525,8 +525,9 @@ public class RenderPipeline {
                 temporalRasterizer.raster(commandBuffer, layout, pass, visibleRegions, temporalCommandBuffer, terrainSampler);
             }
 
-            regionVisibilityTracking.computeVisibility(commandBuffer, visibleRegions, regionVisibility, regionMap);
+            regionVisibilityTracking.computeVisibility(commandBuffer, visibleRegions);
         }
+        regionVisibilityTracking.tickDownload(commandEncoder.commandBuffer(), visibleRegions, regionVisibility, regionMap);
     }
 
     void enqueueRegionSort(int regionId) {

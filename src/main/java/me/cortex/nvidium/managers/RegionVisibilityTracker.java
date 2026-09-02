@@ -53,10 +53,13 @@ public class RegionVisibilityTracker {
 
     private int fram = 0;
     //This is kind of evil in the fact that it just reuses the visibility buffer
-    public void computeVisibility(VkCommandBuffer commandBuffer,  int regionCount, VkBuffer regionVisibilityBuffer, short[] regionMapping) {
+    public void computeVisibility(VkCommandBuffer commandBuffer,  int regionCount) {
         shader.bind(commandBuffer);
         fram++;
         vkCmdDrawMeshTasksEXT(commandBuffer, regionCount, 1, 1);
+    }
+
+    public void tickDownload(VkCommandBuffer commandBuffer,  int regionCount, VkBuffer regionVisibilityBuffer, short[] regionMapping) {
         device.barrier(commandBuffer);
 
         downStream.download(regionVisibilityBuffer, 0, regionCount, ptr -> {
