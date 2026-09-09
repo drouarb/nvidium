@@ -28,7 +28,7 @@ public class ShaderLoader {
         }
 
         for (int i = 1; i <= Nvidium.config.statistics_level.ordinal(); i++) {
-            builder.define("STATISTICS_" + StatisticsLoggingLevel.values()[i].name());
+            builder.define("STATISTICS_"+StatisticsLoggingLevel.values()[i].name());
         }
 
         if (Nvidium.config.translucency_sorting_level.ordinal() >= TranslucencySortingLevel.SECTIONS.ordinal()) {
@@ -60,8 +60,7 @@ public class ShaderLoader {
         GlslPreprocessor preprocessor = new GlslPreprocessor() {
             @Override
             public @Nullable String applyImport(boolean isRelative, @NonNull String path) {
-                Identifier id = Identifier.parse(path);
-                return ShaderLoader.resolve(id, !isRelative);
+                return ShaderLoader.resolve(Identifier.parse(path), !isRelative);
             }
         };
 
