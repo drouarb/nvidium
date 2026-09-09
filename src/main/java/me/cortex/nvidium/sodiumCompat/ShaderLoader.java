@@ -28,9 +28,8 @@ public class ShaderLoader {
         }
 
         for (int i = 1; i <= Nvidium.config.statistics_level.ordinal(); i++) {
-            builder.define("STATISTICS_"+StatisticsLoggingLevel.values()[i].name());
+            builder.define("STATISTICS_" + StatisticsLoggingLevel.values()[i].name());
         }
-
 
         if (Nvidium.config.translucency_sorting_level.ordinal() >= TranslucencySortingLevel.SECTIONS.ordinal()) {
             builder.define("TRANSLUCENCY_SORTING_SECTIONS");
@@ -61,7 +60,8 @@ public class ShaderLoader {
         GlslPreprocessor preprocessor = new GlslPreprocessor() {
             @Override
             public @Nullable String applyImport(boolean isRelative, @NonNull String path) {
-                return ShaderLoader.resolve(Identifier.parse(path));
+                Identifier id = Identifier.parse(path);
+                return ShaderLoader.resolve(id, !isRelative);
             }
         };
 
@@ -73,29 +73,41 @@ public class ShaderLoader {
     }
 
     public static String resolve(Identifier id) {
+        return resolve(id, false);
+    }
+
+    public static String resolve(Identifier id, boolean allowIncludeFallback) {
         ResourceManager rm = Minecraft.getInstance().getResourceManager();
 
-        Optional<Resource> res = rm.getResource(id.withPrefix("shaders/"));
-        if (res.isEmpty()) {
-            throw new IllegalStateException("Failed to find shader " + id.getPath());
-        }
+        Identifier directPath = id.withPrefix("shaders/");
+        Optional<Resource> res = rm.getResource(directPath);
 
-        try {
-            Reader reader = res.get().openAsReader();
-            String source = "#error shader didn't load";
-            try {
-                source = IOUtils.toString(reader);
+        if (res.isPresent()) {
+            try (Reader reader = res.get().openAsReader()) {
+                return IOUtils.toString(reader);
             } catch (IOException e) {
-                System.out.println("Nvidium shader reader error");
+                throw new IllegalStateException("Failed to open shader " + directPath, e);
             }
-
-            if (reader != null) {
-                reader.close();
-            }
-
-            return source;
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to open resource reader, wtf is going on");
         }
+
+        if (allowIncludeFallback) {
+            Identifier includePath = id.withPrefix("shaders/include/");
+            res = rm.getResource(includePath);
+
+            if (res.isPresent()) {
+                try (Reader reader = res.get().openAsReader()) {
+                    return IOUtils.toString(reader);
+                } catch (IOException e) {
+                    throw new IllegalStateException("Failed to open shader include " + includePath, e);
+                }
+            }
+
+            throw new IllegalStateException(
+                    "Failed to find shader import " + id +
+                            " (tried " + directPath + " and " + includePath + ")"
+            );
+        }
+
+        throw new IllegalStateException("Failed to find shader " + id);
     }
 }
