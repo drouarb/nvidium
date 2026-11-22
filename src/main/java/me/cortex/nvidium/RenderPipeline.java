@@ -1,19 +1,18 @@
 package me.cortex.nvidium;
 
+import com.mojang.blaze3d.systems.CommandEncoder;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.GpuSampler;
 import com.mojang.blaze3d.vulkan.VulkanCommandEncoder;
-import com.mojang.blaze3d.vulkan.VulkanRenderPass;
 import it.unimi.dsi.fastutil.ints.*;
 import me.cortex.nvidium.config.StatisticsLoggingLevel;
 import me.cortex.nvidium.config.TranslucencySortingLevel;
 import me.cortex.nvidium.managers.RegionManager;
 import me.cortex.nvidium.managers.RegionVisibilityTracker;
 import me.cortex.nvidium.managers.SectionManager;
-import me.cortex.nvidium.mixin.minecraft.RenderPassAccessor;
+import me.cortex.nvidium.mixin.minecraft.CommandEncoderAccessor;
 import me.cortex.nvidium.mixin.minecraft.TextureAtlasAccessor;
-import me.cortex.nvidium.mixin.minecraft.VulkanRenderPassAccessor;
 import me.cortex.nvidium.renderers.*;
 import me.cortex.nvidium.util.*;
 import me.cortex.nvidium.vk.VkRenderDevice;
@@ -456,78 +455,70 @@ public class RenderPipeline {
 
         TickableManager.TickAll();
 
-        try (RenderPass renderPass = RenderSystem.getDevice() // TODO do our own command buffer management, and replay if state didn't change
-                .createCommandEncoder()
-                .createRenderPass(
+        CommandEncoder commandEncoder = RenderSystem.getDevice().createCommandEncoder();
+        VulkanCommandEncoder vkCommandEncoder = (VulkanCommandEncoder)((CommandEncoderAccessor)commandEncoder).nvidium$getCommandEncoderBackend();
+
+        try (RenderPass renderPass = commandEncoder.createRenderPass(
                         () -> "Nvidium Terrain",
                         pass.getTarget().getColorTextureView(),
                         Optional.empty(),
                         pass.getTarget().getDepthTextureView(),
                         OptionalDouble.empty()
                 )) {
-            VulkanRenderPass renderPassBackend = (VulkanRenderPass) ((RenderPassAccessor)renderPass).nvidium$getRenderPassBackend();
-            VkCommandBuffer commandBuffer = ((VulkanRenderPassAccessor)renderPassBackend).nvidium$getCommandBuffer();
+            VkCommandBuffer commandBuffer = vkCommandEncoder.commandBuffer();
             sceneUniform.bind(commandBuffer, layout, SCENE_SIZE, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
             if (prevRegionCount != 0) {
-                terrainRasterizer.raster(commandBuffer, layout, pass, prevRegionCount, terrainCommandBuffer, terrainSampler);
+                terrainRasterizer.raster(commandEncoder, commandBuffer, layout, pass, prevRegionCount, terrainCommandBuffer, terrainSampler);
             }
 
-            regionRasterizer.raster(commandBuffer, visibleRegions);
+            regionRasterizer.raster(commandEncoder, commandBuffer, visibleRegions);
         }
 
-        VulkanCommandEncoder commandEncoder = device.getVkDevice().createCommandEncoder();
-        device.barrier(commandEncoder.commandBuffer());
+        device.barrier(vkCommandEncoder.commandBuffer());
 
-        try (RenderPass renderPass = RenderSystem.getDevice()
-                .createCommandEncoder()
-                .createRenderPass(
+        try (RenderPass renderPass = commandEncoder.createRenderPass(
                         () -> "Nvidium Section Raster",
                         pass.getTarget().getColorTextureView(),
                         Optional.empty(),
                         pass.getTarget().getDepthTextureView(),
                         OptionalDouble.empty()
                 )) {
-            VulkanRenderPass renderPassBackend = (VulkanRenderPass) ((RenderPassAccessor) renderPass).nvidium$getRenderPassBackend();
-            VkCommandBuffer commandBuffer = ((VulkanRenderPassAccessor) renderPassBackend).nvidium$getCommandBuffer();
+            VkCommandBuffer commandBuffer = vkCommandEncoder.commandBuffer();
 
             sceneUniform.bind(commandBuffer, layout, SCENE_SIZE, VK_PIPELINE_BIND_POINT_GRAPHICS);
-            sectionRasterizer.raster(commandBuffer, visibleRegions);
+            sectionRasterizer.raster(commandEncoder, commandBuffer, visibleRegions);
         }
 
-        commandEncoder = device.getVkDevice().createCommandEncoder();
-        sceneUniform.bind(commandEncoder.commandBuffer(), layout, SCENE_SIZE, VK_PIPELINE_BIND_POINT_COMPUTE);
-        device.barrier(commandEncoder.commandBuffer());
+        sceneUniform.bind(vkCommandEncoder.commandBuffer(), layout, SCENE_SIZE, VK_PIPELINE_BIND_POINT_COMPUTE);
+        device.barrier(vkCommandEncoder.commandBuffer());
         if (regionSortSize != 0) {
-            regionSectionSorter.dispatch(commandEncoder.commandBuffer(), regionSortSize);
-            device.barrier(commandEncoder.commandBuffer());
+            regionSectionSorter.dispatch(commandEncoder, vkCommandEncoder.commandBuffer(), regionSortSize);
+            device.barrier(vkCommandEncoder.commandBuffer());
         }
 
-        cmdBufferBuilder.dispatch(commandEncoder.commandBuffer(), visibleRegions);
-        device.barrier(commandEncoder.commandBuffer());
+        cmdBufferBuilder.dispatch(commandEncoder, vkCommandEncoder.commandBuffer(), visibleRegions);
+        device.barrier(vkCommandEncoder.commandBuffer());
 
         prevRegionCount = visibleRegions;
 
-        try (RenderPass renderPass = RenderSystem.getDevice()
-                .createCommandEncoder()
-                .createRenderPass(
+        try (RenderPass renderPass = commandEncoder.createRenderPass(
                         () -> "Nvidium Temporal Terrain",
                         pass.getTarget().getColorTextureView(),
                         Optional.empty(),
                         pass.getTarget().getDepthTextureView(),
                         OptionalDouble.empty()
                 )) {
-            VulkanRenderPass renderPassBackend = (VulkanRenderPass) ((RenderPassAccessor)renderPass).nvidium$getRenderPassBackend();
-            VkCommandBuffer commandBuffer = ((VulkanRenderPassAccessor)renderPassBackend).nvidium$getCommandBuffer();
+            VkCommandBuffer commandBuffer = vkCommandEncoder.commandBuffer();
             sceneUniform.bind(commandBuffer, layout, SCENE_SIZE, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
             if (Nvidium.config.enable_temporal_coherence) {
-                temporalRasterizer.raster(commandBuffer, layout, pass, visibleRegions, temporalCommandBuffer, terrainSampler);
+                temporalRasterizer.raster(commandEncoder, commandBuffer, layout, pass, visibleRegions, temporalCommandBuffer, terrainSampler);
             }
 
             regionVisibilityTracking.computeVisibility(commandBuffer, visibleRegions);
         }
-        regionVisibilityTracking.tickDownload(commandEncoder.commandBuffer(), visibleRegions, regionVisibility, regionMap);
+        regionVisibilityTracking.tickDownload(vkCommandEncoder.commandBuffer(), visibleRegions, regionVisibility, regionMap);
     }
 
     void enqueueRegionSort(int regionId) {
@@ -546,19 +537,19 @@ public class RenderPipeline {
     //Translucency is rendered in a very cursed and incorrect way
     // it hijacks the unassigned indirect command dispatch and uses that to dispatch the translucent chunks as well
     public void renderTranslucent(TerrainRenderPass pass, GpuSampler terrainSampler) {
-        try (RenderPass renderPass = RenderSystem.getDevice()
-                .createCommandEncoder()
-                .createRenderPass(
+        CommandEncoder commandEncoder = RenderSystem.getDevice().createCommandEncoder();
+        VulkanCommandEncoder vkCommandEncoder = (VulkanCommandEncoder)((CommandEncoderAccessor)commandEncoder).nvidium$getCommandEncoderBackend();
+
+        try (RenderPass renderPass = commandEncoder.createRenderPass(
                         () -> "Nvidium Translucent Terrain",
                         pass.getTarget().getColorTextureView(),
                         Optional.empty(),
                         pass.getTarget().getDepthTextureView(),
                         OptionalDouble.empty()
                 )) {
-            VulkanRenderPass renderPassBackend = (VulkanRenderPass) ((RenderPassAccessor)renderPass).nvidium$getRenderPassBackend();
-            VkCommandBuffer commandBuffer = ((VulkanRenderPassAccessor)renderPassBackend).nvidium$getCommandBuffer();
+            VkCommandBuffer commandBuffer = vkCommandEncoder.commandBuffer();
             sceneUniform.bind(commandBuffer, layout, SCENE_SIZE, VK_PIPELINE_BIND_POINT_GRAPHICS);
-            translucencyTerrainRasterizer.raster(commandBuffer, layout, pass, prevRegionCount, translucencyCommandBuffer, terrainSampler);
+            translucencyTerrainRasterizer.raster(commandEncoder, commandBuffer, layout, pass, prevRegionCount, translucencyCommandBuffer, terrainSampler);
         }
 
         //Download statistics
@@ -631,7 +622,6 @@ public class RenderPipeline {
             info.addAll(List.of(builder.toString().split("\n")));
         }
 
-        /*
         info.add("Primary Terrain frame time: " + String.format("%.03f", terrainRasterizer.getTiming().getAverageMs()) + "ms");
         info.add("Translucent frame time: " + String.format("%.03f", translucencyTerrainRasterizer.getTiming().getAverageMs()) + "ms");
         if (Nvidium.config.enable_temporal_coherence) {
@@ -643,7 +633,6 @@ public class RenderPipeline {
         if (Nvidium.config.translucency_sorting_level != TranslucencySortingLevel.NONE) {
             info.add("SectionSorter time: " + String.format("%.03f", regionSectionSorter.getTiming().getAverageMs()) + "ms");
         }
-        */
     }
 
     public void reloadShaders() {

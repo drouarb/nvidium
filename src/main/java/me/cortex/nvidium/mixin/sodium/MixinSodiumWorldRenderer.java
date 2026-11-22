@@ -3,8 +3,6 @@ package me.cortex.nvidium.mixin.sodium;
 import com.mojang.blaze3d.textures.GpuSampler;
 import me.cortex.nvidium.Nvidium;
 import me.cortex.nvidium.NvidiumWorldRenderer;
-import me.cortex.nvidium.mixin.minecraft.CommandEncoderAccessor;
-import me.cortex.nvidium.mixin.minecraft.GlCommandEncoderAccessor;
 import me.cortex.nvidium.sodiumCompat.INvidiumWorldRendererGetter;
 import net.caffeinemc.mods.sodium.client.render.SodiumWorldRenderer;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;

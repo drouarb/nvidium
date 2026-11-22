@@ -1,6 +1,7 @@
 package me.cortex.nvidium.renderers;
 
 import com.mojang.blaze3d.pipeline.ColorTargetState;
+import com.mojang.blaze3d.systems.CommandEncoder;
 import com.mojang.blaze3d.textures.GpuSampler;
 import me.cortex.nvidium.vk.buffers.VkDeviceOnlyMappedBuffer;
 import me.cortex.nvidium.vk.shader.VkPipeline;
@@ -12,7 +13,7 @@ import org.lwjgl.vulkan.VkCommandBuffer;
 
 import static org.lwjgl.vulkan.EXTMeshShader.vkCmdDrawMeshTasksIndirectEXT;
 
-public class TemporalTerrainRasterizer {
+public class TemporalTerrainRasterizer extends Phase {
     private final VkPipeline shader;
 
     public TemporalTerrainRasterizer(VkPipelineLayout layout) {
@@ -27,14 +28,17 @@ public class TemporalTerrainRasterizer {
                 .compile();
     }
 
-    public void raster(VkCommandBuffer commandBuffer, VkPipelineLayout layout, TerrainRenderPass pass, int regionCount, VkDeviceOnlyMappedBuffer mdiCommandBuffer, GpuSampler terrainSampler) {
+    public void raster(CommandEncoder commandEncoder, VkCommandBuffer commandBuffer, VkPipelineLayout layout, TerrainRenderPass pass, int regionCount, VkDeviceOnlyMappedBuffer mdiCommandBuffer, GpuSampler terrainSampler) {
         shader.bind(commandBuffer);
         PrimaryTerrainRasterizer.bindTextures(commandBuffer, layout, pass, terrainSampler);
 
+        timing.begin(commandEncoder);
         vkCmdDrawMeshTasksIndirectEXT(commandBuffer, mdiCommandBuffer.getHandle(), 0, regionCount, 16);
+        timing.end(commandEncoder);
     }
 
     public void delete() {
+        timing.free();
         shader.delete();
     }
 }

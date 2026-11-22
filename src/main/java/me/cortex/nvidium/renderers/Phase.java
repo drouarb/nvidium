@@ -1,15 +1,15 @@
 package me.cortex.nvidium.renderers;
 
-import me.cortex.nvidium.util.GPUTiming;
+import me.cortex.nvidium.util.B3DGPUTiming;
 
 public abstract class Phase {
-    GPUTiming timing = new GPUTiming();
+    B3DGPUTiming timing = new B3DGPUTiming();
 
     public void delete() {
         timing.free();
     }
 
-    public GPUTiming getTiming() {
+    public B3DGPUTiming getTiming() {
         return timing;
     }
 }
