@@ -8,9 +8,11 @@
 #extension GL_KHR_shader_subgroup_arithmetic : require
 #extension GL_EXT_control_flow_attributes : require
 
+#define SECTIONS_PER_LANE (256 / NVIDIUM_SUBGROUP_SIZE)
+
 #moj_import <nvidium:occlusion/scene.glsl>
 
-layout(local_size_x = 32) in;
+layout(local_size_x = NVIDIUM_SUBGROUP_SIZE) in;
 
 uint getReflectedTranslucentSectionId(uint sectionId) {
     ivec4 header = sectionData.data[sectionId].header;
@@ -31,8 +33,8 @@ void main() {
     if (regionVisibility.data[gl_WorkGroupID.x] == uint8_t(0)) {
         // Region was not visible, reset visibility bits
         [[unroll]]
-        for (uint i = 0; i < 8; i++) {
-            uint index = baseSectionId + gl_LocalInvocationID.x * 8 + i;
+        for (uint i = 0; i < SECTIONS_PER_LANE; i++) {
+            uint index = baseSectionId + gl_LocalInvocationID.x * SECTIONS_PER_LANE + i;
             sectionVisibility.data[index] = uint8_t(0);
         }
 
@@ -46,8 +48,8 @@ void main() {
 
     uvec3 renderCounts = uvec3(0);
     [[unroll]]
-    for (uint i = 0; i < 8; i++) {
-        uint visibilityIndex = baseSectionId + gl_LocalInvocationID.x * 8 + i;
+    for (uint i = 0; i < SECTIONS_PER_LANE; i++) {
+        uint visibilityIndex = baseSectionId + gl_LocalInvocationID.x * SECTIONS_PER_LANE + i;
         uint8_t visibilityData = sectionVisibility.data[visibilityIndex];
 
         uint translucentVisibilityIndex = getReflectedTranslucentSectionId(visibilityIndex);
@@ -64,8 +66,8 @@ void main() {
     uvec3 totalSectionCount = subgroupAdd(renderCounts);
 
     [[unroll]]
-    for (uint i = 0; i < 8; i++) {
-        uint visibilityIndex = baseSectionId + gl_LocalInvocationID.x * 8 + i;
+    for (uint i = 0; i < SECTIONS_PER_LANE; i++) {
+        uint visibilityIndex = baseSectionId + gl_LocalInvocationID.x * SECTIONS_PER_LANE + i;
         uint visibilityData = sectionVisibility.data[visibilityIndex];
 
         if ((visibilityData & 1u) == 1) {
@@ -88,5 +90,11 @@ void main() {
         terrainCommandBuffer.data[gl_WorkGroupID.x] = uvec4(totalSectionCount.x, 1, 1, baseSectionId);
         translucencyCommandBuffer.data[(uint(regionCount) - gl_WorkGroupID.x) - 1] = uvec4(totalSectionCount.y, 1, 1, baseSectionId);
         temporalCommandBuffer.data[gl_WorkGroupID.x] = uvec4(totalSectionCount.z, 1, 1, baseSectionId);
+
+        #ifdef STATISTICS_SECTIONS
+            atomicAdd(statistics_buffer.data[1], totalSectionCount.x);
+            atomicAdd(statistics_buffer.data[2], totalSectionCount.y);
+            atomicAdd(statistics_buffer.data[3], totalSectionCount.z);
+        #endif
     }
 }

@@ -49,11 +49,7 @@ void main() {
     #endif
 
     #ifdef STATISTICS_QUADS
-    atomicAdd(statistics_buffer.data[2], task.quadCount);
-    #endif
-
-    #ifdef STATISTICS_SECTIONS
-    atomicAdd(statistics_buffer.data[1], 1);
+    atomicAdd(statistics_buffer.data[4], task.quadCount);
     #endif
 
     EmitMeshTasksEXT((task.quadCount+MESH_WORKLOAD_PER_INVOCATION-1)/MESH_WORKLOAD_PER_INVOCATION, 1, 1);

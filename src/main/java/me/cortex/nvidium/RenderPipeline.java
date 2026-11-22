@@ -113,7 +113,9 @@ public class RenderPipeline {
     private static final class Statistics {
         public int frustumCount;
         public int regionCount;
-        public int sectionCount;
+        public int solidSectionCount;
+        public int translucentSectionCount;
+        public int temporalSectionCount;
         public int quadCount;
         public int cullCount;
     }
@@ -204,7 +206,7 @@ public class RenderPipeline {
         regionVisibilityTracking = new RegionVisibilityTracker(device, layout, downloadStream, maxRegions);
 
         statisticsBuffer = device.createDeviceOnlyMappedBuffer(
-                4 * 4,
+                6 * 4,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                 0,
                 () -> "StatisticsBuffer"
@@ -221,9 +223,14 @@ public class RenderPipeline {
                 ptr += 4 * 4 * 4;
             }
         }
+
+        VulkanCommandEncoder commandEncoder = device.getVkDevice().createCommandEncoder();
+        // Ensure visibility doesn't contain garbage
+        vkCmdFillBuffer(commandEncoder.commandBuffer(), regionVisibility.getHandle(), 0, VK_WHOLE_SIZE, 0);
+        vkCmdFillBuffer(commandEncoder.commandBuffer(), sectionVisibility.getHandle(), 0, VK_WHOLE_SIZE, 0);
         //Clear the origin offset
-        vkCmdFillBuffer(device.getVkDevice().createCommandEncoder().commandBuffer(), originOffsetArray.getHandle(), 0,  VK_WHOLE_SIZE, 0);
-        device.getVkDevice().createCommandEncoder().submit();
+        vkCmdFillBuffer(commandEncoder.commandBuffer(), originOffsetArray.getHandle(), 0,  VK_WHOLE_SIZE, 0);
+        commandEncoder.submit();
     }
 
     public void setTransformation(int id, Matrix4fc transform) {
@@ -554,17 +561,19 @@ public class RenderPipeline {
 
         //Download statistics
         if (Nvidium.config.statistics_level.ordinal() > StatisticsLoggingLevel.FRUSTUM.ordinal()) {
-            downloadStream.download(statisticsBuffer, 0, 4 * 4, (addr) -> {
+            downloadStream.download(statisticsBuffer, 0, 6 * 4, (addr) -> {
                 stats.regionCount = MemoryUtil.memGetInt(addr);
-                stats.sectionCount = MemoryUtil.memGetInt(addr + 4);
-                stats.quadCount = MemoryUtil.memGetInt(addr + 8);
-                stats.cullCount = MemoryUtil.memGetInt(addr + 12);
+                stats.solidSectionCount = MemoryUtil.memGetInt(addr + 4);
+                stats.translucentSectionCount = MemoryUtil.memGetInt(addr + 8);
+                stats.temporalSectionCount = MemoryUtil.memGetInt(addr + 12);
+                stats.quadCount = MemoryUtil.memGetInt(addr + 16);
+                stats.cullCount = MemoryUtil.memGetInt(addr + 20);
             });
         }
 
         if (Nvidium.config.statistics_level.ordinal() > StatisticsLoggingLevel.FRUSTUM.ordinal()) {
             // Clear stats for next pass
-            vkCmdFillBuffer(device.getVkDevice().createCommandEncoder().commandBuffer(), statisticsBuffer.getHandle(),0, 4 * 4, 0);
+            vkCmdFillBuffer(device.getVkDevice().createCommandEncoder().commandBuffer(), statisticsBuffer.getHandle(),0, 6 * 4, 0);
         }
     }
 
@@ -611,7 +620,11 @@ public class RenderPipeline {
                 builder.append(", R: ").append(stats.regionCount);
             }
             if (Nvidium.config.statistics_level.ordinal() >= StatisticsLoggingLevel.SECTIONS.ordinal()) {
-                builder.append(", S: ").append(stats.sectionCount);
+                builder.append(", S: ").append(stats.solidSectionCount);
+                builder.append(", TR: ").append(stats.translucentSectionCount);
+                if (Nvidium.config.enable_temporal_coherence) {
+                    builder.append(", TMP: ").append(stats.temporalSectionCount);
+                }
             }
             if (Nvidium.config.statistics_level.ordinal() >= StatisticsLoggingLevel.QUADS.ordinal()) {
                 builder.append(", Q: ").append(stats.quadCount);

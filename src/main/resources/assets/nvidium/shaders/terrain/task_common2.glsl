@@ -1,5 +1,3 @@
-#define MESH_WORKLOAD_PER_INVOCATION 32
-
 struct Task {
     //Very compacted search indexs and data
     uvec4 binStarts;
@@ -62,8 +60,8 @@ void populateTasks(ivec3 relative, uint baseOffset, uvec4 ranges) {
     //Emit enough mesh shaders such that max(gl_GlobalInvocationID.x)>=2*quadCount
 
 #ifdef STATISTICS_QUADS
-    atomicAdd(statistics_buffer.data[2], task.quadCount);
+    atomicAdd(statistics_buffer.data[4], task.quadCount);
 #endif
 
-    EmitMeshTasksEXT(((sum*2)+MESH_WORKLOAD_PER_INVOCATION-1)/MESH_WORKLOAD_PER_INVOCATION, 1, 1);
+    EmitMeshTasksEXT(((sum*2)+NVIDIUM_SUBGROUP_SIZE-1)/NVIDIUM_SUBGROUP_SIZE, 1, 1);
 }

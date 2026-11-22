@@ -18,10 +18,6 @@ layout(local_size_x=1) in;
 void main() {
     uint sectionId = sectionIndices.data[terrainCommandBuffer.data[gl_DrawID].w + gl_WorkGroupID.x].x + terrainCommandBuffer.data[gl_DrawID].w;
 
-#ifdef STATISTICS_SECTIONS
-    atomicAdd(statistics_buffer.data[1], 1);
-#endif
-
     ivec4 header = sectionData.data[sectionId].header;
     ivec3 chunk = ivec3(header.xyz)>>8;
     chunk.y &= 0x1ff;

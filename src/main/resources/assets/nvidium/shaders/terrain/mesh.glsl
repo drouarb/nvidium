@@ -21,8 +21,8 @@ layout(binding = 2) uniform sampler2D tex_light;
 #endif
 
 //It seems like for terrain at least, the sweat spot is ~16 quads per mesh invocation (even if the local size is not 32 )
-layout (local_size_x = 32) in;
-layout (triangles, max_vertices = 64, max_primitives = 32) out;
+layout (local_size_x = NVIDIUM_SUBGROUP_SIZE) in;
+layout (triangles, max_vertices = (NVIDIUM_SUBGROUP_SIZE * 2), max_primitives = NVIDIUM_SUBGROUP_SIZE) out;
 
 layout(location = 10) perprimitiveEXT flat out int PRIMITRASH[];
 
@@ -154,7 +154,7 @@ void main() {
     uint triId = subgroupExclusiveAdd(uint(draw));
     uint triCount = subgroupAdd(uint(draw));
     //uint vtxCount = subgroupAdd(draw ? 2 : uint(peerDraw)); // TODO FIX ?
-    SetMeshOutputsEXT(64, triCount);
+    SetMeshOutputsEXT((NVIDIUM_SUBGROUP_SIZE * 2), triCount);
 
     // Abort if quad got culled
     if (!(draw || peerDraw)) {
@@ -193,7 +193,7 @@ void main() {
 
     #ifdef STATISTICS_CULL
         if (subgroupElect()) {
-            atomicAdd(statistics_buffer.data[3], (32 - 1) - triCount); // Count culled triangles
+            atomicAdd(statistics_buffer.data[5], (NVIDIUM_SUBGROUP_SIZE - 1) - triCount); // Count culled triangles
         }
     #endif
     }
