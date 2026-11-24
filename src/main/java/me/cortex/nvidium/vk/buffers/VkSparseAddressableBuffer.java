@@ -18,6 +18,7 @@ import org.lwjgl.vulkan.*;
 import java.nio.LongBuffer;
 import java.util.function.Supplier;
 
+import static org.lwjgl.util.vma.Vma.VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 import static org.lwjgl.vulkan.VK10.*;
 import static org.lwjgl.vulkan.VK12.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 import static org.lwjgl.vulkan.VK12.vkGetBufferDeviceAddress;
@@ -122,7 +123,8 @@ public class VkSparseAddressableBuffer extends TrackedObject implements VkBuffer
                     .memoryTypeBits(memoryTypeBits);
 
             VmaAllocationCreateInfo allocInfo = VmaAllocationCreateInfo.calloc(stack)
-                    .usage(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                    .usage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
+                    .requiredFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
             VmaAllocationInfo.Buffer allocInfos = VmaAllocationInfo.calloc(newPageCount, stack);
 

@@ -44,6 +44,7 @@ public class VkDeviceOnlyMappedBuffer extends TrackedObject implements VkBuffer 
 
             VmaAllocationCreateInfo allocCreateInfo = VmaAllocationCreateInfo.calloc(stack)
                     .usage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
+                    .requiredFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                     .flags(allocFlags);
 
             LongBuffer bufferPtr = stack.callocLong(1);

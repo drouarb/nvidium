@@ -150,13 +150,12 @@ void main() {
     #ifdef TRANSLUCENCY_SORTING_QUADS
     depthBuffers[gl_LocalInvocationID.x] = -99999999.0f;
     #endif
-    if ((gl_GlobalInvocationID.x)>=task.quadCount) { //If its over the quad count, dont render
-        return;
-    }
 
     uint currentPrimCount = uint(min(uint(int(task.quadCount)-int(gl_WorkGroupID.x<<5))<<1, 64u));
     SetMeshOutputsEXT(currentPrimCount<<1, currentPrimCount);
-
+    if ((gl_GlobalInvocationID.x)>=task.quadCount) { //If its over the quad count, dont render
+        return;
+    }
     emitQuadIndicies();
 
     //Each pair of meshlet invokations emits 4 vertices each and 2 primative each
